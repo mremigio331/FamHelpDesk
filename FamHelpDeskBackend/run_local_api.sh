@@ -13,6 +13,5 @@ export COGNITO_REGION="us-west-2"
 export COGNITO_API_REDIRECT_URI="http://localhost:5000/"
 export COGNITO_DOMAIN="https://famhelpdesk-testing.auth.us-west-2.amazoncognito.com"
 export API_URL="https://api.testing.famhelpdesk.com"
-s
-LOG_FILE="local_api.log"
+
 uvicorn app:app --reload --port 5000

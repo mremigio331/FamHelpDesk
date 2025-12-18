@@ -21,6 +21,7 @@ class UserProfileHelper:
         display_name: str,
         nick_name: str,
         provider: str,
+        email: str,
     ) -> UserProfile:
         profile = UserProfile(
             pk=UserProfile.create_pk(user_id),
@@ -29,6 +30,7 @@ class UserProfileHelper:
             display_name=display_name,
             nick_name=nick_name,
             provider=provider,
+            email=email,
         )
         profile.save()
         self.logger.info(f"Created user profile for {user_id}")
