@@ -1,0 +1,52 @@
+from fastapi import FastAPI, Request, Depends
+from mangum import Mangum
+from aws_lambda_powertools import Logger
+from middleware.request_id_middlware import RequestIdMiddleware
+from middleware.memory_cleanup_middleware import MemoryCleanupMiddleware
+from api.endpoints.get_all_routes import get_all_routes
+from fastapi.middleware.cors import CORSMiddleware
+from middleware.jtw_middleware import JWTMiddleware
+from helpers.jwt import inject_user_token
+from middleware.cognito_auth_middleware import CognitoAuthMiddleware
+import os
+import configparser
+from starlette.middleware.base import BaseHTTPMiddleware
+from constants.services import API_SERVICE
+from middleware.versioning_middleware import VersioningMiddleware
+
+logger = Logger(service=API_SERVICE)
+app = FastAPI(
+    title="FamHelpDesk API",
+    description="API for FamHelpDesk application.",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
+
+
+stage = os.getenv("STAGE", "").lower()
+if stage == "prod":
+    allowed_origins = ["https://famhelpdesk.com"]
+elif stage == "testing":
+    allowed_origins = ["https://testing.famhelpdesk.com"]
+else:
+    allowed_origins = ["*"]
+
+app.add_middleware(CognitoAuthMiddleware)
+app.add_middleware(RequestIdMiddleware)
+app.add_middleware(JWTMiddleware)
+app.add_middleware(MemoryCleanupMiddleware)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.add_middleware(VersioningMiddleware)
+
+inject_user_token()
+
+app = get_all_routes(app)
+
+handler = Mangum(app)
