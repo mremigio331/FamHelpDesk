@@ -36,7 +36,7 @@ def exceptions_decorator(func):
                 content={"message": str(exc) or "User name is too long."},
                 status_code=400,
             )
-    
+
         except (InvalidJWTException, JWTSignatureException) as exc:
             return JSONResponse(
                 content={"message": str(exc) or "Invalid JWT."}, status_code=401
@@ -49,7 +49,7 @@ def exceptions_decorator(func):
             return JSONResponse(
                 content={"message": str(exc) or "JWT missing."}, status_code=401
             )
-        except (ProfileNotPublicOrDoesNotExist) as exc:
+        except ProfileNotPublicOrDoesNotExist as exc:
             return JSONResponse(
                 status_code=403,
                 content={

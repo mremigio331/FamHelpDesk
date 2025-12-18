@@ -1,0 +1,56 @@
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
+from aws_lambda_powertools import Logger
+from exceptions.user_exceptions import (
+    InvalidUserIdException,
+    UserNotFound,
+    ProfileNotPublicOrDoesNotExist,
+)
+from decorators.exceptions_decorator import exceptions_decorator
+from helpers.jwt import decode_jwt
+from helpers.user_profile_helper import UserProfileHelper
+from models.user_profile import UserProfile
+from constants.services import API_SERVICE
+
+logger = Logger(service=API_SERVICE)
+router = APIRouter()
+
+
+@router.get(
+    "/profile", summary="Get a user profile", response_description="The user's profile"
+)
+@exceptions_decorator
+def get_requestors_profile(request: Request):
+    """
+    Get User Profile Endpoint
+    Returns:
+        A JSON response containing the user's profile information.
+    """
+    logger.append_keys(request_id=request.state.request_id)
+    logger.info("Getting request for user profile.")
+
+    token_user_id = getattr(request.state, "user_token", None)
+
+    if not token_user_id:
+        logger.warning("Token User ID could not be extracted from JWT.")
+        raise InvalidUserIdException("Token User ID is required.")
+
+    user_helper = UserProfileHelper(request_id=request.state.request_id)
+    user_profile_data = user_helper.get_profile(user_id=token_user_id)
+    if not user_profile_data:
+        logger.warning(f"User profile not found for user_id: {token_user_id}")
+        raise UserNotFound(f"User with ID {token_user_id} not found.")
+
+    db_user_id = user_profile_data.user_id
+
+    if db_user_id == token_user_id:
+        logger.info("Access granted: user is profile owner.")
+        return JSONResponse(
+            content={
+                "user_profile": UserProfile.clean_returned_profile(user_profile_data)
+            },
+            status_code=200,
+        )
+
+    logger.info("Access denied: requester is not profile owner.")
+    raise ProfileNotPublicOrDoesNotExist("Access denied: profile does not exist.")
