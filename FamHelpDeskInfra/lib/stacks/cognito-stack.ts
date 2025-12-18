@@ -95,6 +95,9 @@ export class CognitoStack extends Stack {
 
     userTable.grantReadWriteData(userEventLogger);
     userTable.grantWriteData(userEventLogger);
+    
+    // Grant Lambda permission to publish to SNS topic
+    userAddedTopic.grantPublish(userEventLogger);
 
     // CloudWatch Metric Filter and Alarm for Lambda errors
     addCognitoMonitoring(this, logGroup, stage);

@@ -19,8 +19,8 @@ def handler(event: dict, context: LambdaContext) -> dict:
         user_id = user_attrs["sub"]
 
         email = user_attrs.get("email")
-        fullname = user_attrs.get("name", "unknown")
-        nickname = user_attrs.get("nickname", fullname)
+        full_name = user_attrs.get("name", "unknown")
+        nickname = user_attrs.get("nickname", full_name)
 
         # Determine provider (Cognito or Google)
         identities = user_attrs.get("identities")
@@ -40,9 +40,10 @@ def handler(event: dict, context: LambdaContext) -> dict:
             user_profile_helper = UserProfileHelper(request_id=context.aws_request_id)
             user_profile_helper.create_profile(
                 user_id=user_id,
-                display_name=fullname,
+                display_name=full_name,
                 nick_name=nickname,
                 provider=provider,
+                email=email,
             )
             # Publish to SNS topic if ARN is set (success handled below)
         except Exception as e:
@@ -51,7 +52,7 @@ def handler(event: dict, context: LambdaContext) -> dict:
             topic_arn = os.environ.get("USER_ADDED_TOPIC_ARN")
             if topic_arn:
                 sns = boto3.client("sns")
-                error_message = f"User signup FAILED:\nID: {user_id}\nEmail: {email}\nName: {fullname}\nProvider: {provider}\nError: {e}"
+                error_message = f"User signup FAILED:\nID: {user_id}\nEmail: {email}\nName: {full_name}\nProvider: {provider}\nError: {e}"
                 try:
                     response = sns.publish(
                         TopicArn=topic_arn,
@@ -74,7 +75,7 @@ def handler(event: dict, context: LambdaContext) -> dict:
                 response = sns.publish(
                     TopicArn=topic_arn,
                     Subject="New FamHelpDesk User Signup",
-                    Message=f"New user signed up:\nID: {user_id}\nEmail: {email}\nName: {name}",
+                    Message=f"New user signed up:\nID: {user_id}\nEmail: {email}\nName: {full_name}\nProvider: {provider}",
                 )
                 logger.info(
                     f"Published user signup to SNS topic: {topic_arn} with response: {response}"
