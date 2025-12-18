@@ -1,8 +1,8 @@
-# Fam Tickets
+# Fam Help Desk
 
-Fam Tickets is a family-first help desk / ticketing system built as a learning project using a single-table DynamoDB design. This monorepo contains all components for the project:
+Fam Help Desk is a family-first help desk / ticketing system built as a learning project using a single-table DynamoDB design. This monorepo contains all components for the project:
 
-- **FamTicketsBackend**: Python backend models and logic (PynamoDB)
+- **FamTicketsBackend**: Python backend models and logic (Python)
 - **FamTicketsInfra**: AWS CDK infrastructure as code (TypeScript)
 - **FamTicketsWebsite**: Frontend web application (React)
 
@@ -17,7 +17,7 @@ Fam Tickets is a family-first help desk / ticketing system built as a learning p
 
 ## Architecture Overview
 - **Backend**: Contains the database models, API code, and all backend logic for the application.
-- **Infrastructure**: Infrastructure as code for deploying and managing all cloud resources. (Consider renaming this directory for clarity.)
+- **Infrastructure**: Infrastructure as code for deploying and managing all cloud resources.
 - **Website**: The frontend web application for users to interact with the system.
 
 ## DynamoDB Design Principles
