@@ -15,6 +15,7 @@ class UserProfile(FamHelpDeskBaseModel):
     display_name = UnicodeAttribute()
     nick_name = UnicodeAttribute()
     provider = UnicodeAttribute()
+    email = UnicodeAttribute()
 
     @staticmethod
     def create_pk(user_id: str) -> str:
@@ -30,4 +31,5 @@ class UserProfile(FamHelpDeskBaseModel):
             "user_id": profile.user_id,
             "display_name": profile.display_name,
             "nick_name": profile.nick_name,
+            "email": profile.email,
         }
