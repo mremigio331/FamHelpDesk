@@ -1,5 +1,5 @@
 {
-  "app": "npx ts-node --prefer-ts-exts bin/fam_tickets_cdk.ts",
+  "app": "npx ts-node --prefer-ts-exts bin/fam_help_desk_cdk.ts",
   "watch": {
     "include": [
       "**"

@@ -1,0 +1,7 @@
+layer/
+__pycache__/
+*.cpython-*
+*.zip
+.DS
+*.pyc
+local_api.log

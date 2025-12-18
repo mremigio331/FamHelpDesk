@@ -2,6 +2,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { famHelpDesk } from "../lib/constants";
 import { DatabaseStack } from "../lib/stacks/database-stack";
+import { CognitoStack } from "../lib/stacks/cognito-stack";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -13,9 +14,6 @@ async function getEnvConfig() {
     !!process.env.CODEPIPELINE_EXECUTION_ID ||
     !!process.env.CODEDEPLOY_DEPLOYMENT_ID ||
     !!process.env.USE_SECRETS_MANAGER;
-  console.log(
-    `[CDK ENV DETECT] CICD: ${process.env.CICD}, CODEBUILD_BUILD_ID: ${process.env.CODEBUILD_BUILD_ID}, CODEPIPELINE_EXECUTION_ID: ${process.env.CODEPIPELINE_EXECUTION_ID}, CODEDEPLOY_DEPLOYMENT_ID: ${process.env.CODEDEPLOY_DEPLOYMENT_ID}, USE_SECRETS_MANAGER: ${process.env.USE_SECRETS_MANAGER}, isCICD: ${isCICD}`,
-  );
   if (isCICD) {
     // Expect a single environment variable CDK_ENV_CONFIG containing the JSON config
     if (!process.env.CDK_ENV_CONFIG) {
@@ -27,7 +25,7 @@ async function getEnvConfig() {
   } else {
     // Local fallback
     const envFilePath = path.resolve(__dirname, "../cdk.env.json");
-    console.log(`[CDK ENV DETECT] Using local env file: ${envFilePath}`);
+    console.log(`[CDK ENV DETECT] Using local env file`);
     const envFileContent = fs.readFileSync(envFilePath, "utf-8");
     return JSON.parse(envFileContent);
   }
@@ -41,7 +39,6 @@ async function main() {
 
   for (const stage of Object.keys(envConfig)) {
     const config = envConfig[stage];
-    console.log(`[CDK ENV DETECT] Deploying stage: ${stage}`, config);
 
     const {
       hostedZoneId,
@@ -60,6 +57,19 @@ async function main() {
       {
         env: awsEnv,
         stage,
+      },
+    );
+
+    const cognitoStack = new CognitoStack(
+      app,
+      `${famHelpDesk}-CognitoStack-${stage}`,
+      {
+        env: awsEnv,
+        stage,
+        callbackUrls,
+        userTable: databaseStack.table,
+        escalationEmail,
+        escalationNumber,
       },
     );
 

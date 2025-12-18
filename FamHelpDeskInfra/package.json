@@ -1,8 +1,8 @@
 {
-  "name": "fam_tickets_cdk",
+  "name": "fam_help_desk",
   "version": "0.1.0",
   "bin": {
-    "fam_tickets_cdk": "bin/fam_tickets_cdk.js"
+    "fam_help_desk": "bin/fam_help_desk.js"
   },
   "scripts": {
     "build": "tsc",
