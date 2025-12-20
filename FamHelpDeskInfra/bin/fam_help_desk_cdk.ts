@@ -49,6 +49,7 @@ async function main() {
       apiWildcardCertificateArn,
       escalationEmail,
       escalationNumber,
+      googleOathKeys
     } = config;
 
     const databaseStack = new DatabaseStack(
@@ -70,6 +71,7 @@ async function main() {
         userTable: databaseStack.table,
         escalationEmail,
         escalationNumber,
+        googleOathKeys
       },
     );
 

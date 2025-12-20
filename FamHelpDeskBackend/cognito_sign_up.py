@@ -12,29 +12,46 @@ logger = Logger(service="FamHelpDesk-Cognito-User-Creator")
 def handler(event: dict, context: LambdaContext) -> dict:
     logger.info("POST_CONFIRMATION Lambda triggered.")
 
-    if event["triggerSource"] == "PostConfirmation_ConfirmSignUp":
+    # Handle any PostConfirmation variant (AdminConfirmSignUp, ConfirmSignUp, etc.)
+    if event.get("triggerSource", "").startswith("PostConfirmation_"):
         user_attrs = event["request"]["userAttributes"]
         logger.info(f"User attributes: {user_attrs}")
 
         user_id = user_attrs["sub"]
 
         email = user_attrs.get("email")
-        full_name = user_attrs.get("name", "unknown")
-        nickname = user_attrs.get("nickname", full_name)
+        # Prefer standard 'name', then given_name; default to 'unknown'
+        full_name = user_attrs.get("name") or user_attrs.get("given_name") or "unknown"
+        # Prefer nickname, then given_name, then first token of full_name
+        nickname = (
+            user_attrs.get("nickname")
+            or user_attrs.get("given_name")
+            or (
+                full_name.split(" ")[0]
+                if full_name and full_name != "unknown"
+                else "unknown"
+            )
+        )
 
-        # Determine provider (Cognito or Google)
+        # Determine provider (Cognito or Google) robustly
+        provider = "Cognito"
         identities = user_attrs.get("identities")
         if identities:
-            identities_list = json.loads(identities)
-            provider = (
-                identities_list[0].get("providerName", "Unknown")
-                if identities_list
-                else "Unknown"
-            )
-            logger.info(f"User signed up with federated provider: {provider}")
-        else:
-            provider = "Cognito"
-            logger.info("User signed up with Cognito native provider.")
+            try:
+                identities_list = json.loads(identities)
+                if identities_list:
+                    provider = identities_list[0].get("providerName", provider)
+                    logger.info(f"User signed up with federated provider: {provider}")
+            except Exception as e:
+                logger.warning(f"Failed to parse identities attribute: {e}")
+        if provider == "Cognito":
+            # Fallback: usernames for federated users are often like 'Google_XXXXXXXX'
+            uname = event.get("userName") or ""
+            if "_" in uname:
+                possible_provider = uname.split("_", 1)[0]
+                if possible_provider and possible_provider.lower() != "cognito":
+                    provider = possible_provider
+                    logger.info(f"Derived provider from userName: {provider}")
 
         try:
             user_profile_helper = UserProfileHelper(request_id=context.aws_request_id)

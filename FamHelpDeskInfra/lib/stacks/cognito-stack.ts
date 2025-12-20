@@ -22,6 +22,10 @@ interface CognitoStackProps extends StackProps {
   userTable: dynamodb.ITable;
   escalationEmail: string;
   escalationNumber: string;
+  googleOathKeys: {
+    client_id: string;
+    client_secret: string;
+  };
 }
 
 export class CognitoStack extends Stack {
@@ -40,6 +44,7 @@ export class CognitoStack extends Stack {
       stage,
       escalationEmail,
       escalationNumber,
+      googleOathKeys,
     } = props;
 
     const layer = new lambda.LayerVersion(
@@ -54,10 +59,14 @@ export class CognitoStack extends Stack {
       },
     );
 
-    const userAddedTopic = new sns.Topic(this, `${famHelpDesk}-UserAddedTopic-${stage}`, {
-      topicName: `${famHelpDesk}-UserAddedTopic-${stage}`,
-      displayName: `${famHelpDesk}-User Added Topic (${stage})`,
-    });
+    const userAddedTopic = new sns.Topic(
+      this,
+      `${famHelpDesk}-UserAddedTopic-${stage}`,
+      {
+        topicName: `${famHelpDesk}-UserAddedTopic-${stage}`,
+        displayName: `${famHelpDesk}-User Added Topic (${stage})`,
+      },
+    );
 
     userAddedTopic.addSubscription(new subs.EmailSubscription(escalationEmail));
     userAddedTopic.addSubscription(new subs.SmsSubscription(escalationNumber));
@@ -72,13 +81,13 @@ export class CognitoStack extends Stack {
         code: lambda.Code.fromAsset(
           path.join(__dirname, "../../../FamHelpDeskBackend"),
         ),
-        tracing: lambda.Tracing.ACTIVE, // Enable X-Ray tracing for Lambda
+        tracing: lambda.Tracing.ACTIVE,
         timeout: Duration.seconds(90),
         layers: [layer],
         environment: {
           TABLE_NAME: userTable.tableName,
           POWERTOOLS_LOG_LEVEL: "INFO",
-          USER_ADDED_TOPIC_ARN: userAddedTopic.topicArn, // Pass topic ARN to Lambda
+          USER_ADDED_TOPIC_ARN: userAddedTopic.topicArn,
         },
       },
     );
@@ -95,38 +104,37 @@ export class CognitoStack extends Stack {
 
     userTable.grantReadWriteData(userEventLogger);
     userTable.grantWriteData(userEventLogger);
-    
-    // Grant Lambda permission to publish to SNS topic
+
     userAddedTopic.grantPublish(userEventLogger);
 
-    // CloudWatch Metric Filter and Alarm for Lambda errors
     addCognitoMonitoring(this, logGroup, stage);
 
-    this.userPool = new cognito.UserPool(
-      this,
-      `${famHelpDesk}-UserPool-${stage}`,
-      {
-        userPoolName: `${famHelpDesk}-UserPool-${stage}`,
-        selfSignUpEnabled: true,
-        signInAliases: {
-          email: true,
-        },
-        standardAttributes: {
-          email: { required: true, mutable: false },
-          fullname: { required: true, mutable: true }, 
-          nickname: { required: false, mutable: true },
-        },
-        passwordPolicy: {
-          minLength: 8,
-          requireLowercase: true,
-          requireUppercase: true,
-          requireDigits: true,
-          requireSymbols: false,
-        },
-        accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
-        removalPolicy: RemovalPolicy.DESTROY,
+    // =========================
+    // USER POOL
+    // =========================
+    // Fixes:
+    // - email is mutable to support social federation updates
+    // - keep CDK-standard "fullname" attribute (CDK types do NOT use "name")
+    // - recommend fullname NOT required to avoid federation failures if profile lacks a name
+    this.userPool = new cognito.UserPool(this, `${famHelpDesk}-UserPool-${stage}`, {
+      userPoolName: `${famHelpDesk}-UserPool-${stage}`,
+      selfSignUpEnabled: true,
+      signInAliases: { email: true },
+      standardAttributes: {
+        email: { required: true, mutable: true },        // CHANGED
+        fullname: { required: true, mutable: true },    // CHANGED (was required:true in your code)
+        nickname: { required: false, mutable: true },
       },
-    );
+      passwordPolicy: {
+        minLength: 8,
+        requireLowercase: true,
+        requireUppercase: true,
+        requireDigits: true,
+        requireSymbols: false,
+      },
+      accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
 
     this.userPool.addTrigger(
       cognito.UserPoolOperation.POST_CONFIRMATION,
@@ -137,6 +145,43 @@ export class CognitoStack extends Stack {
       userEventLogger,
     );
 
+    // =========================
+    // GOOGLE IDENTITY PROVIDER
+    // =========================
+    // Note:
+    // - Google claim is "name"
+    // - Cognito/CDK standard attribute is "fullname"
+    const googleProvider = new cognito.UserPoolIdentityProviderGoogle(
+      this,
+      `${famHelpDesk}-GoogleProvider-${stage}`,
+      {
+        userPool: this.userPool,
+        clientId: googleOathKeys.client_id,
+        clientSecret: googleOathKeys.client_secret,
+        scopes: ["openid", "email", "profile"],
+        attributeMapping: {
+          email: cognito.ProviderAttribute.other("email"),
+          fullname: cognito.ProviderAttribute.other("name"),
+        },
+      },
+    );
+
+    // Explicit attribute permissions for app clients (prevents "Attribute cannot be updated")
+    const clientReadAttrs = new cognito.ClientAttributes().withStandardAttributes({
+      email: true,
+      fullname: true, // FIX: "name" does not exist in StandardAttributesMask
+      nickname: true,
+    });
+
+    const clientWriteAttrs = new cognito.ClientAttributes().withStandardAttributes({
+      email: true,
+      fullname: true, // FIX: "name" does not exist in StandardAttributesMask
+      nickname: true,
+    });
+
+    // =========================
+    // WEB APP CLIENT
+    // =========================
     this.userPoolClient = new cognito.UserPoolClient(
       this,
       `${famHelpDesk}-UserPoolClient-${stage}`,
@@ -155,13 +200,24 @@ export class CognitoStack extends Stack {
           callbackUrls,
           logoutUrls: callbackUrls,
         },
+        supportedIdentityProviders: [
+          cognito.UserPoolClientIdentityProvider.COGNITO,
+          cognito.UserPoolClientIdentityProvider.GOOGLE,
+        ],
+        readAttributes: clientReadAttrs,    // ADDED
+        writeAttributes: clientWriteAttrs,  // ADDED
         accessTokenValidity: Duration.hours(24),
         idTokenValidity: Duration.hours(24),
         refreshTokenValidity: Duration.days(7),
       },
     );
 
-    // iOS App Client
+    // Ensure client is created after the IdP
+    this.userPoolClient.node.addDependency(googleProvider);
+
+    // =========================
+    // iOS APP CLIENT
+    // =========================
     const iosCallback = "famHelpDesk://auth/callback";
     const iosLogout = "famHelpDesk://signout";
 
@@ -183,15 +239,24 @@ export class CognitoStack extends Stack {
         },
         enableTokenRevocation: true,
         preventUserExistenceErrors: true,
+        supportedIdentityProviders: [
+          cognito.UserPoolClientIdentityProvider.COGNITO,
+          cognito.UserPoolClientIdentityProvider.GOOGLE,
+        ],
+        readAttributes: clientReadAttrs,    // ADDED
+        writeAttributes: clientWriteAttrs,  // ADDED
         accessTokenValidity: Duration.hours(1),
         idTokenValidity: Duration.hours(1),
         refreshTokenValidity: Duration.days(14),
-        supportedIdentityProviders: [
-          cognito.UserPoolClientIdentityProvider.COGNITO,
-        ],
       },
     );
 
+    // Ensure iOS client is created after the IdP
+    this.userPoolClientIOS.node.addDependency(googleProvider);
+
+    // =========================
+    // DOMAIN (HOSTED UI)
+    // =========================
     this.userPoolDomain = new cognito.UserPoolDomain(
       this,
       `${famHelpDesk}-CognitoDomain-${stage}`,
@@ -203,7 +268,9 @@ export class CognitoStack extends Stack {
       },
     );
 
-    // Federated Identity Pool
+    // =========================
+    // FEDERATED IDENTITY POOL
+    // =========================
     this.identityPool = new cognito.CfnIdentityPool(
       this,
       `${famHelpDesk}-IdentityPool-${stage}`,
@@ -222,6 +289,9 @@ export class CognitoStack extends Stack {
       },
     );
 
+    // =========================
+    // OUTPUTS
+    // =========================
     new CfnOutput(this, `${famHelpDesk}-UserPoolId-${stage}`, {
       value: this.userPool.userPoolId,
     });
