@@ -10,8 +10,9 @@ export COGNITO_CLIENT_ID=$(aws cognito-idp list-user-pools --max-results 60 --re
     --output text
 )
 export COGNITO_REGION="us-west-2"
-export COGNITO_API_REDIRECT_URI="http://localhost:5000/"
+export COGNITO_API_REDIRECT_URI="https://localhost:5000/"
 export COGNITO_DOMAIN="https://famhelpdesk-testing.auth.us-west-2.amazoncognito.com"
 export API_URL="https://api.testing.famhelpdesk.com"
 
-uvicorn app:app --reload --port 5000
+# Generate SSL certificates and run uvicorn with HTTPS
+python3 fam_help_desk_local_api.py

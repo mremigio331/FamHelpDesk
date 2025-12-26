@@ -28,6 +28,42 @@ Fam Help Desk is a family-first help desk / ticketing system built as a learning
 - All attribute names use Python-friendly `snake_case`
 
 ## Directory Structure
-- `FamTicketsBackend/` — Python backend models and logic
-- `FamTicketsInfra/` — AWS CDK infrastructure
-- `FamTicketsWebsite/` — Web frontend
+- `FamHelpDeskBackend/` — Python backend models and logic
+- `FamHelpDeskInfra/` — AWS CDK infrastructure
+- `FamHelpDeskWebsite/` — Web frontend
+- `FamHelpDeskiOS/` — iOS native application
+
+## Development
+
+### Code Formatting
+
+**Swift (iOS):**
+```bash
+# Install SwiftFormat
+brew install swiftformat
+
+# Format all Swift files
+swiftformat .
+
+# Or use Apple's official formatter
+brew install swift-format
+swift-format format -i -r .
+```
+
+**Python (Backend):**
+```bash
+# Install Black
+pip install black
+
+# Format all Python files
+black .
+```
+
+**TypeScript/JavaScript (Infrastructure & Website):**
+```bash
+# Install Prettier
+npm install -g prettier
+
+# Format all files
+prettier --write .
+```
