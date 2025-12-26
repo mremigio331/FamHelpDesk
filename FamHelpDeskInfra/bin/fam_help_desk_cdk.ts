@@ -3,6 +3,7 @@ import * as cdk from 'aws-cdk-lib';
 import { famHelpDesk } from "../lib/constants";
 import { DatabaseStack } from "../lib/stacks/database-stack";
 import { CognitoStack } from "../lib/stacks/cognito-stack";
+import { ApiStack } from "../lib/stacks/api-stack";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -75,8 +76,23 @@ async function main() {
       },
     );
 
+    new ApiStack(app, `${famHelpDesk}-ApiStack-${stage}`, {
+      env: awsEnv,
+      apiDomainName: apiDomainName,
+      rootDomainName: websiteDomainName,
+      certificateArn: apiWildcardCertificateArn,
+      hostedZoneId: hostedZoneId,
+      stage,
+      userPool: cognitoStack.userPool,
+      userPoolClient: cognitoStack.userPoolClient,
+      userPoolClientIOS: cognitoStack.userPoolClientIOS,
+      userTable: databaseStack.table,
+      escalationEmail: escalationEmail,
+      escalationNumber: escalationNumber,
+    });
+  }
 }
-}
+
 main();
 
 
