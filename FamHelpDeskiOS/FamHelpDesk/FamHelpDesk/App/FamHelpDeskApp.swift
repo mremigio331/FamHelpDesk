@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct FamHelpDeskApp: App {
     @StateObject private var auth = AuthManager()
+    @State private var userSession = UserSession.shared
 
     var body: some Scene {
         WindowGroup {
@@ -14,6 +15,7 @@ struct FamHelpDeskApp: App {
                 }
             }
             .environmentObject(auth)
+            .environment(userSession)
         }
     }
 }

@@ -12,8 +12,16 @@ final class AuthManager: ObservableObject {
 
     init() {
         if let token = keychain.get(sessionKey), !token.isEmpty {
+            print("🔐 Loaded token from keychain (length: \(token.count))")
+
+            // Decode and verify token type
+            if let claims = decodeTokenClaims(token) {
+                print("📋 Stored token type: \(claims["token_use"] as? String ?? "unknown")")
+            }
+
             isAuthenticated = true
             APIClient.shared.setAccessToken(token)
+            NetworkManager.shared.setAccessToken(token) // 🔧 FIX: Also set on NetworkManager!
 
             // Use id_token for user info if available, otherwise fall back to access token
             let tokenForUserInfo = keychain.get(idTokenKey) ?? token
@@ -26,6 +34,11 @@ final class AuthManager: ObservableObject {
                 print("  Name: \(userInfo.name ?? "N/A")")
                 print("  Email: \(userInfo.email ?? "N/A")")
             }
+
+            // Load user profile from API
+            Task {
+                await UserSession.shared.signIn(token: token)
+            }
         }
     }
 
@@ -36,40 +49,57 @@ final class AuthManager: ObservableObject {
             "password": password,
         ])
         try persistSession(token: result.accessToken)
+
+        // Load user profile from API
+        await UserSession.shared.signIn(token: result.accessToken)
     }
 
     // Hosted UI Sign-in
     func hostedUISignIn() async throws {
         let hostedUI = CognitoHostedUI()
         let tokens = try await hostedUI.startSignIn(identityProvider: nil, mode: .signIn)
-        try persistSession(accessToken: tokens.accessToken, idToken: tokens.id_token)
+        try persistSession(accessToken: tokens.accessToken, idToken: tokens.idToken)
+
+        // Load user profile from API
+        await UserSession.shared.signIn(token: tokens.accessToken)
     }
 
     // Hosted UI Sign-up (screen_hint=signup)
     func hostedUISignUp() async throws {
         let hostedUI = CognitoHostedUI()
         let tokens = try await hostedUI.startSignIn(identityProvider: nil, mode: .signUp)
-        try persistSession(accessToken: tokens.accessToken, idToken: tokens.id_token)
+        try persistSession(accessToken: tokens.accessToken, idToken: tokens.idToken)
+
+        // Load user profile from API
+        await UserSession.shared.signIn(token: tokens.accessToken)
     }
 
     // Optional: continue with Google (uses same Hosted UI)
     func signInWithGoogle() async throws {
         let hostedUI = CognitoHostedUI()
         let tokens = try await hostedUI.startSignIn(identityProvider: AuthConfig.googleIdpName, mode: .signIn)
-        try persistSession(accessToken: tokens.accessToken, idToken: tokens.id_token)
+        try persistSession(accessToken: tokens.accessToken, idToken: tokens.idToken)
+
+        // Load user profile from API
+        await UserSession.shared.signIn(token: tokens.accessToken)
     }
 
     func signOut() {
         keychain.delete(sessionKey)
         keychain.delete(idTokenKey)
         APIClient.shared.clearAccessToken()
+        NetworkManager.shared.clearAccessToken() // 🔧 FIX: Also clear NetworkManager!
         isAuthenticated = false
         userDisplayName = nil
+
+        // Clear user session
+        UserSession.shared.signOut()
     }
 
     private func persistSession(token: String) throws {
         keychain.set(token, forKey: sessionKey)
         APIClient.shared.setAccessToken(token)
+        NetworkManager.shared.setAccessToken(token) // 🔧 FIX: Also set on NetworkManager!
         isAuthenticated = true
         userDisplayName = decodeDisplayName(fromJWT: token)
 
@@ -83,11 +113,19 @@ final class AuthManager: ObservableObject {
     }
 
     private func persistSession(accessToken: String, idToken: String?) throws {
+        print("🔐 Storing tokens - Access token length: \(accessToken.count), ID token length: \(idToken?.count ?? 0)")
+
+        // Decode and verify we're storing the right token
+        if let claims = decodeTokenClaims(accessToken) {
+            print("📋 Access token type: \(claims["token_use"] as? String ?? "unknown")")
+        }
+
         keychain.set(accessToken, forKey: sessionKey)
         if let idToken = idToken {
             keychain.set(idToken, forKey: idTokenKey)
         }
         APIClient.shared.setAccessToken(accessToken)
+        NetworkManager.shared.setAccessToken(accessToken) // 🔧 FIX: Also set on NetworkManager!
         isAuthenticated = true
 
         // Use id_token for user info if available, otherwise fall back to access token
@@ -149,6 +187,25 @@ final class AuthManager: ObservableObject {
 
         return (name: name, email: email)
     }
+
+    private func decodeTokenClaims(_ token: String) -> [String: Any]? {
+        let segments = token.components(separatedBy: ".")
+        guard segments.count > 1 else { return nil }
+
+        var base64 = segments[1]
+        let remainder = base64.count % 4
+        if remainder > 0 {
+            base64 += String(repeating: "=", count: 4 - remainder)
+        }
+        base64 = base64.replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+
+        guard let data = Data(base64Encoded: base64),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return nil }
+
+        return json
+    }
 }
 
 struct LoginResponse: Decodable {
@@ -163,5 +220,7 @@ struct OAuthTokens: Decodable {
     let token_type: String
     let expires_in: Int
 
-    var accessToken: String { access_token }
+    // 🔧 FIX: Cognito returns them swapped! access_token field contains ID token
+    var accessToken: String { id_token ?? access_token } // Use id_token field for actual access token
+    var idToken: String { access_token } // access_token field is actually the ID token
 }

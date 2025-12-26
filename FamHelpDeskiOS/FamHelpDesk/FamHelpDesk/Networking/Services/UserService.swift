@@ -1,0 +1,24 @@
+import Foundation
+
+final class UserService {
+    private let networkManager: NetworkManager
+
+    init(networkManager: NetworkManager = .shared) {
+        self.networkManager = networkManager
+    }
+
+    /// Fetches the current user's profile
+    /// - Returns: UserProfile object
+    /// - Throws: NetworkError if the request fails
+    func getUserProfile() async throws -> UserProfile {
+        let response: UserProfileResponse = try await networkManager.get(
+            endpoint: APIEndpoint.getProfile.path
+        )
+        print("📱 User Profile Response:")
+        print("  - User ID: \(response.userProfile.userId)")
+        print("  - Display Name: \(response.userProfile.displayName)")
+        print("  - Nickname: \(response.userProfile.nickName)")
+        print("  - Email: \(response.userProfile.email)")
+        return response.userProfile
+    }
+}

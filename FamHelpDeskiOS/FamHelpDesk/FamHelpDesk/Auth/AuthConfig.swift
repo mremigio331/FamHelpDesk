@@ -31,8 +31,8 @@ enum AuthConfig {
     // Per-environment raw configs. Fill with your real values.
     private static let dev = CognitoConfig(
         region: "us-west-2",
-        userPoolId: "us-west-2_ppc5B5UzJ",
-        clientId: "7882gfdv350pn53n40ulqgfulq",
+        userPoolId: "us-west-2_rcVQ8xkpe",
+        clientId: "31tqa0op65nqnh70q32pspmdc6",
         domain: "https://famhelpdesk-testing.auth.us-west-2.amazoncognito.com",
         redirectURI: "famHelpDesk://auth/callback",
         signOutRedirectURI: "famHelpDesk://signout",
@@ -42,8 +42,8 @@ enum AuthConfig {
 
     private static let staging = CognitoConfig(
         region: "us-west-2",
-        userPoolId: "us-west-2_ppc5B5UzJ",
-        clientId: "7882gfdv350pn53n40ulqgfulq",
+        userPoolId: "us-west-2_rcVQ8xkpe",
+        clientId: "31tqa0op65nqnh70q32pspmdc6",
         domain: "https://famhelpdesk-testing.auth.us-west-2.amazoncognito.com",
         redirectURI: "famHelpDesk://auth/callback",
         signOutRedirectURI: "famHelpDesk://signout",

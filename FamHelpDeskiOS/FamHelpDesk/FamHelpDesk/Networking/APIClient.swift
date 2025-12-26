@@ -4,8 +4,7 @@ final class APIClient {
     static let shared = APIClient()
 
     private var baseURL: URL {
-        // TODO: configure per env
-        return URL(string: "https://api.example.com")!
+        return URL(string: APIEnvironment.current.baseURL)!
     }
 
     private var accessToken: String?
@@ -19,7 +18,9 @@ final class APIClient {
     }
 
     func get<T: Decodable>(_ path: String) async throws -> T {
-        var req = URLRequest(url: baseURL.appendingPathComponent(path))
+        let url = baseURL.appendingPathComponent(path)
+        print("🌐 GET (APIClient): \(url.absoluteString)")
+        var req = URLRequest(url: url)
         req.httpMethod = "GET"
         if let token = accessToken { req.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         let (data, resp) = try await URLSession.shared.data(for: req)
@@ -28,7 +29,9 @@ final class APIClient {
     }
 
     func post<T: Decodable>(_ path: String, body: [String: Any]) async throws -> T {
-        var req = URLRequest(url: baseURL.appendingPathComponent(path))
+        let url = baseURL.appendingPathComponent(path)
+        print("🌐 POST (APIClient): \(url.absoluteString)")
+        var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.addValue("application/json", forHTTPHeaderField: "Content-Type")
         if let token = accessToken { req.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }

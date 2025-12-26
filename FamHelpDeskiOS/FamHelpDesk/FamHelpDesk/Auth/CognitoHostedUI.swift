@@ -82,8 +82,40 @@ final class CognitoHostedUI: NSObject {
             let text = String(data: data, encoding: .utf8) ?? "<no body>"
             throw NSError(domain: "Auth", code: -3, userInfo: [NSLocalizedDescriptionKey: "Token exchange failed: \(text)"])
         }
+
+        // DEBUG: Print raw JSON response
+        if let jsonString = String(data: data, encoding: .utf8) {
+            print("🔍 Raw Cognito response (first 500 chars):")
+            print(String(jsonString.prefix(500)))
+        }
+
         let tokens = try JSONDecoder().decode(OAuthTokens.self, from: data)
+
+        // DEBUG: Print token types
+        print("🔍 Token exchange response:")
+        print("  Access token length: \(tokens.access_token.count)")
+        print("  ID token length: \(tokens.id_token?.count ?? 0)")
+        if let accessClaims = Self.decodeTokenType(tokens.access_token) {
+            print("  Access token type: \(accessClaims["token_use"] as? String ?? "unknown")")
+        }
+        if let idToken = tokens.id_token, let idClaims = Self.decodeTokenType(idToken) {
+            print("  ID token type: \(idClaims["token_use"] as? String ?? "unknown")")
+        }
+
         return tokens
+    }
+
+    private static func decodeTokenType(_ token: String) -> [String: Any]? {
+        let segments = token.components(separatedBy: ".")
+        guard segments.count > 1 else { return nil }
+        var base64 = segments[1]
+        let remainder = base64.count % 4
+        if remainder > 0 { base64 += String(repeating: "=", count: 4 - remainder) }
+        base64 = base64.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        guard let data = Data(base64Encoded: base64),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return nil }
+        return json
     }
 
     private static func randomURLSafeString(length: Int) -> String {
