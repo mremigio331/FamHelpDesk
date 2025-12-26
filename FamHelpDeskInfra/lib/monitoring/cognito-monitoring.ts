@@ -22,15 +22,19 @@ export function addCognitoMonitoring(
   );
 
   // CloudWatch Alarm for ERROR log lines in the last 30 minutes
-  new cloudwatch.Alarm(scope, `${famHelpDesk}-UserEventLoggerErrorAlarm-${stage}`, {
-    alarmName: `${famHelpDesk}-UserEventLogger-ErrorAlarm-${stage}`,
-    metric: errorMetric.metric({
-      statistic: "Sum",
-      period: Duration.minutes(30),
-    }),
-    threshold: 0,
-    evaluationPeriods: 1,
-    comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-    treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
-  });
+  new cloudwatch.Alarm(
+    scope,
+    `${famHelpDesk}-UserEventLoggerErrorAlarm-${stage}`,
+    {
+      alarmName: `${famHelpDesk}-UserEventLogger-ErrorAlarm-${stage}`,
+      metric: errorMetric.metric({
+        statistic: "Sum",
+        period: Duration.minutes(30),
+      }),
+      threshold: 0,
+      evaluationPeriods: 1,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    },
+  );
 }

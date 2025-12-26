@@ -116,25 +116,29 @@ export class CognitoStack extends Stack {
     // - email is mutable to support social federation updates
     // - keep CDK-standard "fullname" attribute (CDK types do NOT use "name")
     // - recommend fullname NOT required to avoid federation failures if profile lacks a name
-    this.userPool = new cognito.UserPool(this, `${famHelpDesk}-UserPool-${stage}`, {
-      userPoolName: `${famHelpDesk}-UserPool-${stage}`,
-      selfSignUpEnabled: true,
-      signInAliases: { email: true },
-      standardAttributes: {
-        email: { required: true, mutable: true },        // CHANGED
-        fullname: { required: true, mutable: true },    // CHANGED (was required:true in your code)
-        nickname: { required: false, mutable: true },
+    this.userPool = new cognito.UserPool(
+      this,
+      `${famHelpDesk}-UserPool-${stage}`,
+      {
+        userPoolName: `${famHelpDesk}-UserPool-${stage}`,
+        selfSignUpEnabled: true,
+        signInAliases: { email: true },
+        standardAttributes: {
+          email: { required: true, mutable: true }, // CHANGED
+          fullname: { required: true, mutable: true }, // CHANGED (was required:true in your code)
+          nickname: { required: false, mutable: true },
+        },
+        passwordPolicy: {
+          minLength: 8,
+          requireLowercase: true,
+          requireUppercase: true,
+          requireDigits: true,
+          requireSymbols: false,
+        },
+        accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
+        removalPolicy: RemovalPolicy.DESTROY,
       },
-      passwordPolicy: {
-        minLength: 8,
-        requireLowercase: true,
-        requireUppercase: true,
-        requireDigits: true,
-        requireSymbols: false,
-      },
-      accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
-      removalPolicy: RemovalPolicy.DESTROY,
-    });
+    );
 
     this.userPool.addTrigger(
       cognito.UserPoolOperation.POST_CONFIRMATION,
@@ -167,17 +171,19 @@ export class CognitoStack extends Stack {
     );
 
     // Explicit attribute permissions for app clients (prevents "Attribute cannot be updated")
-    const clientReadAttrs = new cognito.ClientAttributes().withStandardAttributes({
-      email: true,
-      fullname: true, // FIX: "name" does not exist in StandardAttributesMask
-      nickname: true,
-    });
+    const clientReadAttrs =
+      new cognito.ClientAttributes().withStandardAttributes({
+        email: true,
+        fullname: true, // FIX: "name" does not exist in StandardAttributesMask
+        nickname: true,
+      });
 
-    const clientWriteAttrs = new cognito.ClientAttributes().withStandardAttributes({
-      email: true,
-      fullname: true, // FIX: "name" does not exist in StandardAttributesMask
-      nickname: true,
-    });
+    const clientWriteAttrs =
+      new cognito.ClientAttributes().withStandardAttributes({
+        email: true,
+        fullname: true, // FIX: "name" does not exist in StandardAttributesMask
+        nickname: true,
+      });
 
     // =========================
     // WEB APP CLIENT
@@ -204,8 +210,8 @@ export class CognitoStack extends Stack {
           cognito.UserPoolClientIdentityProvider.COGNITO,
           cognito.UserPoolClientIdentityProvider.GOOGLE,
         ],
-        readAttributes: clientReadAttrs,    // ADDED
-        writeAttributes: clientWriteAttrs,  // ADDED
+        readAttributes: clientReadAttrs, // ADDED
+        writeAttributes: clientWriteAttrs, // ADDED
         accessTokenValidity: Duration.hours(24),
         idTokenValidity: Duration.hours(24),
         refreshTokenValidity: Duration.days(7),
@@ -243,8 +249,8 @@ export class CognitoStack extends Stack {
           cognito.UserPoolClientIdentityProvider.COGNITO,
           cognito.UserPoolClientIdentityProvider.GOOGLE,
         ],
-        readAttributes: clientReadAttrs,    // ADDED
-        writeAttributes: clientWriteAttrs,  // ADDED
+        readAttributes: clientReadAttrs, // ADDED
+        writeAttributes: clientWriteAttrs, // ADDED
         accessTokenValidity: Duration.hours(1),
         idTokenValidity: Duration.hours(1),
         refreshTokenValidity: Duration.days(14),
@@ -305,7 +311,9 @@ export class CognitoStack extends Stack {
     });
 
     new CfnOutput(this, `${famHelpDesk}-UserPoolDomain-${stage}`, {
-      value: `${this.userPoolDomain.domainName}.auth.${Stack.of(this).region}.amazoncognito.com`,
+      value: `${this.userPoolDomain.domainName}.auth.${
+        Stack.of(this).region
+      }.amazoncognito.com`,
     });
 
     new CfnOutput(this, `${famHelpDesk}-IdentityPoolId-${stage}`, {

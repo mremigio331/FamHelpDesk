@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import * as cdk from 'aws-cdk-lib';
+import * as cdk from "aws-cdk-lib";
 import { famHelpDesk } from "../lib/constants";
 import { DatabaseStack } from "../lib/stacks/database-stack";
 import { CognitoStack } from "../lib/stacks/cognito-stack";
@@ -32,7 +32,6 @@ async function getEnvConfig() {
   }
 }
 
-
 async function main() {
   const app = new cdk.App();
   const awsEnv = { region: "us-west-2" };
@@ -50,7 +49,7 @@ async function main() {
       apiWildcardCertificateArn,
       escalationEmail,
       escalationNumber,
-      googleOathKeys
+      googleOathKeys,
     } = config;
 
     const databaseStack = new DatabaseStack(
@@ -72,7 +71,7 @@ async function main() {
         userTable: databaseStack.table,
         escalationEmail,
         escalationNumber,
-        googleOathKeys
+        googleOathKeys,
       },
     );
 
@@ -94,5 +93,3 @@ async function main() {
 }
 
 main();
-
-

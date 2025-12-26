@@ -205,14 +205,10 @@ export class ApiStack extends Stack {
             stage.toLowerCase() === "prod"
               ? ["https://famhelpdesk.com"]
               : stage.toLowerCase() === "testing"
-                ? ["https://testing.famhelpdesk.com", "http://localhost:8080"]
-                : ["http://localhost:8080"],
+              ? ["https://testing.famhelpdesk.com", "http://localhost:8080"]
+              : ["http://localhost:8080"],
           allowMethods: apigw.Cors.ALL_METHODS,
-          allowHeaders: [
-            "authorization",
-            "content-type",
-            "X-Git-Commit",
-          ],
+          allowHeaders: ["authorization", "content-type", "X-Git-Commit"],
           allowCredentials: true,
         },
         deployOptions: {
