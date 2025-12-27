@@ -13,6 +13,7 @@ import {
   ReloadOutlined,
   LogoutOutlined,
   ArrowLeftOutlined,
+  EditOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { UserAuthenticationContext } from "../../provider/UserAuthenticationProvider";
@@ -95,6 +96,14 @@ const UserProfile = () => {
               </Descriptions>
 
               <Space size="middle">
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  onClick={() => navigate("/user/profile/edit")}
+                  size="large"
+                >
+                  Edit Profile
+                </Button>
                 <Button
                   icon={<ReloadOutlined />}
                   onClick={handleRefresh}

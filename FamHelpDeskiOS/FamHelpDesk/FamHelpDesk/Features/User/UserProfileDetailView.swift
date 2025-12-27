@@ -4,6 +4,7 @@ struct UserProfileDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var auth: AuthManager
     @State private var userSession = UserSession.shared
+    @State private var showEditProfile = false
 
     var body: some View {
         NavigationStack {
@@ -42,6 +43,15 @@ struct UserProfileDetailView: View {
 
                     // Actions Section
                     Section("Actions") {
+                        Button {
+                            showEditProfile = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "pencil")
+                                Text("Edit Profile")
+                            }
+                        }
+
                         Button {
                             Task {
                                 await userSession.refreshProfile()
@@ -109,6 +119,11 @@ struct UserProfileDetailView: View {
                     Button("Done") {
                         dismiss()
                     }
+                }
+            }
+            .sheet(isPresented: $showEditProfile) {
+                if let currentUser = userSession.currentUser {
+                    EditProfileView(currentProfile: currentUser)
                 }
             }
         }

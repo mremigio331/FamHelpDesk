@@ -132,6 +132,33 @@ final class NetworkManager {
         }
     }
 
+    func put<T: Decodable>(endpoint: String, body: Encodable) async throws -> T {
+        guard let url = buildURL(endpoint: endpoint) else {
+            throw NetworkError.invalidURL
+        }
+
+        print("🌐 PUT: \(url.absoluteString)")
+
+        var request = createRequest(url: url, method: "PUT")
+
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        request.httpBody = try encoder.encode(body)
+
+        let (data, response) = try await session.data(for: request)
+
+        try validateResponse(response: response, data: data)
+
+        do {
+            let decoder = JSONDecoder()
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            print("Decoding error: \(error)")
+            throw NetworkError.decodingError
+        }
+    }
+
     private func validateResponse(response: URLResponse, data: Data) throws {
         guard let httpResponse = response as? HTTPURLResponse else {
             print("❌ Invalid response type")
