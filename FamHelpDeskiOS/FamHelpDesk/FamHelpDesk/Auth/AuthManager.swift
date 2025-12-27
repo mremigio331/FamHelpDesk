@@ -17,6 +17,18 @@ final class AuthManager: ObservableObject {
             // Decode and verify token type
             if let claims = decodeTokenClaims(token) {
                 print("📋 Stored token type: \(claims["token_use"] as? String ?? "unknown")")
+
+                // Check if token is expired
+                if let exp = claims["exp"] as? TimeInterval {
+                    let now = Date().timeIntervalSince1970
+                    let isExpired = now > exp
+                    print("⏰ Token expiration: \(isExpired ? "EXPIRED ❌" : "Valid ✅")")
+                    if isExpired {
+                        print("   Token expired \(Int(now - exp)) seconds ago")
+                    } else {
+                        print("   Token expires in \(Int(exp - now)) seconds")
+                    }
+                }
             }
 
             isAuthenticated = true
@@ -220,7 +232,7 @@ struct OAuthTokens: Decodable {
     let token_type: String
     let expires_in: Int
 
-    // 🔧 FIX: Cognito returns them swapped! access_token field contains ID token
-    var accessToken: String { id_token ?? access_token } // Use id_token field for actual access token
-    var idToken: String { access_token } // access_token field is actually the ID token
+    // Cognito returns tokens correctly in standard OAuth2 format
+    var accessToken: String { access_token }
+    var idToken: String? { id_token }
 }

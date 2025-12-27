@@ -10,9 +10,23 @@ struct HomeView: View {
                 if userSession.isFetching {
                     ProgressView()
                 } else if let user = userSession.currentUser {
-                    Text("Welcome, \(user.displayName)!")
+                    Text("Hello, \(user.displayName)!")
+                        .font(.title3)
+                        .fontWeight(.semibold)
                 }
             }
+
+            MyFamiliesCard()
         }
+        .navigationDestination(for: Family.self) { family in
+            FamilyDetailView(family: family)
+        }
+    }
+}
+
+#Preview {
+    NavigationStack {
+        HomeView()
+            .environmentObject(AuthManager())
     }
 }

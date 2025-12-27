@@ -4,7 +4,7 @@ struct UserProfileDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var auth: AuthManager
     @State private var userSession = UserSession.shared
-    
+
     var body: some View {
         NavigationStack {
             List {
@@ -22,14 +22,14 @@ struct UserProfileDetailView: View {
                             Spacer()
                             Text(user.displayName)
                         }
-                        
+
                         HStack {
                             Text("Nickname")
                                 .foregroundColor(.secondary)
                             Spacer()
                             Text(user.nickName)
                         }
-                        
+
                         HStack {
                             Text("Email")
                                 .foregroundColor(.secondary)
@@ -39,7 +39,7 @@ struct UserProfileDetailView: View {
                                 .truncationMode(.middle)
                         }
                     }
-                    
+
                     // Actions Section
                     Section("Actions") {
                         Button {
@@ -54,7 +54,7 @@ struct UserProfileDetailView: View {
                         }
                         .disabled(userSession.isFetching)
                     }
-                    
+
                     // Sign Out Section
                     Section {
                         Button(role: .destructive) {
@@ -77,8 +77,23 @@ struct UserProfileDetailView: View {
                             description: Text("Unable to load user profile")
                         )
                     }
+
+                    // Sign Out Section - available even without profile
+                    Section {
+                        Button(role: .destructive) {
+                            auth.signOut()
+                            dismiss()
+                        } label: {
+                            HStack {
+                                Spacer()
+                                Image(systemName: "rectangle.portrait.and.arrow.right")
+                                Text("Sign Out")
+                                Spacer()
+                            }
+                        }
+                    }
                 }
-                
+
                 if let errorMessage = userSession.errorMessage {
                     Section {
                         Text(errorMessage)

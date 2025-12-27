@@ -7,15 +7,15 @@ struct FamHelpDeskApp: App {
 
     var body: some Scene {
         WindowGroup {
-            Group {
-                if auth.isAuthenticated {
-                    MainTabView()
-                } else {
-                    WelcomeView()
-                }
+            if auth.isAuthenticated {
+                MainTabView()
+                    .environmentObject(auth)
+                    .environment(userSession)
+            } else {
+                WelcomeView()
+                    .environmentObject(auth)
+                    .environment(userSession)
             }
-            .environmentObject(auth)
-            .environment(userSession)
         }
     }
 }

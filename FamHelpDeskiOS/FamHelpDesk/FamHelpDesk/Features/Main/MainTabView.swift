@@ -4,13 +4,13 @@ struct MainTabView: View {
     @EnvironmentObject var auth: AuthManager
     @State private var userSession = UserSession.shared
     @State private var showProfile = false
-    
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 // Custom Top Bar
                 CustomNavigationBar(showProfile: $showProfile)
-                
+
                 // Main Content
                 HomeView()
             }
@@ -25,19 +25,19 @@ struct MainTabView: View {
 struct CustomNavigationBar: View {
     @State private var userSession = UserSession.shared
     @Binding var showProfile: Bool
-    
+
     var body: some View {
         HStack(spacing: 12) {
             // Logo placeholder (you can replace with actual logo image)
             Image(systemName: "ticket.fill")
                 .font(.title2)
                 .foregroundColor(.blue)
-            
+
             Text("Fam Help Desk")
                 .font(.headline)
-            
+
             Spacer()
-            
+
             // Profile button
             Button {
                 showProfile = true
