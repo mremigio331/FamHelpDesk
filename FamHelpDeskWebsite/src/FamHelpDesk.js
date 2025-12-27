@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Layout } from "antd";
 import Home from "./pages/home/Home";
+import UserProfile from "./pages/user/UserProfile";
 import Navbar from "./components/Navbar";
 
 const { Content } = Layout;
@@ -14,6 +15,7 @@ const FamHelpDesk = () => {
         <Content style={{ marginTop: "64px" }}>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/profile" element={<UserProfile />} />
           </Routes>
         </Content>
       </Layout>

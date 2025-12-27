@@ -4,13 +4,13 @@ import {
 } from "../constants/endpoints";
 
 // Based on iOS AuthConfig.swift
-const STAGING_USER_POOL_ID = "us-west-2_ppc5B5UzJ";
-const STAGING_CLIENT_ID = "32rfobuq0a9notq9292rinbul5";
+const STAGING_USER_POOL_ID = "us-west-2_rcVQ8xkpe";
+const STAGING_CLIENT_ID = "2v3bkltuvv88v3qfo8q4euk1e3";
 const STAGING_REGION = "us-west-2";
 const STAGING_COGNITO_DOMAIN = "famhelpdesk-testing";
 
-const PROD_USER_POOL_ID = "us-west-2_ppc5B5UzJ"; // Update with production values
-const PROD_CLIENT_ID = "32rfobuq0a9notq9292rinbul5"; // Update with production values
+const PROD_USER_POOL_ID = "us-west-2_rcVQ8xkpe"; // Update with production values
+const PROD_CLIENT_ID = "2v3bkltuvv88v3qfo8q4euk1e3"; // Update with production values
 const PROD_REGION = "us-west-2";
 const PROD_COGNITO_DOMAIN = "famhelpdesk-prod"; // Update with production domain
 
