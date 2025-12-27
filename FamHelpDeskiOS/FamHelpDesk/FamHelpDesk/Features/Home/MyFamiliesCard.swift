@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MyFamiliesCard: View {
     @State private var familySession = FamilySession.shared
+    @Binding var showCreateFamily: Bool
 
     var body: some View {
         Section {
@@ -41,14 +42,23 @@ struct MyFamiliesCard: View {
             HStack {
                 Label("My Families", systemImage: "person.3.fill")
                 Spacer()
-                if !familySession.isFetching {
+                HStack(spacing: 12) {
                     Button {
-                        Task {
-                            await familySession.refresh()
-                        }
+                        showCreateFamily = true
                     } label: {
-                        Image(systemName: "arrow.clockwise")
+                        Label("Create", systemImage: "plus.circle.fill")
                             .font(.caption)
+                    }
+
+                    if !familySession.isFetching {
+                        Button {
+                            Task {
+                                await familySession.refresh()
+                            }
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.caption)
+                        }
                     }
                 }
             }
@@ -118,7 +128,7 @@ struct FamilyRow: View {
 #Preview {
     NavigationStack {
         List {
-            MyFamiliesCard()
+            MyFamiliesCard(showCreateFamily: .constant(false))
         }
     }
     .environmentObject(AuthManager())
