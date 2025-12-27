@@ -1,6 +1,6 @@
 import React from "react";
 import { Card, List, Tag, Space, Empty, Alert, Button } from "antd";
-import { TeamOutlined } from "@ant-design/icons";
+import { TeamOutlined, PlusOutlined } from "@ant-design/icons";
 import { Typography } from "antd";
 import { useNavigate } from "react-router-dom";
 import { useMyFamilies } from "../../provider/MyFamiliesProvider";
@@ -18,6 +18,15 @@ const MyFamiliesCard = () => {
           <TeamOutlined />
           <span>My Families</span>
         </Space>
+      }
+      extra={
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => navigate("/family/create")}
+        >
+          Create Family
+        </Button>
       }
     >
       {isMyFamiliesError ? (

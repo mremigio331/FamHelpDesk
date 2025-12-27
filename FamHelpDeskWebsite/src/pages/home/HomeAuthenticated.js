@@ -1,5 +1,6 @@
 import React from "react";
 import { Typography, Spin, Alert } from "antd";
+import { useNavigate } from "react-router-dom";
 import useGetUserProfile from "../../hooks/user/useGetUserProfile";
 import MyFamiliesCard from "../../components/family/MyFamiliesCard";
 import { useMyFamilies } from "../../provider/MyFamiliesProvider";
@@ -7,6 +8,7 @@ import { useMyFamilies } from "../../provider/MyFamiliesProvider";
 const { Title, Text } = Typography;
 
 const HomeAuthenticated = () => {
+  const navigate = useNavigate();
   const { userProfile, isUserFetching, isUserError, userError } =
     useGetUserProfile();
   const { isMyFamiliesFetching } = useMyFamilies();
