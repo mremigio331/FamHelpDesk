@@ -1,14 +1,17 @@
 import React from "react";
 import { Typography, Spin, Alert } from "antd";
 import useGetUserProfile from "../../hooks/user/useGetUserProfile";
+import MyFamiliesCard from "../../components/family/MyFamiliesCard";
+import { useMyFamilies } from "../../provider/MyFamiliesProvider";
 
 const { Title, Text } = Typography;
 
 const HomeAuthenticated = () => {
   const { userProfile, isUserFetching, isUserError, userError } =
     useGetUserProfile();
+  const { isMyFamiliesFetching } = useMyFamilies();
 
-  if (isUserFetching) {
+  if (isUserFetching || isMyFamiliesFetching) {
     return (
       <div style={{ padding: "50px", textAlign: "center" }}>
         <Spin size="large" />
@@ -30,8 +33,8 @@ const HomeAuthenticated = () => {
   }
 
   return (
-    <div style={{ padding: "50px" }}>
-      <div style={{ textAlign: "center", maxWidth: "600px", margin: "0 auto" }}>
+    <div style={{ padding: "50px", maxWidth: "1200px", margin: "0 auto" }}>
+      <div style={{ textAlign: "center", marginBottom: "40px" }}>
         <Title level={2}>Welcome to Fam Help Desk</Title>
         {userProfile && (
           <div style={{ marginTop: "20px", marginBottom: "20px" }}>
@@ -40,13 +43,9 @@ const HomeAuthenticated = () => {
             </Text>
           </div>
         )}
-        <div style={{ marginTop: "30px" }}>
-          <Text>
-            You are now signed in to the Fam Help Desk. Support features will be
-            added here soon.
-          </Text>
-        </div>
       </div>
+
+      <MyFamiliesCard />
     </div>
   );
 };

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import FamHelpDesk from "./FamHelpDesk";
 import UserAuthenticationProvider from "./provider/UserAuthenticationProvider";
 import ApiProvider from "./provider/ApiProvider";
+import MyFamiliesProvider from "./provider/MyFamiliesProvider";
 
 // Global style reset
 const style = document.createElement("style");
@@ -29,7 +30,9 @@ createRoot(document.getElementById("app")).render(
   <QueryClientProvider client={queryClient}>
     <UserAuthenticationProvider>
       <ApiProvider>
-        <FamHelpDesk />
+        <MyFamiliesProvider>
+          <FamHelpDesk />
+        </MyFamiliesProvider>
       </ApiProvider>
     </UserAuthenticationProvider>
   </QueryClientProvider>,
