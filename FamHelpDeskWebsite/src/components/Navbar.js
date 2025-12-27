@@ -1,14 +1,56 @@
 import React, { useContext } from "react";
-import { Layout, Button, Avatar } from "antd";
-import { UserOutlined, TagsOutlined } from "@ant-design/icons";
+import { Layout, Button, Avatar, Dropdown, Spin } from "antd";
+import {
+  UserOutlined,
+  TagsOutlined,
+  TeamOutlined,
+  LoadingOutlined,
+} from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { UserAuthenticationContext } from "../provider/UserAuthenticationProvider";
+import { useMyFamilies } from "../provider/MyFamiliesProvider";
 
 const { Header } = Layout;
 
 const Navbar = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useContext(UserAuthenticationContext);
+  const { familiesArray, isFamiliesFetching } = useMyFamilies();
+
+  const familiesMenuItems = [
+    {
+      key: "families-header",
+      type: "group",
+      label: "My Families",
+    },
+    ...(isFamiliesFetching
+      ? [
+          {
+            key: "loading",
+            label: (
+              <div style={{ textAlign: "center", padding: "8px" }}>
+                <Spin
+                  indicator={<LoadingOutlined style={{ fontSize: 16 }} />}
+                />
+              </div>
+            ),
+            disabled: true,
+          },
+        ]
+      : familiesArray.length === 0
+        ? [
+            {
+              key: "no-families",
+              label: "No families yet",
+              disabled: true,
+            },
+          ]
+        : familiesArray.map((item) => ({
+            key: item.family.family_id,
+            label: item.family.family_name,
+            onClick: () => navigate(`/family/${item.family.family_id}`),
+          }))),
+  ];
 
   return (
     <Header
@@ -41,12 +83,24 @@ const Navbar = () => {
       </div>
 
       {isAuthenticated && (
-        <Button
-          type="text"
-          icon={<Avatar icon={<UserOutlined />} size="small" />}
-          onClick={() => navigate("/profile")}
-          style={{ color: "white" }}
-        />
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <Dropdown menu={{ items: familiesMenuItems }} placement="bottomRight">
+            <Button
+              type="text"
+              icon={<TeamOutlined />}
+              style={{ color: "white" }}
+            >
+              Families
+            </Button>
+          </Dropdown>
+
+          <Button
+            type="text"
+            icon={<Avatar icon={<UserOutlined />} size="small" />}
+            onClick={() => navigate("/profile")}
+            style={{ color: "white" }}
+          />
+        </div>
       )}
     </Header>
   );
