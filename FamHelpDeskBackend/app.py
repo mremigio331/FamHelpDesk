@@ -28,7 +28,7 @@ stage = os.getenv("STAGE", "").lower()
 if stage == "prod":
     allowed_origins = ["https://famhelpdesk.com"]
 elif stage == "testing":
-    allowed_origins = ["https://testing.famhelpdesk.com"]
+    allowed_origins = ["https://testing.famhelpdesk.com", "http://localhost:8080"]
 else:
     allowed_origins = ["*"]
 
