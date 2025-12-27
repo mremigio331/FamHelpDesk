@@ -5,20 +5,14 @@ struct HomeView: View {
     @State private var userSession = UserSession.shared
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section("Welcome") {
-                    if userSession.isFetching {
-                        ProgressView()
-                    } else if let user = userSession.currentUser {
-                        Text("Welcome, \(user.displayName)!")
-                    }
-                }
-                Section("Actions") {
-                    Button("Sign Out") { auth.signOut() }
+        List {
+            Section("Welcome") {
+                if userSession.isFetching {
+                    ProgressView()
+                } else if let user = userSession.currentUser {
+                    Text("Welcome, \(user.displayName)!")
                 }
             }
-            .navigationTitle("Fam Help Desk")
         }
     }
 }

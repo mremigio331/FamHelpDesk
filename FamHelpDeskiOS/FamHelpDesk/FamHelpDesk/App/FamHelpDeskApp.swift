@@ -9,7 +9,7 @@ struct FamHelpDeskApp: App {
         WindowGroup {
             Group {
                 if auth.isAuthenticated {
-                    HomeView()
+                    MainTabView()
                 } else {
                     WelcomeView()
                 }
