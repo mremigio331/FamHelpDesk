@@ -16,11 +16,11 @@ enum APIEnvironment {
     var baseURL: String {
         switch self {
         case .development:
-            return "https://api.testing.famhelpdesk.com"
+            "https://api.testing.famhelpdesk.com"
         case .testing:
-            return "https://api.testing.famhelpdesk.com"
+            "https://api.testing.famhelpdesk.com"
         case .production:
-            return "https://api.famhelpdesk.com"
+            "https://api.famhelpdesk.com"
         }
     }
 }

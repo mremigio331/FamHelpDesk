@@ -40,7 +40,7 @@ final class CognitoHostedUI: NSObject {
     private func presentAuthSession(url: URL, callbackScheme: String) async throws -> URL {
         try await withCheckedThrowingContinuation { cont in
             let session = ASWebAuthenticationSession(url: url, callbackURLScheme: callbackScheme) { callbackURL, error in
-                if let error = error { cont.resume(throwing: error); return }
+                if let error { cont.resume(throwing: error); return }
                 guard let url = callbackURL else {
                     cont.resume(throwing: NSError(domain: "Auth", code: -1, userInfo: [NSLocalizedDescriptionKey: "Missing callback URL"]))
                     return

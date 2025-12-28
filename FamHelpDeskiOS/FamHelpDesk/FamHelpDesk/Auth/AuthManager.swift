@@ -14,10 +14,10 @@ final class AuthManager: ObservableObject {
         // Try to load ID token first (preferred for API calls)
         let idToken = keychain.get(idTokenKey)
         let accessToken = keychain.get(sessionKey)
-        
+
         // Use ID token for API if available, otherwise fall back to access token
         let apiToken = idToken ?? accessToken
-        
+
         if let token = apiToken, !token.isEmpty {
             print("🔐 Loaded token from keychain (length: \(token.count))")
 
@@ -135,15 +135,15 @@ final class AuthManager: ObservableObject {
         print("🔐 Storing tokens - Access token length: \(accessToken.count), ID token length: \(idToken?.count ?? 0)")
 
         // Decode and verify we're storing the right token
-        if let idToken = idToken, let claims = decodeTokenClaims(idToken) {
+        if let idToken, let claims = decodeTokenClaims(idToken) {
             print("📋 ID token type: \(claims["token_use"] as? String ?? "unknown")")
         }
 
         keychain.set(accessToken, forKey: sessionKey)
-        if let idToken = idToken {
+        if let idToken {
             keychain.set(idToken, forKey: idTokenKey)
         }
-        
+
         // Send ID token to API (contains user claims), fall back to access token if unavailable
         let apiToken = idToken ?? accessToken
         APIClient.shared.setAccessToken(apiToken)
@@ -164,7 +164,7 @@ final class AuthManager: ObservableObject {
     }
 
     private func decodeDisplayName(fromJWT token: String) -> String? {
-        return decodeUserInfo(fromJWT: token)?.name
+        decodeUserInfo(fromJWT: token)?.name
     }
 
     private func decodeUserInfo(fromJWT token: String) -> (name: String?, email: String?)? {

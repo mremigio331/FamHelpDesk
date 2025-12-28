@@ -4,7 +4,7 @@ final class APIClient {
     static let shared = APIClient()
 
     private var baseURL: URL {
-        return URL(string: APIEnvironment.current.baseURL)!
+        URL(string: APIEnvironment.current.baseURL)!
     }
 
     private var accessToken: String?

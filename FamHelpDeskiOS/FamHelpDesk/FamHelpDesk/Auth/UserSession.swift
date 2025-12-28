@@ -93,17 +93,17 @@ final class UserSession {
     private func handleNetworkError(_ error: NetworkError) -> String {
         switch error {
         case .invalidURL:
-            return "Invalid URL configuration"
+            "Invalid URL configuration"
         case .invalidResponse:
-            return "Invalid server response"
+            "Invalid server response"
         case let .serverError(statusCode, message):
-            return message ?? "Server error (\(statusCode))"
+            message ?? "Server error (\(statusCode))"
         case .decodingError:
-            return "Failed to process server response"
+            "Failed to process server response"
         case .noData:
-            return "No data received from server"
+            "No data received from server"
         case .unauthorized:
-            return "Unauthorized - please log in again"
+            "Unauthorized - please log in again"
         }
     }
 }

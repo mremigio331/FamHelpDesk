@@ -64,7 +64,7 @@ struct MyFamiliesCard: View {
             }
         }
         .task {
-            if familySession.familiesArray.isEmpty && !familySession.isFetching {
+            if familySession.familiesArray.isEmpty, !familySession.isFetching {
                 await familySession.fetchMyFamilies()
             }
         }

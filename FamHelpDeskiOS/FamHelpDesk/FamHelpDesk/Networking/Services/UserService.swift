@@ -31,11 +31,11 @@ final class UserService {
     func updateUserProfile(displayName: String?, nickName: String?) async throws -> UserProfile {
         var body: [String: String] = [:]
 
-        if let displayName = displayName {
+        if let displayName {
             body["display_name"] = displayName
         }
 
-        if let nickName = nickName {
+        if let nickName {
             body["nick_name"] = nickName
         }
 

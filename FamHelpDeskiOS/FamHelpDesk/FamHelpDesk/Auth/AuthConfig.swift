@@ -64,9 +64,9 @@ enum AuthConfig {
 
     private static var active: CognitoConfig {
         switch AppStage.current {
-        case .dev: return dev
-        case .staging: return staging
-        case .prod: return prod
+        case .dev: dev
+        case .staging: staging
+        case .prod: prod
         }
     }
 

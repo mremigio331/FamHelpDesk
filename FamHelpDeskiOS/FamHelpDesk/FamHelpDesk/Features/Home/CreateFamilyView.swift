@@ -34,7 +34,7 @@ struct CreateFamilyView: View {
                     Text("Optional description for your family")
                 }
 
-                if let errorMessage = errorMessage {
+                if let errorMessage {
                     Section {
                         Text(errorMessage)
                             .foregroundColor(.red)

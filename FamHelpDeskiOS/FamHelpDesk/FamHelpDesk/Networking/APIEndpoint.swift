@@ -19,23 +19,23 @@ enum APIEndpoint {
     var path: String {
         switch self {
         case .getProfile:
-            return "/user/profile"
+            "/user/profile"
         case let .getUserProfile(userId):
-            return "/user/profile/\(userId)"
+            "/user/profile/\(userId)"
         case .updateProfile:
-            return "/user/profile"
+            "/user/profile"
         case .getAllFamilies:
-            return "/family"
+            "/family"
         case .getMyFamilies:
-            return "/family/mine"
+            "/family/mine"
         case .createFamily:
-            return "/family"
+            "/family"
         case let .getAllGroups(familyId):
-            return "/group/\(familyId)"
+            "/group/\(familyId)"
         case .getMyGroups:
-            return "/group/mine"
+            "/group/mine"
         case .createGroup:
-            return "/group"
+            "/group"
         }
     }
 }
