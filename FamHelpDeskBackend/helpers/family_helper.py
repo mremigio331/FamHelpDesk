@@ -5,6 +5,7 @@ from aws_lambda_powertools import Logger
 from models.family import FamilyModel
 from helpers.audit_helper import AuditHelper
 from helpers.family_membership_helper import FamilyMembershipHelper
+from helpers.group_helper import GroupHelper
 from models.audit import AuditActions, AuditEntityTypes
 
 
@@ -57,6 +58,16 @@ class FamilyHelper:
             user_id=created_by,
             is_admin=True,
         )
+
+        # Create default group (which will also create a default queue)
+        group_helper = GroupHelper(request_id=self.request_id)
+        group_helper.create_group(
+            family_id=family_id,
+            group_name="General",
+            created_by=created_by,
+            group_description="Default group for the family",
+        )
+        self.logger.info(f"Created default group for family {family_id}")
 
         return family
 
