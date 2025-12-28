@@ -1,5 +1,7 @@
 from models.user_profile import UserProfile
 from helpers.audit_helper import AuditHelper
+from helpers.notification_helper import NotificationHelper
+from models.notification import NotificationType
 from models.audit import AuditActions, AuditEntityTypes
 
 from pynamodb.exceptions import DoesNotExist
@@ -14,6 +16,7 @@ class UserProfileHelper:
             self.logger.append_keys(request_id=request_id)
 
         self.audit_helper = AuditHelper(request_id=request_id)
+        self.notification_helper = NotificationHelper(request_id=request_id)
 
     def create_profile(
         self,
@@ -41,6 +44,13 @@ class UserProfileHelper:
             user_id=user_id,
             action=AuditActions.CREATE,
             after=profile_data,
+        )
+
+        # Send welcome notification
+        self.notification_helper.create_notification(
+            user_id=user_id,
+            message="Welcome to Fam Help Desk! We're excited to have you here.",
+            notification_type=NotificationType.WELCOME,
         )
 
         return profile

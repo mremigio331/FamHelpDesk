@@ -5,6 +5,8 @@ from aws_lambda_powertools import Logger
 from models.family_membership import FamilyMembershipModel
 from models.base import MembershipStatus
 from helpers.audit_helper import AuditHelper
+from helpers.notification_helper import NotificationHelper
+from models.notification import NotificationType
 from models.audit import AuditActions, AuditEntityTypes
 from exceptions.membership_exceptions import (
     MembershipNotFound,
@@ -23,6 +25,7 @@ class FamilyMembershipHelper:
         if request_id:
             self.logger.append_keys(request_id=request_id)
         self.audit_helper = AuditHelper(request_id=request_id)
+        self.notification_helper = NotificationHelper(request_id=request_id)
 
     # Core getters
     def get_membership(self, family_id: str, user_id: str) -> Optional[dict]:
@@ -37,6 +40,19 @@ class FamilyMembershipHelper:
                 f"No membership for family {family_id} and user {user_id}."
             )
             return None
+
+    def get_all_admins(self, family_id: str) -> List[str]:
+        """Get all admin user IDs for a family."""
+        admin_ids = []
+        pk = FamilyMembershipModel.create_pk(family_id)
+        for item in FamilyMembershipModel.query(
+            pk,
+            FamilyMembershipModel.sk.startswith("MEMBER#"),
+        ):
+            if item.status == MembershipStatus.MEMBER.value and item.is_admin:
+                admin_ids.append(item.user_id)
+        self.logger.info(f"Found {len(admin_ids)} admins in family {family_id}.")
+        return admin_ids
 
     # Create a membership request (awaiting approval)
     def create_membership_request(self, family_id: str, user_id: str) -> dict:
@@ -71,6 +87,17 @@ class FamilyMembershipHelper:
             actor_user_id=user_id,
             after=after,
         )
+
+        # Notify all admins about the membership request
+        admin_ids = self.get_all_admins(family_id)
+        for admin_id in admin_ids:
+            self.notification_helper.create_notification(
+                user_id=admin_id,
+                message=f"User {user_id} has requested to join the family.",
+                notification_type=NotificationType.MEMBERSHIP_REQUEST,
+                family_id=family_id,
+            )
+
         return after
 
     # Create a membership (immediate member), e.g., when creating a family
@@ -105,6 +132,16 @@ class FamilyMembershipHelper:
             actor_user_id=user_id,
             after=after,
         )
+
+        # Welcome user to the family (only for new members, not admins creating the family)
+        if not is_admin:
+            self.notification_helper.create_notification(
+                user_id=user_id,
+                message="Welcome to the family!",
+                notification_type=NotificationType.WELCOME_TO_FAMILY,
+                family_id=family_id,
+            )
+
         return after
 
     # List all memberships by user across families
@@ -239,6 +276,22 @@ class FamilyMembershipHelper:
             before=before,
             after=after,
         )
+
+        # Notify the target user about approval/denial
+        if approve:
+            self.notification_helper.create_notification(
+                user_id=target_user_id,
+                message=f"Your request to join the family has been approved.",
+                notification_type=NotificationType.MEMBERSHIP_APPROVED,
+                family_id=family_id,
+            )
+        else:
+            self.notification_helper.create_notification(
+                user_id=target_user_id,
+                message=f"Your request to join the family has been denied.",
+                notification_type=NotificationType.MEMBERSHIP_DENIED,
+                family_id=family_id,
+            )
 
         return after
 

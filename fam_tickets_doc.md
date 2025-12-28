@@ -146,14 +146,16 @@ Queues are logical containers where Tickets are placed.
 Queues are owned by a Group.
 
 PK = FAMILY#{family_id}
-SK = QUEUE#{queue_id}
+SK = GROUP#{group_id}#QUEUE#{queue_id}
 
 **Attributes**
 - `family_id` (str)
+- `group_id` (str)
 - `queue_id` (str)
 - `queue_name` (str)
 - `queue_description` (str)
 - `creation_date` (int)
+- `created_by` (str)
 
 ---
 
@@ -217,6 +219,43 @@ SK = QUEUE#{queue_id}#TICKET#{ticket_id}#COMMENT#{comment_id}
 - `comment_body` (str)
 - `comment_date` (int)
 - `last_update` (int)
+
+---
+
+## User Profile
+
+User profiles store user information.
+
+PK = USER_PROFILE#{user_id}
+SK = META
+
+**Attributes**
+- `user_id` (str)
+- `email` (str)
+- `first_name` (str)
+- `last_name` (str)
+- `phone_number` (str | null)
+- `profile_picture_url` (str | null)
+- `creation_date` (int)
+
+---
+
+## Notifications
+
+Notifications inform users about events (membership requests, ticket assignments, comments, etc.).
+
+PK = USER_PROFILE#{user_id}
+SK = NOTIFICATION#{notification_id}
+
+**Attributes**
+- `notification_id` (str)
+- `user_id` (str)
+- `message` (str)
+- `notification_type` (str) — MEMBERSHIP_REQUEST | MEMBERSHIP_APPROVED | MEMBERSHIP_DENIED | TICKET_ASSIGNED | TICKET_COMMENT | TICKET_STATUS_CHANGED | GROUP_INVITATION
+- `timestamp` (int)
+- `viewed` (bool)
+- `family_id` (str | null) — optional, if notification is family-related
+- `ticket_id` (str | null) — optional, if notification is ticket-related
 
 ---
 

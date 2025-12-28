@@ -5,6 +5,8 @@ from aws_lambda_powertools import Logger
 from models.group_membership import GroupMembershipModel
 from models.base import MembershipStatus
 from helpers.audit_helper import AuditHelper
+from helpers.notification_helper import NotificationHelper
+from models.notification import NotificationType
 from models.audit import AuditActions, AuditEntityTypes
 from exceptions.membership_exceptions import (
     MembershipNotFound,
@@ -23,6 +25,7 @@ class GroupMembershipHelper:
         if request_id:
             self.logger.append_keys(request_id=request_id)
         self.audit_helper = AuditHelper(request_id=request_id)
+        self.notification_helper = NotificationHelper(request_id=request_id)
 
     # Core getters
     def get_membership(
@@ -39,6 +42,22 @@ class GroupMembershipHelper:
                 f"No membership for family {family_id}, group {group_id} and user {user_id}."
             )
             return None
+
+    def get_all_admins(self, family_id: str, group_id: str) -> List[str]:
+        """Get all admin user IDs for a group."""
+        admin_ids = []
+        pk = GroupMembershipModel.create_pk(family_id)
+        sk_prefix = f"GROUP#{group_id}#MEMBER#"
+        for item in GroupMembershipModel.query(
+            pk,
+            GroupMembershipModel.sk.startswith(sk_prefix),
+        ):
+            if item.status == MembershipStatus.MEMBER.value and item.is_admin:
+                admin_ids.append(item.user_id)
+        self.logger.info(
+            f"Found {len(admin_ids)} admins in group {group_id} of family {family_id}."
+        )
+        return admin_ids
 
     # Create a membership request (awaiting approval)
     def create_membership_request(
@@ -76,6 +95,17 @@ class GroupMembershipHelper:
             actor_user_id=user_id,
             after=after,
         )
+
+        # Notify all group admins about the membership request
+        admin_ids = self.get_all_admins(family_id, group_id)
+        for admin_id in admin_ids:
+            self.notification_helper.create_notification(
+                user_id=admin_id,
+                message=f"User {user_id} has requested to join the group.",
+                notification_type=NotificationType.MEMBERSHIP_REQUEST,
+                family_id=family_id,
+            )
+
         return after
 
     # Create a membership (immediate member), e.g., direct grant
@@ -245,6 +275,22 @@ class GroupMembershipHelper:
             before=before,
             after=after,
         )
+
+        # Notify the target user about approval/denial
+        if approve:
+            self.notification_helper.create_notification(
+                user_id=target_user_id,
+                message=f"Your request to join the group has been approved.",
+                notification_type=NotificationType.MEMBERSHIP_APPROVED,
+                family_id=family_id,
+            )
+        else:
+            self.notification_helper.create_notification(
+                user_id=target_user_id,
+                message=f"Your request to join the group has been denied.",
+                notification_type=NotificationType.MEMBERSHIP_DENIED,
+                family_id=family_id,
+            )
 
         return after
 
