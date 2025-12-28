@@ -212,9 +212,9 @@ export class CognitoStack extends Stack {
         ],
         readAttributes: clientReadAttrs, // ADDED
         writeAttributes: clientWriteAttrs, // ADDED
-        accessTokenValidity: Duration.hours(24),
-        idTokenValidity: Duration.hours(24),
-        refreshTokenValidity: Duration.days(7),
+        accessTokenValidity: Duration.hours(4),
+        idTokenValidity: Duration.hours(4),
+        refreshTokenValidity: Duration.days(60),
       },
     );
 
@@ -251,9 +251,9 @@ export class CognitoStack extends Stack {
         ],
         readAttributes: clientReadAttrs, // ADDED
         writeAttributes: clientWriteAttrs, // ADDED
-        accessTokenValidity: Duration.hours(1),
-        idTokenValidity: Duration.hours(1),
-        refreshTokenValidity: Duration.days(14),
+        accessTokenValidity: Duration.hours(24),
+        idTokenValidity: Duration.hours(24),
+        refreshTokenValidity: Duration.days(3650),
       },
     );
 

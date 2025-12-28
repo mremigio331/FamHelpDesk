@@ -11,7 +11,14 @@ final class AuthManager: ObservableObject {
     private let idTokenKey = "fhd_id_token"
 
     init() {
-        if let token = keychain.get(sessionKey), !token.isEmpty {
+        // Try to load ID token first (preferred for API calls)
+        let idToken = keychain.get(idTokenKey)
+        let accessToken = keychain.get(sessionKey)
+        
+        // Use ID token for API if available, otherwise fall back to access token
+        let apiToken = idToken ?? accessToken
+        
+        if let token = apiToken, !token.isEmpty {
             print("🔐 Loaded token from keychain (length: \(token.count))")
 
             // Decode and verify token type
@@ -33,10 +40,10 @@ final class AuthManager: ObservableObject {
 
             isAuthenticated = true
             APIClient.shared.setAccessToken(token)
-            NetworkManager.shared.setAccessToken(token) // 🔧 FIX: Also set on NetworkManager!
+            NetworkManager.shared.setAccessToken(token) // Send ID token to API
 
             // Use id_token for user info if available, otherwise fall back to access token
-            let tokenForUserInfo = keychain.get(idTokenKey) ?? token
+            let tokenForUserInfo = idToken ?? accessToken ?? token
             userDisplayName = decodeDisplayName(fromJWT: tokenForUserInfo)
 
             // Log user info for existing session
@@ -128,16 +135,19 @@ final class AuthManager: ObservableObject {
         print("🔐 Storing tokens - Access token length: \(accessToken.count), ID token length: \(idToken?.count ?? 0)")
 
         // Decode and verify we're storing the right token
-        if let claims = decodeTokenClaims(accessToken) {
-            print("📋 Access token type: \(claims["token_use"] as? String ?? "unknown")")
+        if let idToken = idToken, let claims = decodeTokenClaims(idToken) {
+            print("📋 ID token type: \(claims["token_use"] as? String ?? "unknown")")
         }
 
         keychain.set(accessToken, forKey: sessionKey)
         if let idToken = idToken {
             keychain.set(idToken, forKey: idTokenKey)
         }
-        APIClient.shared.setAccessToken(accessToken)
-        NetworkManager.shared.setAccessToken(accessToken) // 🔧 FIX: Also set on NetworkManager!
+        
+        // Send ID token to API (contains user claims), fall back to access token if unavailable
+        let apiToken = idToken ?? accessToken
+        APIClient.shared.setAccessToken(apiToken)
+        NetworkManager.shared.setAccessToken(apiToken)
         isAuthenticated = true
 
         // Use id_token for user info if available, otherwise fall back to access token
