@@ -1,6 +1,9 @@
 import { useState, useMemo } from "react";
 import { message } from "antd";
-import { isActualMember, hasPendingRequest } from "../../utility/familyUtils";
+import {
+  isActualMember,
+  hasPendingRequest,
+} from "../../../utility/familyUtils";
 
 /**
  * Shared logic for FindFamily components

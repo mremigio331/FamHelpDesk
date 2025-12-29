@@ -1,5 +1,5 @@
 import React from "react";
-import FindFamily from "../../components/family/FindFamily";
+import FindFamily from "../../components/family/findFamily/FindFamily";
 
 const FindFamilyPage = () => {
   return <FindFamily />;

@@ -1,9 +1,9 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { useMobileDetection } from "../../provider/MobileDetectionProvider";
-import useGetAllFamilies from "../../hooks/family/useGetAllFamilies";
-import useRequestFamilyMembership from "../../hooks/family/useRequestFamilyMembership";
-import { useMyFamilies } from "../../provider/MyFamiliesProvider";
+import { useMobileDetection } from "../../../provider/MobileDetectionProvider";
+import useGetAllFamilies from "../../../hooks/family/useGetAllFamilies";
+import useRequestFamilyMembership from "../../../hooks/family/useRequestFamilyMembership";
+import { useMyFamilies } from "../../../provider/MyFamiliesProvider";
 import FindFamilyDesktop from "./FindFamilyDesktop";
 import FindFamilyMobile from "./FindFamilyMobile";
 
