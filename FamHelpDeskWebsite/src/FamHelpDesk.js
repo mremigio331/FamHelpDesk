@@ -4,7 +4,7 @@ import { Layout } from "antd";
 import Home from "./pages/home/Home";
 import UserProfile from "./pages/user/UserProfile";
 import EditProfilePage from "./pages/user/EditProfilePage";
-import FamilyPage from "./pages/family/FamilyPage";
+import FamilyPageWrapper from "./components/family/FamilyPageWrapper";
 import CreateFamilyPage from "./pages/family/CreateFamilyPage";
 import FindFamilyPage from "./pages/family/FindFamilyPage";
 import NotificationsPage from "./components/notifications/NotificationsPage";
@@ -27,7 +27,7 @@ const FamHelpDesk = () => {
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/family/create" element={<CreateFamilyPage />} />
             <Route path="/family/find" element={<FindFamilyPage />} />
-            <Route path="/family/:familyId" element={<FamilyPage />} />
+            <Route path="/family/:familyId" element={<FamilyPageWrapper />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Content>
