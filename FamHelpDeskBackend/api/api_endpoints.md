@@ -135,6 +135,18 @@ This document lists all API endpoints needed to fulfill the Fam Help Desk system
 
 ---
 
+## Notifications
+
+### User Notifications
+| Status | Method | Path | Description |
+|--------|--------|------|-------------|
+| ✅ CREATED | GET | `/notifications` | Get all notifications for the current user (requester) |
+| ✅ CREATED | PUT | `/notifications/{notification_id}/acknowledge` | Acknowledge a notification (user can only acknowledge their own) |
+| ✅ CREATED | PUT | `/notifications/acknowledge-all` | Acknowledge all notifications for the current user |
+| ✅ CREATED | GET | `/notifications/unread` | Get unread notifications count for the current user |
+
+---
+
 ## Dashboard & Analytics (Optional/Future)
 
 ### Statistics
@@ -146,23 +158,22 @@ This document lists all API endpoints needed to fulfill the Fam Help Desk system
 
 ## Summary
 ### Current Status
-- **Created**: 14 endpoints
-- **Pending**: 47 endpoints
-- **Not Implemented**: 1 endpoint (family deletion for safety)
-- **Not Implemented**: 1 endpoint (family deletion for safety)
+- **Created**: 18 endpoints
 - **Pending**: 51 endpoints
+- **Not Implemented**: 1 endpoint (family deletion for safety)
 
+### Priority Order (Recommended Implementation)
+1. **Family endpoints** (GET, PUT, DELETE family)
 ### Priority Order (Recommended Implementation)
 1. **Family endpoints** (GET, PUT, DELETE family)
 2. **Queue endpoints** (CRUD operations)
 3. **Ticket endpoints** (CRUD and status management)
 4. **Comment endpoints** (CRUD)
 5. **Membership endpoints** (family and group members)
-6. **Search & filtering** (ticket search, my tickets, open tickets)
-7. **Audit endpoints** (audit history)
-8. **Statistics/Dashboard** (analytics)
-
-### Next Steps
+6. **Notifications endpoints** (get notifications, acknowledge)
+7. **Search & filtering** (ticket search, my tickets, open tickets)
+8. **Audit endpoints** (audit history)
+9. **Statistics/Dashboard** (analytics)
 Based on the UI doc requirements, the most critical endpoints to implement next are:
 1. `GET /queue/{family_id}/{group_id}` - For populating queue dropdown when creating tickets
 2. `POST /ticket/{family_id}/{queue_id}` - For creating tickets

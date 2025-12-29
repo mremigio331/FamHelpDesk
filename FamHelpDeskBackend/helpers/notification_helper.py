@@ -99,31 +99,59 @@ class NotificationHelper:
             return False
 
     def get_notifications(
-        self, user_id: str, viewed: Optional[bool] = None
-    ) -> list[dict]:
+        self,
+        user_id: str,
+        viewed: Optional[bool] = None,
+        limit: int = 50,
+        last_evaluated_key: Optional[dict] = None,
+    ) -> dict:
         """
-        Get all notifications for a user, optionally filtered by viewed status.
+        Get notifications for a user with pagination support.
 
         Args:
             user_id: The user to get notifications for
             viewed: Optional filter - True for viewed only, False for unviewed only, None for all
+            limit: Maximum number of notifications to return (default: 50)
+            last_evaluated_key: Pagination token from previous request
 
         Returns:
-            List of notification dictionaries, sorted by timestamp (newest first)
+            Dict containing:
+                - notifications: List of notification dictionaries, sorted by timestamp (newest first)
+                - next_token: Pagination token for next page (None if no more results)
+                - count: Number of notifications in current page
         """
         pk = NotificationModel.create_pk(user_id)
 
+        query_kwargs = {
+            "hash_key": pk,
+            "range_key_condition": NotificationModel.sk.startswith("NOTIFICATION#"),
+            "limit": limit * 2,  # Fetch more to account for filtering
+        }
+
+        if last_evaluated_key:
+            query_kwargs["last_evaluated_key"] = last_evaluated_key
+
+        result_iterator = NotificationModel.query(**query_kwargs)
+
         notifications = []
-        for notification in NotificationModel.query(
-            pk,
-            NotificationModel.SK.startswith("NOTIFICATION#"),
-        ):
+        next_key = None
+
+        for notification in result_iterator:
             # Filter by viewed status if specified
             if viewed is not None and notification.viewed != viewed:
                 continue
+
             notifications.append(
                 NotificationModel.clean_returned_notification(notification)
             )
+
+            # Stop if we've reached the limit
+            if len(notifications) >= limit:
+                break
+
+        # Get the last evaluated key for pagination
+        if hasattr(result_iterator, "last_evaluated_key"):
+            next_key = result_iterator.last_evaluated_key
 
         # Sort by timestamp, newest first
         notifications.sort(key=lambda x: x["timestamp"], reverse=True)
@@ -134,10 +162,15 @@ class NotificationHelper:
                 "user_id": user_id,
                 "notification_count": len(notifications),
                 "viewed_filter": viewed,
+                "has_more": next_key is not None,
             },
         )
 
-        return notifications
+        return {
+            "notifications": notifications,
+            "next_token": next_key,
+            "count": len(notifications),
+        }
 
     def get_unviewed_count(self, user_id: str) -> int:
         """
@@ -154,7 +187,7 @@ class NotificationHelper:
         count = 0
         for notification in NotificationModel.query(
             pk,
-            NotificationModel.SK.startswith("NOTIFICATION#"),
+            NotificationModel.sk.startswith("NOTIFICATION#"),
         ):
             if not notification.viewed:
                 count += 1
@@ -181,7 +214,7 @@ class NotificationHelper:
         updated_count = 0
         for notification in NotificationModel.query(
             pk,
-            NotificationModel.SK.startswith("NOTIFICATION#"),
+            NotificationModel.sk.startswith("NOTIFICATION#"),
         ):
             if not notification.viewed:
                 notification.viewed = True

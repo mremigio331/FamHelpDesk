@@ -126,4 +126,3 @@ class QueueHelper:
             f"Fetched {len(items)} queues for group {group_id} in family {family_id}."
         )
         return items
-        return items
