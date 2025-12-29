@@ -1,15 +1,20 @@
 import React from "react";
-import { Card, List, Tag, Space, Empty, Alert, Button } from "antd";
-import { TeamOutlined, PlusOutlined } from "@ant-design/icons";
-import { Typography } from "antd";
+import { Card, Space, Empty, Alert, Button } from "antd";
+import { TeamOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { useMyFamilies } from "../../provider/MyFamiliesProvider";
-
-const { Text } = Typography;
+import FamilyList from "./FamilyList";
 
 const MyFamiliesCard = () => {
   const navigate = useNavigate();
   const { familiesArray, isMyFamiliesError, myFamiliesError } = useMyFamilies();
+
+  // Convert familiesArray to the format needed for FamilyList
+  const families = familiesArray.map((item) => item.family);
+  const memberships = familiesArray.reduce((acc, item) => {
+    acc[item.family.family_id] = item.membership;
+    return acc;
+  }, {});
 
   return (
     <Card
@@ -20,13 +25,21 @@ const MyFamiliesCard = () => {
         </Space>
       }
       extra={
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => navigate("/family/create")}
-        >
-          Create Family
-        </Button>
+        <Space>
+          <Button
+            icon={<SearchOutlined />}
+            onClick={() => navigate("/family/find")}
+          >
+            Find Family
+          </Button>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => navigate("/family/create")}
+          >
+            Create Family
+          </Button>
+        </Space>
       }
     >
       {isMyFamiliesError ? (
@@ -42,60 +55,29 @@ const MyFamiliesCard = () => {
         <Empty
           description="You are not part of any families yet"
           image={Empty.PRESENTED_IMAGE_SIMPLE}
-        />
+        >
+          <Space>
+            <Button
+              type="primary"
+              icon={<SearchOutlined />}
+              onClick={() => navigate("/family/find")}
+            >
+              Find a Family
+            </Button>
+            <Button
+              icon={<PlusOutlined />}
+              onClick={() => navigate("/family/create")}
+            >
+              Create Family
+            </Button>
+          </Space>
+        </Empty>
       ) : (
-        <List
-          itemLayout="horizontal"
-          dataSource={familiesArray}
-          renderItem={(item) => {
-            const family = item.family;
-            const membership = item.membership;
-            const statusColor =
-              membership.status === "MEMBER" ? "green" : "orange";
-            const statusText =
-              membership.status === "MEMBER" ? "Member" : "Pending";
-
-            return (
-              <List.Item
-                style={{ cursor: "pointer" }}
-                onClick={() => navigate(`/family/${family.family_id}`)}
-                actions={[
-                  <Button
-                    type="link"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/family/${family.family_id}`);
-                    }}
-                  >
-                    View
-                  </Button>,
-                ]}
-              >
-                <List.Item.Meta
-                  avatar={<TeamOutlined style={{ fontSize: "24px" }} />}
-                  title={
-                    <Space>
-                      <span>{family.family_name}</span>
-                      <Tag color={statusColor}>{statusText}</Tag>
-                    </Space>
-                  }
-                  description={
-                    <div>
-                      {family.family_description && (
-                        <div style={{ marginBottom: "8px" }}>
-                          {family.family_description}
-                        </div>
-                      )}
-                      <Text type="secondary" style={{ fontSize: "12px" }}>
-                        Created:{" "}
-                        {new Date(family.created_at).toLocaleDateString()}
-                      </Text>
-                    </div>
-                  }
-                />
-              </List.Item>
-            );
-          }}
+        <FamilyList
+          families={families}
+          memberships={memberships}
+          onItemClick={(family) => navigate(`/family/${family.family_id}`)}
+          emptyDescription="You are not part of any families yet"
         />
       )}
     </Card>
