@@ -28,17 +28,21 @@ const FamilyListItemMobile = (props) => {
           : { padding: "12px 0" }
       }
       onClick={onClick}
-      actions={defaultActions.map((action) => (
-        <Button
-          key={action.key}
-          type="link"
-          size="small"
-          style={{ fontSize: "12px", padding: "0 4px" }}
-          onClick={action.onClick}
-        >
-          {action.label}
-        </Button>
-      ))}
+      actions={
+        actions
+          ? actions
+          : defaultActions.map((action) => (
+              <Button
+                key={action.key}
+                type="link"
+                size="small"
+                style={{ fontSize: "12px", padding: "0 4px" }}
+                onClick={action.onClick}
+              >
+                {action.label}
+              </Button>
+            ))
+      }
     >
       <List.Item.Meta
         avatar={<TeamOutlined style={{ fontSize: "18px" }} />}

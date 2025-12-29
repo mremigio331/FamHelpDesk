@@ -24,11 +24,15 @@ const FamilyListItemDesktop = (props) => {
     <List.Item
       style={onClick ? { cursor: "pointer" } : {}}
       onClick={onClick}
-      actions={defaultActions.map((action) => (
-        <Button key={action.key} type="link" onClick={action.onClick}>
-          {action.label}
-        </Button>
-      ))}
+      actions={
+        actions
+          ? actions
+          : defaultActions.map((action) => (
+              <Button key={action.key} type="link" onClick={action.onClick}>
+                {action.label}
+              </Button>
+            ))
+      }
     >
       <List.Item.Meta
         avatar={<TeamOutlined style={{ fontSize: "24px" }} />}
