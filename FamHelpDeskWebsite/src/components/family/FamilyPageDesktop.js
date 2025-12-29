@@ -20,7 +20,7 @@ import {
 } from "@ant-design/icons";
 import { useMyFamilies } from "../../provider/MyFamiliesProvider";
 import useFamilyPage from "./useFamilyPage";
-import MembersDesktop from "./MembersDesktop";
+import MembersDesktop from "./membership/MembersDesktop";
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -194,7 +194,9 @@ const FamilyPageDesktop = () => {
           </Card>
         );
       case "members":
-        return <MembersDesktop familyId={familyId} />;
+        return (
+          <MembersDesktop familyId={familyId} isAdmin={membership?.is_admin} />
+        );
       case "create":
         return (
           <Card>

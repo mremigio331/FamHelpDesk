@@ -11,7 +11,7 @@ import {
 } from "@ant-design/icons";
 import { useMyFamilies } from "../../provider/MyFamiliesProvider";
 import useFamilyPage from "./useFamilyPage";
-import MembersMobile from "./MembersMobile";
+import MembersMobile from "./membership/MembersMobile";
 
 const { Title, Text } = Typography;
 
@@ -140,7 +140,9 @@ const FamilyPageMobile = () => {
           </div>
         );
       case "members":
-        return <MembersMobile familyId={familyId} />;
+        return (
+          <MembersMobile familyId={familyId} isAdmin={membership?.is_admin} />
+        );
       case "create":
         return (
           <div style={{ textAlign: "center", padding: "40px 20px" }}>
