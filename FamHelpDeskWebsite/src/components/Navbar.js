@@ -50,6 +50,19 @@ const Navbar = () => {
             label: item.family.family_name,
             onClick: () => navigate(`/family/${item.family.family_id}`),
           }))),
+    {
+      type: "divider",
+    },
+    {
+      key: "find-family",
+      label: "Find a Family",
+      onClick: () => navigate("/family/find"),
+    },
+    {
+      key: "create-family",
+      label: "Create Family",
+      onClick: () => navigate("/family/create"),
+    },
   ];
 
   return (
@@ -89,6 +102,7 @@ const Navbar = () => {
               type="text"
               icon={<TeamOutlined />}
               style={{ color: "white" }}
+              className="families-button"
             >
               Families
             </Button>
@@ -102,6 +116,13 @@ const Navbar = () => {
           />
         </div>
       )}
+      <style jsx>{`
+        @media (max-width: 768px) {
+          .families-button {
+            display: none !important;
+          }
+        }
+      `}</style>
     </Header>
   );
 };
