@@ -154,6 +154,23 @@ class GroupMembershipHelper:
         )
         return items
 
+    # Get all pending membership requests for a group
+    def get_pending_membership_requests(
+        self, family_id: str, group_id: str
+    ) -> List[dict]:
+        """Get all pending membership requests for a group."""
+        items: List[dict] = []
+        pk = GroupMembershipModel.create_pk(family_id)
+        sk_prefix = f"GROUP#{group_id}#MEMBER#"
+        for item in GroupMembershipModel.query(
+            pk,
+            GroupMembershipModel.sk.startswith(sk_prefix),
+        ):
+            if item.status == MembershipStatus.AWAITING.value:
+                items.append(self._clean_membership(item))
+        self.logger.info(f"Found {len(items)} pending requests in group {group_id}.")
+        return items
+
     # Delete a pending membership request
     def delete_membership_request(
         self, family_id: str, group_id: str, user_id: str, actor_user_id: str

@@ -823,4 +823,3 @@ When creating ticket from different contexts:
 * **Duplicate detection**: Warn if similar ticket exists
 * **Draft saving**: Save in-progress tickets as drafts
 * **Bulk creation**: Create multiple tickets at once 
-

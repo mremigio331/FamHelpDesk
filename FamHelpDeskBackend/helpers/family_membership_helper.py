@@ -158,6 +158,34 @@ class FamilyMembershipHelper:
         self.logger.info(f"Fetched {len(items)} memberships for user {user_id}.")
         return items
 
+    # Get all pending membership requests for a family
+    def get_pending_membership_requests(self, family_id: str) -> List[dict]:
+        """Get all pending membership requests for a family."""
+        items: List[dict] = []
+        pk = FamilyMembershipModel.create_pk(family_id)
+        for item in FamilyMembershipModel.query(
+            pk,
+            FamilyMembershipModel.sk.startswith("MEMBER#"),
+        ):
+            if item.status == MembershipStatus.AWAITING.value:
+                items.append(self._clean_membership(item))
+        self.logger.info(f"Found {len(items)} pending requests in family {family_id}.")
+        return items
+
+    # Get all active members for a family
+    def get_all_members(self, family_id: str) -> List[dict]:
+        """Get all active members for a family."""
+        items: List[dict] = []
+        pk = FamilyMembershipModel.create_pk(family_id)
+        for item in FamilyMembershipModel.query(
+            pk,
+            FamilyMembershipModel.sk.startswith("MEMBER#"),
+        ):
+            if item.status == MembershipStatus.MEMBER.value:
+                items.append(self._clean_membership(item))
+        self.logger.info(f"Found {len(items)} active members in family {family_id}.")
+        return items
+
     # Delete a pending membership request
     def delete_membership_request(
         self, family_id: str, user_id: str, actor_user_id: str
