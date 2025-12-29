@@ -6,6 +6,7 @@ import UserAuthenticationProvider from "./provider/UserAuthenticationProvider";
 import ApiProvider from "./provider/ApiProvider";
 import MyFamiliesProvider from "./provider/MyFamiliesProvider";
 import MobileDetectionProvider from "./provider/MobileDetectionProvider";
+import NotificationsProvider from "./provider/NotificationsProvider";
 
 // Global style reset
 const style = document.createElement("style");
@@ -45,9 +46,11 @@ createRoot(document.getElementById("app")).render(
     <MobileDetectionProvider>
       <UserAuthenticationProvider>
         <ApiProvider>
-          <MyFamiliesProvider>
-            <FamHelpDesk />
-          </MyFamiliesProvider>
+          <NotificationsProvider>
+            <MyFamiliesProvider>
+              <FamHelpDesk />
+            </MyFamiliesProvider>
+          </NotificationsProvider>
         </ApiProvider>
       </UserAuthenticationProvider>
     </MobileDetectionProvider>

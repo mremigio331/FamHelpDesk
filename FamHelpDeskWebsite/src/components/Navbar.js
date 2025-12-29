@@ -1,14 +1,16 @@
 import React, { useContext } from "react";
-import { Layout, Button, Avatar, Dropdown, Spin } from "antd";
+import { Layout, Button, Avatar, Dropdown, Spin, Badge } from "antd";
 import {
   UserOutlined,
   TagsOutlined,
   TeamOutlined,
   LoadingOutlined,
+  BellOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { UserAuthenticationContext } from "../provider/UserAuthenticationProvider";
 import { useMyFamilies } from "../provider/MyFamiliesProvider";
+import { useNotifications } from "../provider/NotificationsProvider";
 
 const { Header } = Layout;
 
@@ -16,6 +18,7 @@ const Navbar = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useContext(UserAuthenticationContext);
   const { familiesArray, isFamiliesFetching } = useMyFamilies();
+  const { unreadCount } = useNotifications();
 
   const familiesMenuItems = [
     {
@@ -107,6 +110,19 @@ const Navbar = () => {
               Families
             </Button>
           </Dropdown>
+
+          <Button
+            type="text"
+            icon={
+              <BellOutlined
+                style={{
+                  fontSize: "18px",
+                  color: unreadCount > 0 ? "#ff4d4f" : "white",
+                }}
+              />
+            }
+            onClick={() => navigate("/notifications")}
+          />
 
           <Button
             type="text"
