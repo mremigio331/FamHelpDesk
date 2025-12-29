@@ -8,6 +8,7 @@ import FamilyPage from "./pages/family/FamilyPage";
 import CreateFamilyPage from "./pages/family/CreateFamilyPage";
 import FindFamilyPage from "./pages/family/FindFamilyPage";
 import NotificationsPage from "./components/notifications/NotificationsPage";
+import NotFoundPage from "./pages/NotFoundPage";
 import Navbar from "./components/Navbar";
 
 const { Content } = Layout;
@@ -27,6 +28,7 @@ const FamHelpDesk = () => {
             <Route path="/family/create" element={<CreateFamilyPage />} />
             <Route path="/family/find" element={<FindFamilyPage />} />
             <Route path="/family/:familyId" element={<FamilyPage />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Content>
       </Layout>
