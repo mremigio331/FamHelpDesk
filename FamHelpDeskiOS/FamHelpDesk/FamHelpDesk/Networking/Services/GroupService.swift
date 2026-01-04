@@ -50,4 +50,16 @@ final class GroupService {
         print("📱 Created Group: \(response.group.groupName)")
         return response.group
     }
+
+    /// Fetches members of a specific group
+    /// - Parameter groupId: The ID of the group
+    /// - Returns: Array of GroupMember objects
+    /// - Throws: NetworkError if the request fails
+    func getGroupMembers(groupId: String) async throws -> [GroupMember] {
+        let response: GetGroupMembersResponse = try await networkManager.get(
+            endpoint: APIEndpoint.getGroupMembers(groupId: groupId).path
+        )
+        print("📱 Group Members Response: \(response.members.count) members")
+        return response.members
+    }
 }

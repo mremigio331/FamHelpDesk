@@ -41,3 +41,26 @@ struct CreateGroupRequest: Codable {
 struct CreateGroupResponse: Codable {
     let group: FamilyGroup
 }
+
+// MARK: - Enhanced Group Models
+
+struct GroupMember: Codable, Identifiable {
+    let userId: String
+    let displayName: String
+    let email: String
+    let role: GroupRole
+    let joinedAt: String
+    
+    var id: String { userId }
+}
+
+enum GroupRole: String, Codable {
+    case member = "MEMBER"
+    case admin = "ADMIN"
+}
+
+// MARK: - Additional Group Response Models
+
+struct GetGroupMembersResponse: Codable {
+    let members: [GroupMember]
+}

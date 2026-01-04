@@ -79,10 +79,19 @@ final class NetworkManager {
         }
     }
 
-    private func buildURL(endpoint: String) -> URL? {
+    private func buildURL(endpoint: String, queryItems: [URLQueryItem]? = nil) -> URL? {
         let baseURLString = environment.baseURL
         let fullPath = baseURLString + endpoint
-        return URL(string: fullPath)
+        
+        guard var urlComponents = URLComponents(string: fullPath) else {
+            return nil
+        }
+        
+        if let queryItems = queryItems, !queryItems.isEmpty {
+            urlComponents.queryItems = queryItems
+        }
+        
+        return urlComponents.url
     }
 
     private func createRequest(url: URL, method: String) async throws -> URLRequest {
@@ -122,8 +131,8 @@ final class NetworkManager {
         return json
     }
 
-    func get<T: Decodable>(endpoint: String) async throws -> T {
-        guard let url = buildURL(endpoint: endpoint) else {
+    func get<T: Decodable>(endpoint: String, queryItems: [URLQueryItem]? = nil) async throws -> T {
+        guard let url = buildURL(endpoint: endpoint, queryItems: queryItems) else {
             logger.logNetworkOperation(.requestFailure(method: "GET", endpoint: endpoint, error: NetworkError.invalidURL))
             throw NetworkError.invalidURL
         }
