@@ -3,6 +3,7 @@ import SwiftUI
 struct UserProfileDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var auth: AuthManager
+
     @State private var userSession = UserSession.shared
     @State private var showEditProfile = false
 
@@ -15,25 +16,21 @@ struct UserProfileDetailView: View {
                             .frame(maxWidth: .infinity, alignment: .center)
                     }
                 } else if let user = userSession.currentUser {
-                    // User Info Section
                     Section("User Information") {
                         HStack {
-                            Text("Display Name")
-                                .foregroundColor(.secondary)
+                            Text("Display Name").foregroundColor(.secondary)
                             Spacer()
                             Text(user.displayName)
                         }
 
                         HStack {
-                            Text("Nickname")
-                                .foregroundColor(.secondary)
+                            Text("Nickname").foregroundColor(.secondary)
                             Spacer()
                             Text(user.nickName)
                         }
 
                         HStack {
-                            Text("Email")
-                                .foregroundColor(.secondary)
+                            Text("Email").foregroundColor(.secondary)
                             Spacer()
                             Text(user.email)
                                 .lineLimit(1)
@@ -41,7 +38,6 @@ struct UserProfileDetailView: View {
                         }
                     }
 
-                    // Actions Section
                     Section("Actions") {
                         Button {
                             showEditProfile = true
@@ -53,9 +49,7 @@ struct UserProfileDetailView: View {
                         }
 
                         Button {
-                            Task {
-                                await userSession.refreshProfile()
-                            }
+                            Task { await userSession.refreshProfile() }
                         } label: {
                             HStack {
                                 Image(systemName: "arrow.clockwise")
@@ -65,11 +59,12 @@ struct UserProfileDetailView: View {
                         .disabled(userSession.isFetching)
                     }
 
-                    // Sign Out Section
                     Section {
                         Button(role: .destructive) {
-                            auth.signOut()
-                            dismiss()
+                            Task {
+                                await auth.signOut()
+                                dismiss()
+                            }
                         } label: {
                             HStack {
                                 Spacer()
@@ -78,6 +73,36 @@ struct UserProfileDetailView: View {
                                 Spacer()
                             }
                         }
+
+                        // Testing Helper (Debug builds only)
+                        #if DEBUG
+                            Button(role: .destructive) {
+                                Task {
+                                    await auth.forceSignOut()
+                                    dismiss()
+                                }
+                            } label: {
+                                HStack {
+                                    Spacer()
+                                    Image(systemName: "trash.circle")
+                                    Text("Force Sign Out")
+                                    Spacer()
+                                }
+                            }
+
+                            Button {
+                                Task {
+                                    await AuthTestHelper.testAuthenticationFlow()
+                                }
+                            } label: {
+                                HStack {
+                                    Spacer()
+                                    Image(systemName: "testtube.2")
+                                    Text("Test Auth Flow")
+                                    Spacer()
+                                }
+                            }
+                        #endif
                     }
                 } else {
                     Section {
@@ -88,11 +113,12 @@ struct UserProfileDetailView: View {
                         )
                     }
 
-                    // Sign Out Section - available even without profile
                     Section {
                         Button(role: .destructive) {
-                            auth.signOut()
-                            dismiss()
+                            Task {
+                                await auth.signOut()
+                                dismiss()
+                            }
                         } label: {
                             HStack {
                                 Spacer()
@@ -116,14 +142,20 @@ struct UserProfileDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
+                    Button("Done") { dismiss() }
                 }
             }
             .sheet(isPresented: $showEditProfile) {
                 if let currentUser = userSession.currentUser {
                     EditProfileView(currentProfile: currentUser)
+                    // If EditProfileView needs to call async work in a callback,
+                    // do it by wrapping in Task { ... } inside that view or inside the callback.
+                }
+            }
+            // Optional: auto-load on appear
+            .task {
+                if userSession.currentUser == nil, !userSession.isFetching {
+                    await userSession.refreshProfile()
                 }
             }
         }

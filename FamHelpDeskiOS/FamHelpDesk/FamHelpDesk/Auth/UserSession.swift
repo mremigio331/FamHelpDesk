@@ -7,7 +7,9 @@ final class UserSession {
 
     // User state
     var currentUser: UserProfile?
-    var authToken: String?
+
+    // Note: authToken is managed by AuthManager via Keychain - not stored here
+    // This avoids duplicate token storage and synchronization issues
 
     // Loading states
     var isLoading = false
@@ -19,31 +21,21 @@ final class UserSession {
 
     private let userService = UserService()
 
-    // AppStorage for token persistence
-    @ObservationIgnored
-    @AppStorage("authToken") private var storedToken: String?
-
     private init() {
-        // Auto-load profile if we have a stored token
-        if let token = storedToken {
-            authToken = token
-            NetworkManager.shared.setAccessToken(token)
-            Task {
-                await loadUserProfile()
-            }
-        }
+        // Token management is centralized in AuthManager
+        // AuthManager will call signIn(token:) when restoring session from Keychain
     }
 
     /// Sign in with a token and load user profile
-    /// - Parameter token: The authentication token from Cognito
+    /// - Parameter token: The authentication token from Cognito (managed by AuthManager)
+    /// Note: Token persistence is handled by AuthManager via Keychain
     @MainActor
-    func signIn(token: String) async {
+    func signIn(token _: String) async {
         isLoading = true
         errorMessage = nil
 
-        authToken = token
-        storedToken = token
-        NetworkManager.shared.setAccessToken(token)
+        // Don't store token here - AuthManager handles token persistence via Keychain
+        // NetworkManager token is already set by AuthManager
 
         await loadUserProfile()
 
@@ -76,12 +68,11 @@ final class UserSession {
     }
 
     /// Sign out and clear all user data
+    /// Note: Token cleanup is handled by AuthManager.signOut()
     func signOut() {
         currentUser = nil
-        authToken = nil
-        storedToken = nil
         errorMessage = nil
-        NetworkManager.shared.clearAccessToken()
+        // NetworkManager token clearing is handled by AuthManager
     }
 
     /// Refresh user profile data
@@ -104,6 +95,14 @@ final class UserSession {
             "No data received from server"
         case .unauthorized:
             "Unauthorized - please log in again"
+        case let .tokenRefreshFailed(underlyingError):
+            "Token refresh failed: \(underlyingError.localizedDescription)"
+        case let .authenticationFailure(underlyingError):
+            "Authentication failed: \(underlyingError.localizedDescription)"
+        case .networkTimeout:
+            "Network request timed out"
+        case .malformedResponse:
+            "Received malformed response from server"
         }
     }
 }

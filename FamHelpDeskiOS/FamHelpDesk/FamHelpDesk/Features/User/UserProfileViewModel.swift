@@ -45,6 +45,14 @@ final class UserProfileViewModel {
             errorMessage = "No data received from server"
         case .unauthorized:
             errorMessage = "Unauthorized - please log in again"
+        case let .tokenRefreshFailed(underlyingError):
+            errorMessage = "Token refresh failed: \(underlyingError.localizedDescription)"
+        case let .authenticationFailure(underlyingError):
+            errorMessage = "Authentication failed: \(underlyingError.localizedDescription)"
+        case .networkTimeout:
+            errorMessage = "Network request timed out"
+        case .malformedResponse:
+            errorMessage = "Received malformed response from server"
         }
     }
 

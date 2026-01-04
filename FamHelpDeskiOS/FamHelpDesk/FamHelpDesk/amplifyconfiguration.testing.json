@@ -1,0 +1,42 @@
+{
+  "auth": {
+    "plugins": {
+      "awsCognitoAuthPlugin": {
+        "UserAgent": "aws-amplify-cli/0.1.0",
+        "Version": "0.1.0",
+        "IdentityManager": {
+          "Default": {}
+        },
+        "CognitoUserPool": {
+          "Default": {
+            "PoolId": "us-west-2_4hHBH4CPn",
+            "AppClientId": "3okt3us6vkh4ueh1qpceqe879c",
+            "Region": "us-west-2"
+          }
+        },
+        "Auth": {
+          "Default": {
+            "authenticationFlowType": "USER_SRP_AUTH",
+            "socialProviders": ["GOOGLE"],
+            "usernameAttributes": ["EMAIL"],
+            "signupAttributes": ["EMAIL", "NAME"],
+            "passwordProtectionSettings": {
+              "passwordPolicyMinLength": 8,
+              "passwordPolicyCharacters": []
+            },
+            "mfaConfiguration": "OFF",
+            "mfaTypes": ["SMS"],
+            "verificationMechanisms": ["EMAIL"],
+            "OAuth": {
+              "WebDomain": "famhelpdesk-testing.auth.us-west-2.amazoncognito.com",
+              "AppClientId": "3okt3us6vkh4ueh1qpceqe879c",
+              "SignInRedirectURI": "famHelpDesk://auth/callback",
+              "SignOutRedirectURI": "famHelpDesk://signout",
+              "Scopes": ["openid", "email", "profile"]
+            }
+          }
+        }
+      }
+    }
+  }
+}
