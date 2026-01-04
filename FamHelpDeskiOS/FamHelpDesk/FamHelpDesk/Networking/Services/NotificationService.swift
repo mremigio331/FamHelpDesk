@@ -16,22 +16,34 @@ final class NotificationService {
     /// - Throws: NetworkError if the request fails
     func getNotifications(limit: Int = 20, viewed: Bool? = nil, nextToken: String? = nil) async throws -> NotificationResponse {
         var queryItems: [URLQueryItem] = [
-            URLQueryItem(name: "limit", value: String(limit))
+            URLQueryItem(name: "limit", value: String(limit)),
         ]
-        
-        if let viewed = viewed {
+
+        if let viewed {
             queryItems.append(URLQueryItem(name: "viewed", value: String(viewed)))
         }
-        
-        if let nextToken = nextToken {
-            queryItems.append(URLQueryItem(name: "nextToken", value: nextToken))
+
+        if let nextToken {
+            queryItems.append(URLQueryItem(name: "next_token", value: nextToken))
         }
-        
-        let response: NotificationResponse = try await networkManager.get(
+
+        // First get the raw data to debug
+        let rawData = try await networkManager.getRawData(
             endpoint: APIEndpoint.getNotifications.path,
             queryItems: queryItems
         )
-        print("📱 Notifications Response: \(response.notifications.count) notifications")
+
+        // Print the raw JSON response for debugging
+        if let jsonString = String(data: rawData, encoding: .utf8) {
+            print("🔍 Raw API Response JSON:")
+            print(jsonString)
+        }
+
+        // Now try to decode it
+        let decoder = JSONDecoder()
+        // Don't use convertFromSnakeCase since we have explicit CodingKeys
+        let response: NotificationResponse = try decoder.decode(NotificationResponse.self, from: rawData)
+        print("📱 Notifications Response: \(response.notifications.count) notifications, next_token: \(response.nextToken ?? "nil")")
         return response
     }
 
@@ -41,10 +53,22 @@ final class NotificationService {
     /// - Throws: NetworkError if the request fails
     func acknowledgeNotification(notificationId: String) async throws -> AcknowledgeResponse {
         let request = AcknowledgeNotificationRequest(notificationId: notificationId)
-        let response: AcknowledgeResponse = try await networkManager.post(
+
+        // Get raw data to debug the response
+        let rawData = try await networkManager.putRawData(
             endpoint: APIEndpoint.acknowledgeNotification(notificationId: notificationId).path,
             body: request
         )
+
+        // Print the raw JSON response for debugging
+        if let jsonString = String(data: rawData, encoding: .utf8) {
+            print("🔍 Raw Acknowledge Response JSON:")
+            print(jsonString)
+        }
+
+        // Now try to decode it
+        let decoder = JSONDecoder()
+        let response: AcknowledgeResponse = try decoder.decode(AcknowledgeResponse.self, from: rawData)
         print("📱 Acknowledged notification: \(notificationId)")
         return response
     }
@@ -53,22 +77,22 @@ final class NotificationService {
     /// - Returns: AcknowledgeResponse indicating success
     /// - Throws: NetworkError if the request fails
     func acknowledgeAllNotifications() async throws -> AcknowledgeResponse {
-        let response: AcknowledgeResponse = try await networkManager.post(
+        // Get raw data to debug the response
+        let rawData = try await networkManager.putRawData(
             endpoint: APIEndpoint.acknowledgeAllNotifications.path,
             body: EmptyRequest()
         )
-        print("📱 Acknowledged all notifications")
-        return response
-    }
 
-    /// Gets the unread notification count for the current user
-    /// - Returns: UnreadCountResponse containing the count
-    /// - Throws: NetworkError if the request fails
-    func getUnreadCount() async throws -> UnreadCountResponse {
-        let response: UnreadCountResponse = try await networkManager.get(
-            endpoint: APIEndpoint.getUnreadCount.path
-        )
-        print("📱 Unread count: \(response.unreadCount)")
+        // Print the raw JSON response for debugging
+        if let jsonString = String(data: rawData, encoding: .utf8) {
+            print("🔍 Raw Acknowledge All Response JSON:")
+            print(jsonString)
+        }
+
+        // Now try to decode it
+        let decoder = JSONDecoder()
+        let response: AcknowledgeResponse = try decoder.decode(AcknowledgeResponse.self, from: rawData)
+        print("📱 Acknowledged all notifications")
         return response
     }
 }

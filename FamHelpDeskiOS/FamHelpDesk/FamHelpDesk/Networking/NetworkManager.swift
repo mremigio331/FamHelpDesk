@@ -82,15 +82,15 @@ final class NetworkManager {
     private func buildURL(endpoint: String, queryItems: [URLQueryItem]? = nil) -> URL? {
         let baseURLString = environment.baseURL
         let fullPath = baseURLString + endpoint
-        
+
         guard var urlComponents = URLComponents(string: fullPath) else {
             return nil
         }
-        
-        if let queryItems = queryItems, !queryItems.isEmpty {
+
+        if let queryItems, !queryItems.isEmpty {
             urlComponents.queryItems = queryItems
         }
-        
+
         return urlComponents.url
     }
 
@@ -142,6 +142,23 @@ final class NetworkManager {
         return try await performRequestWithRetry(url: url, method: "GET", body: nil)
     }
 
+    func getRawData(endpoint: String, queryItems: [URLQueryItem]? = nil) async throws -> Data {
+        guard let url = buildURL(endpoint: endpoint, queryItems: queryItems) else {
+            logger.logNetworkOperation(.requestFailure(method: "GET", endpoint: endpoint, error: NetworkError.invalidURL))
+            throw NetworkError.invalidURL
+        }
+
+        logger.logNetworkOperation(.requestStarted(method: "GET", endpoint: endpoint, hasAuth: accessToken != nil))
+
+        var request = try await createRequest(url: url, method: "GET")
+        let (data, response) = try await session.data(for: request)
+
+        // Validate response
+        try await validateResponseWithRetry(response: response, data: data, url: url, method: "GET", body: nil, retryCount: 0)
+
+        return data
+    }
+
     func post<T: Decodable>(endpoint: String, body: Encodable) async throws -> T {
         guard let url = buildURL(endpoint: endpoint) else {
             logger.logNetworkOperation(.requestFailure(method: "POST", endpoint: endpoint, error: NetworkError.invalidURL))
@@ -153,6 +170,29 @@ final class NetworkManager {
         return try await performRequestWithRetry(url: url, method: "POST", body: body)
     }
 
+    func postRawData(endpoint: String, body: Encodable) async throws -> Data {
+        guard let url = buildURL(endpoint: endpoint) else {
+            logger.logNetworkOperation(.requestFailure(method: "POST", endpoint: endpoint, error: NetworkError.invalidURL))
+            throw NetworkError.invalidURL
+        }
+
+        logger.logNetworkOperation(.requestStarted(method: "POST", endpoint: endpoint, hasAuth: accessToken != nil))
+
+        var request = try await createRequest(url: url, method: "POST")
+
+        // Add body for POST request
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        request.httpBody = try encoder.encode(body)
+
+        let (data, response) = try await session.data(for: request)
+
+        // Validate response
+        try await validateResponseWithRetry(response: response, data: data, url: url, method: "POST", body: body, retryCount: 0)
+
+        return data
+    }
+
     func put<T: Decodable>(endpoint: String, body: Encodable) async throws -> T {
         guard let url = buildURL(endpoint: endpoint) else {
             logger.logNetworkOperation(.requestFailure(method: "PUT", endpoint: endpoint, error: NetworkError.invalidURL))
@@ -162,6 +202,29 @@ final class NetworkManager {
         logger.logNetworkOperation(.requestStarted(method: "PUT", endpoint: endpoint, hasAuth: accessToken != nil))
 
         return try await performRequestWithRetry(url: url, method: "PUT", body: body)
+    }
+
+    func putRawData(endpoint: String, body: Encodable) async throws -> Data {
+        guard let url = buildURL(endpoint: endpoint) else {
+            logger.logNetworkOperation(.requestFailure(method: "PUT", endpoint: endpoint, error: NetworkError.invalidURL))
+            throw NetworkError.invalidURL
+        }
+
+        logger.logNetworkOperation(.requestStarted(method: "PUT", endpoint: endpoint, hasAuth: accessToken != nil))
+
+        var request = try await createRequest(url: url, method: "PUT")
+
+        // Add body for PUT request
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        request.httpBody = try encoder.encode(body)
+
+        let (data, response) = try await session.data(for: request)
+
+        // Validate response
+        try await validateResponseWithRetry(response: response, data: data, url: url, method: "PUT", body: body, retryCount: 0)
+
+        return data
     }
 
     // MARK: - Request Execution with 401 Retry Logic

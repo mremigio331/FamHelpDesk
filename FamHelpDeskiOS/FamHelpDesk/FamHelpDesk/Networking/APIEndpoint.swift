@@ -67,7 +67,7 @@ enum APIEndpoint {
         case .acknowledgeAllNotifications:
             "/notifications/acknowledge-all"
         case .getUnreadCount:
-            "/notifications/unread-count"
+            "/notifications/unread"
         case let .reviewMembershipRequest(requestId):
             "/membership-requests/\(requestId)/review"
         case .searchFamilies:

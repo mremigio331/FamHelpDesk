@@ -9,7 +9,7 @@ struct FamilyMember: Codable, Identifiable {
     let status: MembershipStatus
     let isAdmin: Bool
     let joinedAt: String
-    
+
     var id: String { userId }
 }
 
@@ -21,7 +21,7 @@ struct MembershipRequest: Codable, Identifiable {
     let email: String
     let status: RequestStatus
     let requestDate: String
-    
+
     var id: String { requestId }
 }
 

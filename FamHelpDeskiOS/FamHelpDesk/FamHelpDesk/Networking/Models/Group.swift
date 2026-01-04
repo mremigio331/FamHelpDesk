@@ -50,7 +50,7 @@ struct GroupMember: Codable, Identifiable {
     let email: String
     let role: GroupRole
     let joinedAt: String
-    
+
     var id: String { userId }
 }
 

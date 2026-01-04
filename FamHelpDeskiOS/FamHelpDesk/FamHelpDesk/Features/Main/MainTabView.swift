@@ -3,13 +3,19 @@ import SwiftUI
 struct MainTabView: View {
     @EnvironmentObject var auth: AuthManager
     @State private var userSession = UserSession.shared
+    @State private var notificationSession = NotificationSession.shared
     @State private var showProfile = false
+    @State private var showNotifications = false
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 // Custom Top Bar
-                CustomNavigationBar(showProfile: $showProfile)
+                CustomNavigationBar(
+                    showProfile: $showProfile,
+                    showNotifications: $showNotifications,
+                    unreadCount: notificationSession.unreadCount
+                )
 
                 // Main Content
                 HomeView()
@@ -18,6 +24,13 @@ struct MainTabView: View {
             .sheet(isPresented: $showProfile) {
                 UserProfileDetailView()
             }
+            .sheet(isPresented: $showNotifications) {
+                NotificationsView()
+            }
+        }
+        .task {
+            // Load notifications when app starts to get unread count
+            await notificationSession.fetchNotifications(refresh: true)
         }
     }
 }
@@ -25,6 +38,8 @@ struct MainTabView: View {
 struct CustomNavigationBar: View {
     @State private var userSession = UserSession.shared
     @Binding var showProfile: Bool
+    @Binding var showNotifications: Bool
+    let unreadCount: Int
 
     var body: some View {
         HStack(spacing: 12) {
@@ -37,6 +52,33 @@ struct CustomNavigationBar: View {
                 .font(.headline)
 
             Spacer()
+
+            // Notifications button with badge
+            Button {
+                showNotifications = true
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(Color.blue.opacity(0.2))
+                        .frame(width: 36, height: 36)
+                        .overlay {
+                            Image(systemName: "bell")
+                                .foregroundColor(.blue)
+                        }
+
+                    // Badge for unread count
+                    if unreadCount > 0 {
+                        Text("\(unreadCount)")
+                            .font(.caption2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .frame(minWidth: 16, minHeight: 16)
+                            .background(Color.red)
+                            .clipShape(Circle())
+                            .offset(x: 12, y: -12)
+                    }
+                }
+            }
 
             // Profile button
             Button {
