@@ -7,7 +7,7 @@ struct HomeView: View {
 
     var body: some View {
         List {
-            Section("Welcome") {
+            Section {
                 if userSession.isFetching {
                     ProgressView()
                 } else if let user = userSession.currentUser {

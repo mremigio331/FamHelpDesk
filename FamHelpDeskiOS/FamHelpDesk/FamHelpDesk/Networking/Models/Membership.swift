@@ -11,6 +11,30 @@ struct FamilyMember: Codable, Identifiable {
     let joinedAt: String
 
     var id: String { userId }
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case displayName = "user_display_name"
+        case email = "user_email"
+        case status
+        case isAdmin = "is_admin"
+        case joinedAt = "request_date"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        userId = try container.decode(String.self, forKey: .userId)
+        displayName = try container.decode(String.self, forKey: .displayName)
+        email = try container.decode(String.self, forKey: .email)
+        status = try container.decode(MembershipStatus.self, forKey: .status)
+        isAdmin = try container.decode(Bool.self, forKey: .isAdmin)
+
+        // Handle the timestamp conversion
+        let timestamp = try container.decode(TimeInterval.self, forKey: .joinedAt)
+        let date = Date(timeIntervalSince1970: timestamp)
+        let formatter = ISO8601DateFormatter()
+        joinedAt = formatter.string(from: date)
+    }
 }
 
 struct MembershipRequest: Codable, Identifiable {
@@ -46,6 +70,7 @@ enum MembershipAction: String, Codable {
 
 struct GetFamilyMembersResponse: Codable {
     let members: [FamilyMember]
+    let count: Int
 }
 
 struct GetMembershipRequestsResponse: Codable {

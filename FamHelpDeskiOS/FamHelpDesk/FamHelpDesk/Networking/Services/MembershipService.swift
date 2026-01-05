@@ -12,11 +12,46 @@ final class MembershipService {
     /// - Returns: Array of FamilyMember objects
     /// - Throws: NetworkError if the request fails
     func getFamilyMembers(familyId: String) async throws -> [FamilyMember] {
-        let response: GetFamilyMembersResponse = try await networkManager.get(
-            endpoint: APIEndpoint.getFamilyMembers(familyId: familyId).path
-        )
-        print("📱 Family Members Response: \(response.members.count) members")
-        return response.members
+        do {
+            // First get the raw data to see what we're receiving
+            let rawData = try await networkManager.getRawData(
+                endpoint: APIEndpoint.getFamilyMembers(familyId: familyId).path
+            )
+
+            // Print the raw response for debugging
+            if let rawString = String(data: rawData, encoding: .utf8) {
+                print("📱 Raw API Response: \(rawString)")
+            }
+
+            // Try to decode the response (don't use convertFromSnakeCase since we have explicit CodingKeys)
+            let decoder = JSONDecoder()
+            let response = try decoder.decode(GetFamilyMembersResponse.self, from: rawData)
+
+            print("📱 Family Members Response: \(response.members.count) members")
+            return response.members
+        } catch let decodingError as DecodingError {
+            print("📱 Decoding Error Details:")
+            switch decodingError {
+            case let .typeMismatch(type, context):
+                print("  - Type mismatch: Expected \(type), at path: \(context.codingPath)")
+                print("  - Context: \(context.debugDescription)")
+            case let .valueNotFound(type, context):
+                print("  - Value not found: \(type), at path: \(context.codingPath)")
+                print("  - Context: \(context.debugDescription)")
+            case let .keyNotFound(key, context):
+                print("  - Key not found: \(key), at path: \(context.codingPath)")
+                print("  - Context: \(context.debugDescription)")
+            case let .dataCorrupted(context):
+                print("  - Data corrupted at path: \(context.codingPath)")
+                print("  - Context: \(context.debugDescription)")
+            @unknown default:
+                print("  - Unknown decoding error: \(decodingError)")
+            }
+            throw decodingError
+        } catch {
+            print("📱 Network Error: \(error)")
+            throw error
+        }
     }
 
     /// Fetches pending membership requests for a family
@@ -49,15 +84,16 @@ final class MembershipService {
 
     /// Requests membership to a family
     /// - Parameter familyId: The ID of the family to request membership for
-    /// - Returns: RequestMembershipResponse containing the created request
     /// - Throws: NetworkError if the request fails
-    func requestFamilyMembership(familyId: String) async throws -> RequestMembershipResponse {
+    func requestFamilyMembership(familyId: String) async throws {
         let request = RequestFamilyMembershipRequest(familyId: familyId)
-        let response: RequestMembershipResponse = try await networkManager.post(
+
+        // We don't need to parse the response, just check that the request succeeds (2xx status)
+        _ = try await networkManager.postRawData(
             endpoint: APIEndpoint.requestFamilyMembership(familyId: familyId).path,
             body: request
         )
-        print("📱 Requested membership for family: \(familyId)")
-        return response
+
+        print("📱 Successfully requested membership for family: \(familyId)")
     }
 }

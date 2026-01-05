@@ -6,6 +6,7 @@ struct MainTabView: View {
     @State private var notificationSession = NotificationSession.shared
     @State private var showProfile = false
     @State private var showNotifications = false
+    @State private var showSearch = false
 
     var body: some View {
         NavigationStack {
@@ -14,6 +15,7 @@ struct MainTabView: View {
                 CustomNavigationBar(
                     showProfile: $showProfile,
                     showNotifications: $showNotifications,
+                    showSearch: $showSearch,
                     unreadCount: notificationSession.unreadCount
                 )
 
@@ -27,6 +29,9 @@ struct MainTabView: View {
             .sheet(isPresented: $showNotifications) {
                 NotificationsView()
             }
+            .sheet(isPresented: $showSearch) {
+                FamilySearchView()
+            }
         }
         .task {
             // Load notifications when app starts to get unread count
@@ -39,6 +44,7 @@ struct CustomNavigationBar: View {
     @State private var userSession = UserSession.shared
     @Binding var showProfile: Bool
     @Binding var showNotifications: Bool
+    @Binding var showSearch: Bool
     let unreadCount: Int
 
     var body: some View {
@@ -52,6 +58,19 @@ struct CustomNavigationBar: View {
                 .font(.headline)
 
             Spacer()
+
+            // Search button
+            Button {
+                showSearch = true
+            } label: {
+                Circle()
+                    .fill(Color.blue.opacity(0.2))
+                    .frame(width: 36, height: 36)
+                    .overlay {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(.blue)
+                    }
+            }
 
             // Notifications button with badge
             Button {

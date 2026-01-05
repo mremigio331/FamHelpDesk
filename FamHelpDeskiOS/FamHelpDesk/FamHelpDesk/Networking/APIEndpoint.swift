@@ -47,11 +47,11 @@ enum APIEndpoint {
         case .createFamily:
             "/family"
         case let .getFamilyMembers(familyId):
-            "/family/\(familyId)/members"
+            "/membership/\(familyId)/members"
         case let .getFamilyMembershipRequests(familyId):
-            "/family/\(familyId)/membership-requests"
+            "/membership/\(familyId)/membership-requests"
         case let .requestFamilyMembership(familyId):
-            "/family/\(familyId)/request-membership"
+            "/membership/\(familyId)/request"
         case let .getAllGroups(familyId):
             "/group/\(familyId)"
         case .getMyGroups:
