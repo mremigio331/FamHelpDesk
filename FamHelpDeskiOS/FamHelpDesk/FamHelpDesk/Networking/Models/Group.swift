@@ -6,9 +6,24 @@ struct FamilyGroup: Codable, Identifiable {
     let groupName: String
     let groupDescription: String?
     let createdBy: String
-    let createdAt: String
+    let creationDate: TimeInterval
 
     var id: String { groupId }
+
+    var createdAt: String {
+        let date = Date(timeIntervalSince1970: creationDate)
+        let formatter = ISO8601DateFormatter()
+        return formatter.string(from: date)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case groupId = "group_id"
+        case familyId = "family_id"
+        case groupName = "group_name"
+        case groupDescription = "group_description"
+        case createdBy = "created_by"
+        case creationDate = "creation_date"
+    }
 }
 
 struct GroupMembership: Codable {
@@ -17,6 +32,14 @@ struct GroupMembership: Codable {
     let groupId: String
     let status: String
     let joinedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case familyId = "family_id"
+        case groupId = "group_id"
+        case status
+        case joinedAt = "joined_at"
+    }
 }
 
 struct MyGroupItem: Codable {
@@ -40,27 +63,4 @@ struct CreateGroupRequest: Codable {
 
 struct CreateGroupResponse: Codable {
     let group: FamilyGroup
-}
-
-// MARK: - Enhanced Group Models
-
-struct GroupMember: Codable, Identifiable {
-    let userId: String
-    let displayName: String
-    let email: String
-    let role: GroupRole
-    let joinedAt: String
-
-    var id: String { userId }
-}
-
-enum GroupRole: String, Codable {
-    case member = "MEMBER"
-    case admin = "ADMIN"
-}
-
-// MARK: - Additional Group Response Models
-
-struct GetGroupMembersResponse: Codable {
-    let members: [GroupMember]
 }

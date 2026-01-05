@@ -53,7 +53,7 @@ struct FamilyDetailView: View {
                         case .members:
                             FamilyMembersView(family: family)
                         case .groups:
-                            groupsContent
+                            FamilyGroupsView(family: family)
                         }
                     }
                     .tag(tab)
@@ -211,26 +211,6 @@ struct FamilyDetailView: View {
         }
     }
 
-    private var groupsContent: some View {
-        List {
-            Section("Groups") {
-                VStack(spacing: 12) {
-                    Image(systemName: "info.circle")
-                        .font(.largeTitle)
-                        .foregroundColor(.blue)
-                    Text("Coming Soon")
-                        .font(.headline)
-                    Text("Groups for this family will be displayed here.")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 20)
-            }
-        }
-    }
-
     private func formatDate(_ dateString: String) -> String {
         let formatter = ISO8601DateFormatter()
         guard let date = formatter.date(from: dateString) else {
@@ -242,32 +222,6 @@ struct FamilyDetailView: View {
         displayFormatter.timeStyle = .none
         return displayFormatter.string(from: date)
     }
-}
-
-#Preview {
-    NavigationStack {
-        FamilyDetailView(
-            family: Family(
-                familyId: "123",
-                familyName: "Smith Family",
-                familyDescription: "Our family group",
-                createdBy: "user123",
-                creationDate: Date().timeIntervalSince1970
-            )
-        )
-    }
-}
-
-private func formatDate(_ dateString: String) -> String {
-    let formatter = ISO8601DateFormatter()
-    guard let date = formatter.date(from: dateString) else {
-        return dateString
-    }
-
-    let displayFormatter = DateFormatter()
-    displayFormatter.dateStyle = .medium
-    displayFormatter.timeStyle = .none
-    return displayFormatter.string(from: date)
 }
 
 #Preview {

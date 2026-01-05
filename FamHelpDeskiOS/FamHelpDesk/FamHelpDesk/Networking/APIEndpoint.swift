@@ -18,7 +18,6 @@ enum APIEndpoint {
     case getAllGroups(familyId: String)
     case getMyGroups
     case createGroup
-    case getGroupMembers(groupId: String)
 
     // Notification endpoints
     case getNotifications
@@ -58,8 +57,6 @@ enum APIEndpoint {
             "/group/mine"
         case .createGroup:
             "/group"
-        case let .getGroupMembers(groupId):
-            "/group/\(groupId)/members"
         case .getNotifications:
             "/notifications"
         case let .acknowledgeNotification(notificationId):
