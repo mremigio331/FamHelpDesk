@@ -9,7 +9,6 @@ struct FamilyDetailView: View {
         case overview = "Overview"
         case members = "Members"
         case groups = "Groups"
-        case requests = "Requests"
 
         var systemImage: String {
             switch self {
@@ -19,8 +18,6 @@ struct FamilyDetailView: View {
                 "person.2"
             case .groups:
                 "rectangle.3.group"
-            case .requests:
-                "person.badge.plus"
             }
         }
     }
@@ -57,8 +54,6 @@ struct FamilyDetailView: View {
                             FamilyMembersView(family: family)
                         case .groups:
                             groupsContent
-                        case .requests:
-                            requestsContent
                         }
                     }
                     .tag(tab)
@@ -77,11 +72,6 @@ struct FamilyDetailView: View {
         if let familyItem, familyItem.membership.status == "MEMBER" {
             tabs.append(.members)
             tabs.append(.groups)
-
-            // Only show requests tab for admins
-            if familyItem.membership.isAdmin {
-                tabs.append(.requests)
-            }
         }
 
         return tabs
@@ -231,26 +221,6 @@ struct FamilyDetailView: View {
                     Text("Coming Soon")
                         .font(.headline)
                     Text("Groups for this family will be displayed here.")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 20)
-            }
-        }
-    }
-
-    private var requestsContent: some View {
-        List {
-            Section("Membership Requests") {
-                VStack(spacing: 12) {
-                    Image(systemName: "info.circle")
-                        .font(.largeTitle)
-                        .foregroundColor(.blue)
-                    Text("Coming Soon")
-                        .font(.headline)
-                    Text("Membership requests for this family will be displayed here.")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)

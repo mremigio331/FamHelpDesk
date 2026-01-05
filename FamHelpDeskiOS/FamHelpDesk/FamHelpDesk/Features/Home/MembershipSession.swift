@@ -72,25 +72,13 @@ final class MembershipSession {
     }
 
     @MainActor
-    func reviewRequest(_ requestId: String, action: MembershipAction) async throws {
+    func reviewRequest(familyId: String, userId: String, action: MembershipAction) async throws {
         do {
-            let response = try await membershipService.reviewMembershipRequest(requestId: requestId, action: action)
+            try await membershipService.reviewMembershipRequest(familyId: familyId, userId: userId, action: action)
 
-            // Update the request in our local state if successful
-            if response.success, let updatedRequest = response.updatedRequest {
-                // Find and update the request in the appropriate family's requests
-                for (familyId, requests) in membershipRequests {
-                    if let index = requests.firstIndex(where: { $0.requestId == requestId }) {
-                        var updatedRequests = requests
-                        updatedRequests[index] = updatedRequest
-                        membershipRequests[familyId] = updatedRequests
+            // Since the API call succeeded, invalidate the cache to force refresh on next fetch
+            membershipRequestsTimestamps[familyId] = Date().addingTimeInterval(-staleTimeInterval - 1)
 
-                        // Invalidate the timestamp to force refresh on next fetch
-                        membershipRequestsTimestamps[familyId] = Date().addingTimeInterval(-staleTimeInterval - 1)
-                        break
-                    }
-                }
-            }
         } catch {
             print("Error reviewing membership request: \(error)")
             throw error
