@@ -10,7 +10,8 @@ FAMILY_PATH = "/family"
 GROUP_TAG = "Group"
 GROUP_PATH = "/group"
 
-MEMBERSHIP_TAG = "Membership"
+GROUP_MEMBERSHIP_TAG = "Group Membership"
+FAMILY_MEMBERSHIP_TAG = "Family Membership"
 MEMBERSHIP_PATH = "/membership"
 
 NOTIFICATIONS_TAG = "Notifications"

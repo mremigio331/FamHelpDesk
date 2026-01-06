@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from aws_lambda_powertools import Logger
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from typing import Optional
 from exceptions.user_exceptions import (
     InvalidUserIdException,
@@ -10,8 +10,29 @@ from exceptions.user_exceptions import (
 )
 from decorators.exceptions_decorator import exceptions_decorator
 from helpers.user_profile_helper import UserProfileHelper
-from models.user_profile import UserProfile
+from models.user_profile import UserProfile, ProfileColorOptions
 from constants.services import API_SERVICE
+
+
+# Custom exceptions for validation
+class InvalidProfileColorException(Exception):
+    """Raised when an invalid profile color is provided."""
+
+    pass
+
+
+class InvalidDarkModeException(Exception):
+    """Raised when an invalid dark mode object is provided."""
+
+    pass
+
+
+# Pydantic model for dark mode validation
+class DarkModeOptionsRequest(BaseModel):
+    web: Optional[bool] = False
+    mobile: Optional[bool] = False
+    ios: Optional[bool] = False
+
 
 logger = Logger(service=API_SERVICE)
 router = APIRouter()
@@ -20,6 +41,8 @@ router = APIRouter()
 class UpdateUserProfileRequest(BaseModel):
     display_name: Optional[str] = None
     nick_name: Optional[str] = None
+    profile_color: Optional[str] = None
+    dark_mode: Optional[dict] = None
 
 
 @router.put(
@@ -35,8 +58,10 @@ def update_user_profile(request: Request, update_data: UpdateUserProfileRequest)
     Allows users to update their own profile information.
     Users can only update their own profiles.
 
-    Args:
-        update_data: The profile data to update (display_name, nick_name)
+        Returns:
+            A JSON response containing the updated user's profile information.
+        Args:
+            update_data: The profile data to update (display_name, nick_name, profile_color, dark_mode)
 
     Returns:
         A JSON response containing the updated user's profile information.
@@ -53,6 +78,16 @@ def update_user_profile(request: Request, update_data: UpdateUserProfileRequest)
 
     # Validate that at least one field is being updated
     update_dict = update_data.dict(exclude_unset=True)
+    if "profile_color" in update_dict:
+        try:
+            color_input = update_dict["profile_color"].strip().capitalize()
+            update_dict["profile_color"] = ProfileColorOptions[
+                color_input.upper()
+            ].value
+        except KeyError:
+            raise InvalidProfileColorException(
+                f"Invalid profile color: {update_dict['profile_color']}. Must be one of: {', '.join(ProfileColorOptions.__members__.keys())}"
+            )
     if not update_dict:
         logger.warning("No fields provided for update.")
         return JSONResponse(

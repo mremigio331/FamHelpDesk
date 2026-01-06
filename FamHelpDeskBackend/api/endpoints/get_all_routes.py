@@ -8,14 +8,17 @@ from api.endpoints.family import (
     update_family,
 )
 from api.endpoints.group import create_group, get_all_groups, get_my_groups
-from api.endpoints.membership import (
+from api.endpoints.membership.family_membership import (
     family_request_membership,
     family_review_membership,
+    get_family_membership_requests,
+    get_family_members,
+)
+from api.endpoints.membership.group_membership import (
     group_request_membership,
     group_review_membership,
-    get_family_membership_requests,
     get_group_membership_requests,
-    get_family_members,
+    get_group_members,
 )
 from api.endpoints.notifications import (
     get_notifications,
@@ -32,7 +35,8 @@ from constants.api import (
     FAMILY_PATH,
     GROUP_TAG,
     GROUP_PATH,
-    MEMBERSHIP_TAG,
+    GROUP_MEMBERSHIP_TAG,
+    FAMILY_MEMBERSHIP_TAG,
     MEMBERSHIP_PATH,
     NOTIFICATIONS_TAG,
     NOTIFICATIONS_PATH,
@@ -67,29 +71,40 @@ def get_all_routes(app: FastAPI) -> FastAPI:
     app.include_router(get_my_groups.router, prefix=GROUP_PATH, tags=[GROUP_TAG])
 
     app.include_router(
-        family_request_membership.router, prefix=MEMBERSHIP_PATH, tags=[MEMBERSHIP_TAG]
+        family_request_membership.router,
+        prefix=MEMBERSHIP_PATH,
+        tags=[FAMILY_MEMBERSHIP_TAG],
     )
     app.include_router(
-        family_review_membership.router, prefix=MEMBERSHIP_PATH, tags=[MEMBERSHIP_TAG]
+        family_review_membership.router,
+        prefix=MEMBERSHIP_PATH,
+        tags=[FAMILY_MEMBERSHIP_TAG],
     )
     app.include_router(
         get_family_membership_requests.router,
         prefix=MEMBERSHIP_PATH,
-        tags=[MEMBERSHIP_TAG],
+        tags=[FAMILY_MEMBERSHIP_TAG],
     )
     app.include_router(
-        get_family_members.router, prefix=MEMBERSHIP_PATH, tags=[MEMBERSHIP_TAG]
+        get_family_members.router, prefix=MEMBERSHIP_PATH, tags=[FAMILY_MEMBERSHIP_TAG]
     )
     app.include_router(
-        group_request_membership.router, prefix=MEMBERSHIP_PATH, tags=[MEMBERSHIP_TAG]
+        group_request_membership.router,
+        prefix=MEMBERSHIP_PATH,
+        tags=[GROUP_MEMBERSHIP_TAG],
     )
     app.include_router(
-        group_review_membership.router, prefix=MEMBERSHIP_PATH, tags=[MEMBERSHIP_TAG]
+        group_review_membership.router,
+        prefix=MEMBERSHIP_PATH,
+        tags=[GROUP_MEMBERSHIP_TAG],
     )
     app.include_router(
         get_group_membership_requests.router,
         prefix=MEMBERSHIP_PATH,
-        tags=[MEMBERSHIP_TAG],
+        tags=[GROUP_MEMBERSHIP_TAG],
+    )
+    app.include_router(
+        get_group_members.router, prefix=MEMBERSHIP_PATH, tags=[GROUP_MEMBERSHIP_TAG]
     )
 
     app.include_router(

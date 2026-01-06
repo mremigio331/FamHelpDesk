@@ -35,6 +35,21 @@ class UserProfileHelper:
             provider=provider,
             email=email,
         )
+        profile_color: str = (None,)
+        dark_mode: dict = (None,)
+        profile = UserProfile(
+            pk=UserProfile.create_pk(user_id),
+            sk=UserProfile.create_sk(),
+            user_id=user_id,
+            display_name=display_name,
+            nick_name=nick_name,
+            provider=provider,
+            email=email,
+            profile_color=(
+                profile_color if profile_color else UserProfile.profile_color.default
+            ),
+            dark_mode=dark_mode if dark_mode else UserProfile.dark_mode.default,
+        )
         profile.save()
         self.logger.info(f"Created user profile for {user_id}")
 
@@ -76,6 +91,10 @@ class UserProfileHelper:
         for key, value in kwargs.items():
             if hasattr(profile, key):
                 setattr(profile, key, value)
+            if key == "dark_mode" and value is not None:
+                # Accept dict for dark_mode
+                for mode_key, mode_value in value.items():
+                    setattr(profile.dark_mode, mode_key, mode_value)
         profile.save()
         self.logger.info(f"Updated user profile for {user_id}")
 

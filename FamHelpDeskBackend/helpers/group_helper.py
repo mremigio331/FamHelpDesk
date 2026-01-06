@@ -5,6 +5,7 @@ from aws_lambda_powertools import Logger
 from models.group import GroupModel
 from helpers.audit_helper import AuditHelper
 from helpers.queue_helper import QueueHelper
+from helpers.group_membership_helper import GroupMembershipHelper
 from models.audit import AuditActions, AuditEntityTypes
 
 
@@ -16,6 +17,7 @@ class GroupHelper:
         self.request_id = request_id
         self.audit_helper = AuditHelper(request_id=request_id)
         self.queue_helper = QueueHelper(request_id=request_id)
+        self.group_membership_helper = GroupMembershipHelper(request_id=request_id)
 
     def create_group(
         self,
@@ -63,6 +65,17 @@ class GroupHelper:
             queue_description="Default queue for general requests",
         )
         self.logger.info(f"Created default queue for group {group_id}")
+
+        # Add the creator as an admin member of the group
+        self.group_membership_helper.create_membership(
+            family_id=family_id,
+            group_id=group_id,
+            user_id=created_by,
+            is_admin=True,
+        )
+        self.logger.info(
+            f"Added creator {created_by} as admin member of group {group_id}"
+        )
 
         return group
 

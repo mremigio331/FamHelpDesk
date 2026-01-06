@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from aws_lambda_powertools import Logger
+from pydantic import BaseModel
 
 from constants.services import API_SERVICE
 from decorators.exceptions_decorator import exceptions_decorator
@@ -11,16 +12,23 @@ logger = Logger(service=API_SERVICE)
 router = APIRouter()
 
 
-@router.post(
-    "/{family_id}/group/{group_id}/request",
-    summary="Request membership to a group",
-    response_description="The created membership request",
+class ReviewMembershipRequest(BaseModel):
+    target_user_id: str
+    approve: bool
+
+
+@router.put(
+    "/{family_id}/{group_id}/review",
+    summary="Review a group membership request (admin only)",
+    response_description="The updated membership",
 )
 @exceptions_decorator
-def request_group_membership(request: Request, family_id: str, group_id: str):
+def review_group_membership(
+    request: Request, family_id: str, group_id: str, body: ReviewMembershipRequest
+):
     logger.append_keys(request_id=request.state.request_id)
     logger.info(
-        f"User requesting membership to group {group_id} in family {family_id}."
+        f"Admin reviewing membership request for user {body.target_user_id} in group {group_id}."
     )
 
     token_user_id = getattr(request.state, "user_token", None)
@@ -29,13 +37,17 @@ def request_group_membership(request: Request, family_id: str, group_id: str):
         raise InvalidUserIdException("Token User ID is required.")
 
     helper = GroupMembershipHelper(request_id=request.state.request_id)
-    membership = helper.create_membership_request(
+
+    # This will raise AdminPrivilegesRequired if user is not a group admin
+    membership = helper.review_membership_request(
         family_id=family_id,
         group_id=group_id,
-        user_id=token_user_id,
+        admin_user_id=token_user_id,
+        target_user_id=body.target_user_id,
+        approve=body.approve,
     )
 
     return JSONResponse(
         content={"membership": membership},
-        status_code=201,
+        status_code=200,
     )
