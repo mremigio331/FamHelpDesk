@@ -19,6 +19,10 @@ final class UserService {
         print("  - Display Name: \(response.userProfile.displayName)")
         print("  - Nickname: \(response.userProfile.nickName)")
         print("  - Email: \(response.userProfile.email)")
+        print("  - Profile Color: \(response.userProfile.profileColor)")
+        if let darkMode = response.userProfile.darkMode {
+            print("  - Dark Mode: Web=\(darkMode.web), Mobile=\(darkMode.mobile), iOS=\(darkMode.ios)")
+        }
         return response.userProfile
     }
 
@@ -26,22 +30,26 @@ final class UserService {
     /// - Parameters:
     ///   - displayName: Optional new display name
     ///   - nickName: Optional new nickname
+    ///   - profileColor: Optional new profile color
+    ///   - darkMode: Optional new dark mode settings
     /// - Returns: Updated UserProfile object
     /// - Throws: NetworkError if the request fails
-    func updateUserProfile(displayName: String?, nickName: String?) async throws -> UserProfile {
-        var body: [String: String] = [:]
-
-        if let displayName {
-            body["display_name"] = displayName
-        }
-
-        if let nickName {
-            body["nick_name"] = nickName
-        }
+    func updateUserProfile(
+        displayName: String? = nil,
+        nickName: String? = nil,
+        profileColor: String? = nil,
+        darkMode: DarkModeSettings? = nil
+    ) async throws -> UserProfile {
+        let request = UpdateUserProfileRequest(
+            displayName: displayName,
+            nickName: nickName,
+            profileColor: profileColor,
+            darkMode: darkMode
+        )
 
         let response: UserProfileResponse = try await networkManager.put(
             endpoint: APIEndpoint.updateProfile.path,
-            body: body
+            body: request
         )
 
         print("📱 Updated User Profile:")
@@ -49,7 +57,25 @@ final class UserService {
         print("  - Display Name: \(response.userProfile.displayName)")
         print("  - Nickname: \(response.userProfile.nickName)")
         print("  - Email: \(response.userProfile.email)")
+        print("  - Profile Color: \(response.userProfile.profileColor)")
+        if let darkMode = response.userProfile.darkMode {
+            print("  - Dark Mode: Web=\(darkMode.web), Mobile=\(darkMode.mobile), iOS=\(darkMode.ios)")
+        }
 
         return response.userProfile
+    }
+}
+
+struct UpdateUserProfileRequest: Codable {
+    let displayName: String?
+    let nickName: String?
+    let profileColor: String?
+    let darkMode: DarkModeSettings?
+
+    enum CodingKeys: String, CodingKey {
+        case displayName = "display_name"
+        case nickName = "nick_name"
+        case profileColor = "profile_color"
+        case darkMode = "dark_mode"
     }
 }

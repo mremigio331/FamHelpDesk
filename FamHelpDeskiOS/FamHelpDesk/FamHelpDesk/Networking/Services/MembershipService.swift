@@ -134,4 +134,53 @@ final class MembershipService {
 
         print("📱 Successfully requested membership for family: \(familyId)")
     }
+
+    /// Fetches all members of a group
+    /// - Parameters:
+    ///   - familyId: The ID of the family containing the group
+    ///   - groupId: The ID of the group
+    /// - Returns: Array of GroupMember objects
+    /// - Throws: NetworkError if the request fails
+    func getGroupMembers(familyId: String, groupId: String) async throws -> [GroupMember] {
+        do {
+            // First get the raw data to see what we're receiving
+            let rawData = try await networkManager.getRawData(
+                endpoint: APIEndpoint.getGroupMembers(familyId: familyId, groupId: groupId).path
+            )
+
+            // Print the raw response for debugging
+            if let rawString = String(data: rawData, encoding: .utf8) {
+                print("📱 Raw Group Members API Response: \(rawString)")
+            }
+
+            // Try to decode the response
+            let decoder = JSONDecoder()
+            let response = try decoder.decode(GetGroupMembersResponse.self, from: rawData)
+
+            print("📱 Group Members Response: \(response.members.count) members")
+            return response.members
+        } catch let decodingError as DecodingError {
+            print("📱 Group Members Decoding Error Details:")
+            switch decodingError {
+            case let .typeMismatch(type, context):
+                print("  - Type mismatch: Expected \(type), at path: \(context.codingPath)")
+                print("  - Context: \(context.debugDescription)")
+            case let .valueNotFound(type, context):
+                print("  - Value not found: \(type), at path: \(context.codingPath)")
+                print("  - Context: \(context.debugDescription)")
+            case let .keyNotFound(key, context):
+                print("  - Key not found: \(key), at path: \(context.codingPath)")
+                print("  - Context: \(context.debugDescription)")
+            case let .dataCorrupted(context):
+                print("  - Data corrupted at path: \(context.codingPath)")
+                print("  - Context: \(context.debugDescription)")
+            @unknown default:
+                print("  - Unknown decoding error: \(decodingError)")
+            }
+            throw decodingError
+        } catch {
+            print("📱 Network Error: \(error)")
+            throw error
+        }
+    }
 }

@@ -36,6 +36,17 @@ struct UserProfileDetailView: View {
                                 .lineLimit(1)
                                 .truncationMode(.middle)
                         }
+
+                        HStack {
+                            Text("Profile Color").foregroundColor(.secondary)
+                            Spacer()
+                            HStack(spacing: 8) {
+                                Circle()
+                                    .fill(colorFromString(user.profileColor))
+                                    .frame(width: 16, height: 16)
+                                Text(user.profileColor)
+                            }
+                        }
                     }
 
                     Section("Actions") {
@@ -158,6 +169,38 @@ struct UserProfileDetailView: View {
                     await userSession.refreshProfile()
                 }
             }
+        }
+    }
+
+    // Helper function to convert color string to SwiftUI Color
+    private func colorFromString(_ colorString: String) -> Color {
+        switch colorString.lowercased() {
+        case "black":
+            .black
+        case "white":
+            .white
+        case "red":
+            .red
+        case "blue":
+            .blue
+        case "green":
+            .green
+        case "yellow":
+            .yellow
+        case "orange":
+            .orange
+        case "purple":
+            .purple
+        case "pink":
+            .pink
+        case "brown":
+            .brown
+        case "gray":
+            .gray
+        case "cyan":
+            .cyan
+        default:
+            .black
         }
     }
 }

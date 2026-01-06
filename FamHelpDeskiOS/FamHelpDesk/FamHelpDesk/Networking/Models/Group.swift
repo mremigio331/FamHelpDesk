@@ -64,3 +64,34 @@ struct CreateGroupRequest: Codable {
 struct CreateGroupResponse: Codable {
     let group: FamilyGroup
 }
+
+// MARK: - Group Member Models
+
+struct GroupMember: Codable, Identifiable {
+    let familyId: String
+    let groupId: String
+    let userId: String
+    let status: String
+    let isAdmin: Bool
+    let requestDate: TimeInterval
+    let userDisplayName: String?
+    let userEmail: String?
+
+    var id: String { userId }
+
+    enum CodingKeys: String, CodingKey {
+        case familyId = "family_id"
+        case groupId = "group_id"
+        case userId = "user_id"
+        case status
+        case isAdmin = "is_admin"
+        case requestDate = "request_date"
+        case userDisplayName = "user_display_name"
+        case userEmail = "user_email"
+    }
+}
+
+struct GetGroupMembersResponse: Codable {
+    let members: [GroupMember]
+    let count: Int
+}

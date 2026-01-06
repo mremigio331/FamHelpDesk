@@ -47,6 +47,15 @@ struct CustomNavigationBar: View {
     @Binding var showSearch: Bool
     let unreadCount: Int
 
+    private var profileColor: Color {
+        guard let user = userSession.currentUser else { return .blue }
+        return ProfileColor(rawValue: user.profileColor)?.color ?? .blue
+    }
+
+    private var profileBackgroundColor: Color {
+        profileColor
+    }
+
     var body: some View {
         HStack(spacing: 12) {
             // Logo placeholder (you can replace with actual logo image)
@@ -104,13 +113,13 @@ struct CustomNavigationBar: View {
                 showProfile = true
             } label: {
                 Circle()
-                    .fill(Color.blue.opacity(0.2))
+                    .fill(profileBackgroundColor.opacity(0.2))
                     .frame(width: 36, height: 36)
                     .overlay {
                         if let user = userSession.currentUser {
                             Text(user.displayName.prefix(1).uppercased())
                                 .font(.headline)
-                                .foregroundColor(.blue)
+                                .foregroundColor(profileColor)
                         } else {
                             Image(systemName: "person.fill")
                                 .foregroundColor(.blue)

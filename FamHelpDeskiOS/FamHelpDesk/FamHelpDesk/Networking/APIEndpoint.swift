@@ -27,6 +27,7 @@ enum APIEndpoint {
 
     // Membership endpoints
     case reviewMembershipRequest(familyId: String)
+    case getGroupMembers(familyId: String, groupId: String)
 
     // Search endpoints
     case searchFamilies
@@ -67,6 +68,8 @@ enum APIEndpoint {
             "/notifications/unread"
         case let .reviewMembershipRequest(familyId):
             "/membership/\(familyId)/review"
+        case let .getGroupMembers(familyId, groupId):
+            "/membership/\(familyId)/\(groupId)/members"
         case .searchFamilies:
             "/family/search"
         }
