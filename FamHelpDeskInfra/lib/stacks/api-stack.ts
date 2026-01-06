@@ -15,7 +15,7 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
 import * as path from "path";
 import { addApiMonitoring } from "../monitoring/api-monitoring";
-import { famHelpDesk } from "../constants";
+import { famHelpDesk, UserPoolMappings } from "../constants";
 
 interface ApiStackProps extends StackProps {
   apiDomainName: string;
@@ -130,6 +130,7 @@ export class ApiStack extends Stack {
               : `https://famhelpdesk-${stage.toLowerCase()}.auth.us-west-2.amazoncognito.com`,
           STAGE: stage.toLowerCase(),
           API_DOMAIN_NAME: apiDomainName,
+          USER_POOL_MAPPINGS: JSON.stringify(UserPoolMappings),
         },
       },
     );
@@ -222,16 +223,15 @@ export class ApiStack extends Stack {
               user_id: "$context.authorizer.claims.sub",
               email: "$context.authorizer.claims.email",
               name: "$context.authorizer.claims.name",
+              client_id: "$context.authorizer.claims.aud",
               resourcePath: "$context.path",
               httpMethod: "$context.httpMethod",
               ip: "$context.identity.sourceIp",
+              userAgent: "$context.identity.userAgent",
               status: "$context.status",
               errorMessage: "$context.error.message",
               errorResponseType: "$context.error.responseType",
-              auth_raw: "$context.authorizer",
               xrayTraceId: "$context.xrayTraceId",
-              websiteVersion:
-                "$context.requestOverride.header.X-Git-Commit ?? 'unknown'",
             }),
           ),
           loggingLevel: apigw.MethodLoggingLevel.INFO,
