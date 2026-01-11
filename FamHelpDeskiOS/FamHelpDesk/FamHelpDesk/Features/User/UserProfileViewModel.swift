@@ -53,6 +53,8 @@ final class UserProfileViewModel {
             errorMessage = "Network request timed out"
         case .malformedResponse:
             errorMessage = "Received malformed response from server"
+        case .noConnection:
+            errorMessage = "No internet connection available"
         }
     }
 

@@ -1,6 +1,6 @@
 import Foundation
 
-struct FamilyGroup: Codable, Identifiable {
+struct FamilyGroup: Codable, Identifiable, Hashable {
     let groupId: String
     let familyId: String
     let groupName: String
@@ -23,6 +23,14 @@ struct FamilyGroup: Codable, Identifiable {
         case groupDescription = "group_description"
         case createdBy = "created_by"
         case creationDate = "creation_date"
+    }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(groupId)
+    }
+
+    static func == (lhs: FamilyGroup, rhs: FamilyGroup) -> Bool {
+        lhs.groupId == rhs.groupId
     }
 }
 
@@ -65,6 +73,20 @@ struct CreateGroupResponse: Codable {
     let group: FamilyGroup
 }
 
+struct UpdateGroupRequest: Codable {
+    let groupName: String?
+    let groupDescription: String?
+}
+
+struct UpdateGroupResponse: Codable {
+    let group: FamilyGroup
+}
+
+struct DeleteGroupResponse: Codable {
+    let success: Bool
+    let message: String
+}
+
 // MARK: - Group Member Models
 
 struct GroupMember: Codable, Identifiable {
@@ -93,5 +115,84 @@ struct GroupMember: Codable, Identifiable {
 
 struct GetGroupMembersResponse: Codable {
     let members: [GroupMember]
+    let count: Int
+}
+
+// MARK: - Group Membership Request/Response Models
+
+struct GroupMembershipRequest: Codable {
+    let familyId: String
+    let groupId: String
+}
+
+struct GroupMembershipResponse: Codable {
+    let success: Bool
+    let message: String
+}
+
+struct AddGroupMemberRequest: Codable {
+    let familyId: String
+    let groupId: String
+    let userId: String
+    let isAdmin: Bool
+}
+
+struct GroupMembershipRequestItem: Codable, Identifiable {
+    let familyId: String
+    let groupId: String
+    let userId: String
+    let status: String
+    let requestDate: TimeInterval
+    let userDisplayName: String?
+    let userEmail: String?
+
+    var id: String { userId }
+
+    enum CodingKeys: String, CodingKey {
+        case familyId = "family_id"
+        case groupId = "group_id"
+        case userId = "user_id"
+        case status
+        case requestDate = "request_date"
+        case userDisplayName = "user_display_name"
+        case userEmail = "user_email"
+    }
+}
+
+struct GetGroupMembershipRequestsResponse: Codable {
+    let requests: [GroupMembershipRequestItem]
+    let count: Int
+}
+
+struct UpdateGroupMemberRoleRequest: Codable {
+    let isAdmin: Bool
+}
+
+struct GroupMemberWithRole: Codable, Identifiable {
+    let familyId: String
+    let groupId: String
+    let userId: String
+    let status: String
+    let isAdmin: Bool
+    let joinedAt: String?
+    let userDisplayName: String?
+    let userEmail: String?
+
+    var id: String { userId }
+
+    enum CodingKeys: String, CodingKey {
+        case familyId = "family_id"
+        case groupId = "group_id"
+        case userId = "user_id"
+        case status
+        case isAdmin = "is_admin"
+        case joinedAt = "joined_at"
+        case userDisplayName = "user_display_name"
+        case userEmail = "user_email"
+    }
+}
+
+struct GetGroupMembersWithRolesResponse: Codable {
+    let members: [GroupMemberWithRole]
     let count: Int
 }

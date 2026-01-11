@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject var auth: AuthManager
     @State private var userSession = UserSession.shared
+    @State private var familySession = FamilySession.shared
     @State private var showCreateFamily = false
 
     var body: some View {
@@ -19,13 +20,22 @@ struct HomeView: View {
 
             MyFamiliesCard(showCreateFamily: $showCreateFamily)
         }
-        .navigationDestination(for: Family.self) { family in
-            FamilyDetailView(family: family)
+        .refreshable {
+            await refreshHomeData()
         }
         .sheet(isPresented: $showCreateFamily) {
             CreateFamilyView()
                 .presentationDetents([.medium, .large])
         }
+    }
+    
+    private func refreshHomeData() async {
+        // Refresh user profile and families data
+        async let userRefresh = userSession.refreshProfile()
+        async let familiesRefresh = familySession.refresh()
+        
+        await userRefresh
+        await familiesRefresh
     }
 }
 

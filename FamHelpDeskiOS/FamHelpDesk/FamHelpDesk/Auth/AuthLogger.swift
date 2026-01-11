@@ -150,6 +150,12 @@ final class AuthLogger {
 
         case let .retryAttempt(attempt, maxRetries, endpoint):
             logger.info("🔄 Retry attempt \(attempt)/\(maxRetries) for: \(endpoint)")
+            
+        case .connectionRestored:
+            logger.info("🌐 Network connection restored")
+            
+        case .connectionLost:
+            logger.warning("⚠️ Network connection lost")
         }
     }
 
@@ -421,6 +427,13 @@ final class AuthLogger {
                     description: "Malformed response",
                     recoverable: true
                 )
+            case .noConnection:
+                return ClassifiedError(
+                    category: .network,
+                    severity: .moderate,
+                    description: "No network connection",
+                    recoverable: true
+                )
             }
         }
 
@@ -506,6 +519,8 @@ enum NetworkEvent {
     case authHeaderMissing(reason: String)
     case unauthorizedResponse(endpoint: String)
     case retryAttempt(attempt: Int, maxRetries: Int, endpoint: String)
+    case connectionRestored
+    case connectionLost
 }
 
 enum RecoveryEvent {

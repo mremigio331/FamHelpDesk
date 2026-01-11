@@ -3,7 +3,7 @@ import SwiftUI
 struct FamilyDetailView: View {
     let family: Family
     @State private var familySession = FamilySession.shared
-    @State private var selectedTab: Tab = .overview
+    @State private var navigationContext = NavigationContext.shared
 
     enum Tab: String, CaseIterable {
         case overview = "Overview"
@@ -29,11 +29,19 @@ struct FamilyDetailView: View {
     private var isAdmin: Bool {
         familyItem?.membership.isAdmin ?? false
     }
+    
+    private var selectedTab: Tab {
+        get { navigationContext.selectedFamilyTab }
+        set { navigationContext.selectedFamilyTab = newValue }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             // Tab Picker
-            Picker("Tab", selection: $selectedTab) {
+            Picker("Tab", selection: Binding(
+                get: { selectedTab },
+                set: { navigationContext.selectedFamilyTab = $0 }
+            )) {
                 ForEach(availableTabs, id: \.self) { tab in
                     Label(tab.rawValue, systemImage: tab.systemImage)
                         .tag(tab)
@@ -44,7 +52,10 @@ struct FamilyDetailView: View {
             .padding(.top, 8)
 
             // Tab Content
-            TabView(selection: $selectedTab) {
+            TabView(selection: Binding(
+                get: { selectedTab },
+                set: { navigationContext.selectedFamilyTab = $0 }
+            )) {
                 ForEach(availableTabs, id: \.self) { tab in
                     Group {
                         switch tab {
@@ -63,6 +74,10 @@ struct FamilyDetailView: View {
         }
         .navigationTitle(family.familyName)
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            // Update navigation context when this view appears
+            navigationContext.selectedFamily = family
+        }
     }
 
     private var availableTabs: [Tab] {
@@ -209,6 +224,14 @@ struct FamilyDetailView: View {
                 .padding(.vertical, 8)
             }
         }
+        .refreshable {
+            await refreshFamilyData()
+        }
+    }
+    
+    private func refreshFamilyData() async {
+        // Refresh family session to update membership status
+        await familySession.refresh()
     }
 
     private func formatDate(_ dateString: String) -> String {

@@ -103,6 +103,8 @@ final class UserSession {
             "Network request timed out"
         case .malformedResponse:
             "Received malformed response from server"
+        case .noConnection:
+            "No internet connection available"
         }
     }
 }

@@ -17,7 +17,6 @@ final class UserService {
         print("📱 User Profile Response:")
         print("  - User ID: \(response.userProfile.userId)")
         print("  - Display Name: \(response.userProfile.displayName)")
-        print("  - Nickname: \(response.userProfile.nickName)")
         print("  - Email: \(response.userProfile.email)")
         print("  - Profile Color: \(response.userProfile.profileColor)")
         if let darkMode = response.userProfile.darkMode {
@@ -29,20 +28,17 @@ final class UserService {
     /// Updates the current user's profile
     /// - Parameters:
     ///   - displayName: Optional new display name
-    ///   - nickName: Optional new nickname
     ///   - profileColor: Optional new profile color
     ///   - darkMode: Optional new dark mode settings
     /// - Returns: Updated UserProfile object
     /// - Throws: NetworkError if the request fails
     func updateUserProfile(
         displayName: String? = nil,
-        nickName: String? = nil,
         profileColor: String? = nil,
         darkMode: DarkModeSettings? = nil
     ) async throws -> UserProfile {
         let request = UpdateUserProfileRequest(
             displayName: displayName,
-            nickName: nickName,
             profileColor: profileColor,
             darkMode: darkMode
         )
@@ -55,7 +51,6 @@ final class UserService {
         print("📱 Updated User Profile:")
         print("  - User ID: \(response.userProfile.userId)")
         print("  - Display Name: \(response.userProfile.displayName)")
-        print("  - Nickname: \(response.userProfile.nickName)")
         print("  - Email: \(response.userProfile.email)")
         print("  - Profile Color: \(response.userProfile.profileColor)")
         if let darkMode = response.userProfile.darkMode {
@@ -68,13 +63,11 @@ final class UserService {
 
 struct UpdateUserProfileRequest: Codable {
     let displayName: String?
-    let nickName: String?
     let profileColor: String?
     let darkMode: DarkModeSettings?
 
     enum CodingKeys: String, CodingKey {
         case displayName = "display_name"
-        case nickName = "nick_name"
         case profileColor = "profile_color"
         case darkMode = "dark_mode"
     }

@@ -26,7 +26,7 @@ struct FamilySearchView: View {
                 } else if families.isEmpty {
                     InitialSearchView()
                 } else {
-                    FamilySearchResultsList(families: families)
+                    FamilySearchResultsList(families: families, onRefresh: refreshSearchData)
                 }
 
                 Spacer()
@@ -90,6 +90,16 @@ struct FamilySearchView: View {
         }
         isLoading = false
     }
+    
+    @MainActor
+    private func refreshSearchData() async {
+        // Refresh both search results and family membership data
+        if searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            await loadAllFamilies()
+        } else {
+            await searchFamilies()
+        }
+    }
 }
 
 struct SearchBar: View {
@@ -136,6 +146,7 @@ struct SearchBar: View {
 struct FamilySearchResultsList: View {
     let families: [Family]
     @State private var familySession = FamilySession.shared
+    let onRefresh: () async -> Void
 
     var body: some View {
         List(families) { family in
@@ -143,6 +154,9 @@ struct FamilySearchResultsList: View {
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
         }
         .listStyle(PlainListStyle())
+        .refreshable {
+            await onRefresh()
+        }
     }
 }
 
@@ -242,7 +256,9 @@ struct FamilySearchItem: View {
             switch status {
             case "MEMBER":
                 // Already a member - show view button
-                NavigationLink(destination: FamilyDetailView(family: family)) {
+                Button(action: {
+                    NavigationContext.shared.navigateToFamily(family)
+                }) {
                     Text("View")
                         .font(.caption)
                         .fontWeight(.medium)

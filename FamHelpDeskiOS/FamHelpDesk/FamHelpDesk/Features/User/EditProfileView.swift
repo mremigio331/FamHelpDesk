@@ -4,7 +4,6 @@ struct EditProfileView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var userSession = UserSession.shared
     @State private var displayName: String
-    @State private var nickName: String
     @State private var selectedProfileColor: ProfileColor
     @State private var isUpdating = false
     @State private var errorMessage: String?
@@ -14,7 +13,6 @@ struct EditProfileView: View {
 
     init(currentProfile: UserProfile) {
         _displayName = State(initialValue: currentProfile.displayName)
-        _nickName = State(initialValue: currentProfile.nickName)
         _selectedProfileColor = State(initialValue: ProfileColor(rawValue: currentProfile.profileColor) ?? .black)
     }
 
@@ -27,15 +25,6 @@ struct EditProfileView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                         TextField("Display Name", text: $displayName)
-                            .textFieldStyle(.plain)
-                            .disabled(isUpdating)
-                    }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Nickname")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        TextField("Nickname", text: $nickName)
                             .textFieldStyle(.plain)
                             .disabled(isUpdating)
                     }
@@ -113,12 +102,9 @@ struct EditProfileView: View {
 
     private var isFormValid: Bool {
         let trimmedDisplayName = displayName.trimmingCharacters(in: .whitespaces)
-        let trimmedNickName = nickName.trimmingCharacters(in: .whitespaces)
 
         return !trimmedDisplayName.isEmpty &&
-            !trimmedNickName.isEmpty &&
-            trimmedDisplayName.count <= 100 &&
-            trimmedNickName.count <= 50
+            trimmedDisplayName.count <= 100
     }
 
     @MainActor
@@ -127,7 +113,6 @@ struct EditProfileView: View {
         errorMessage = nil
 
         let trimmedDisplayName = displayName.trimmingCharacters(in: .whitespaces)
-        let trimmedNickName = nickName.trimmingCharacters(in: .whitespaces)
 
         // Validate input lengths
         if trimmedDisplayName.count > 100 {
@@ -136,16 +121,9 @@ struct EditProfileView: View {
             return
         }
 
-        if trimmedNickName.count > 50 {
-            errorMessage = "Nickname must be less than 50 characters"
-            isUpdating = false
-            return
-        }
-
         do {
             let updatedProfile = try await userService.updateUserProfile(
                 displayName: trimmedDisplayName,
-                nickName: trimmedNickName,
                 profileColor: selectedProfileColor.rawValue,
                 darkMode: nil
             )
@@ -181,6 +159,8 @@ struct EditProfileView: View {
                     errorMessage = "Request timed out"
                 case .malformedResponse:
                     errorMessage = "Malformed server response"
+                case .noConnection:
+                    errorMessage = "No internet connection"
                 }
             } else {
                 errorMessage = "Failed to update profile: \(error.localizedDescription)"
@@ -236,7 +216,6 @@ struct ColorPickerView: View {
     EditProfileView(currentProfile: UserProfile(
         userId: "123",
         displayName: "John Doe",
-        nickName: "johnd",
         email: "john@example.com",
         profileColor: "Blue",
         darkMode: DarkModeSettings(web: false, mobile: true, ios: false)

@@ -51,7 +51,6 @@ struct DarkModeSettings: Codable {
 struct UserProfile: Codable, Identifiable {
     let userId: String
     let displayName: String
-    let nickName: String
     let email: String
     let profileColor: String
     let darkMode: DarkModeSettings?

@@ -46,9 +46,12 @@ struct FamilyGroupsView: View {
                 // Groups list
                 Section("Groups (\(groups.count))") {
                     ForEach(groups) { group in
-                        NavigationLink(destination: GroupDetailView(group: group)) {
+                        Button(action: {
+                            NavigationContext.shared.navigateToGroup(group)
+                        }) {
                             GroupRowView(group: group)
                         }
+                        .buttonStyle(.plain)
                     }
                 }
             }

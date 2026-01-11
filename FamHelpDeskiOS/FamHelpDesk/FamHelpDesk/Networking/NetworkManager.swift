@@ -1,6 +1,7 @@
 import Amplify
 import AWSCognitoAuthPlugin
 import Foundation
+import Network
 
 enum NetworkError: Error {
     case invalidURL
@@ -13,6 +14,7 @@ enum NetworkError: Error {
     case authenticationFailure(Error)
     case networkTimeout
     case malformedResponse
+    case noConnection
 }
 
 final class NetworkManager {
@@ -22,12 +24,45 @@ final class NetworkManager {
     private var accessToken: String?
     var environment: APIEnvironment = .current
     private let logger = AuthLogger.shared
+    private let retryHelper = RetryHelper()
+    
+    // Network monitoring
+    private let networkMonitor = NWPathMonitor()
+    private let networkQueue = DispatchQueue(label: "NetworkMonitor")
+    private var isConnected = true
 
     private init() {
         let configuration = URLSessionConfiguration.default
         configuration.timeoutIntervalForRequest = 30
         configuration.timeoutIntervalForResource = 60
         session = URLSession(configuration: configuration)
+        
+        // Start network monitoring
+        startNetworkMonitoring()
+    }
+    
+    deinit {
+        networkMonitor.cancel()
+    }
+    
+    // MARK: - Network Monitoring
+    
+    private func startNetworkMonitoring() {
+        networkMonitor.pathUpdateHandler = { [weak self] path in
+            DispatchQueue.main.async {
+                self?.isConnected = path.status == .satisfied
+                if path.status == .satisfied {
+                    self?.logger.logNetworkOperation(.connectionRestored)
+                } else {
+                    self?.logger.logNetworkOperation(.connectionLost)
+                }
+            }
+        }
+        networkMonitor.start(queue: networkQueue)
+    }
+    
+    var hasNetworkConnection: Bool {
+        return isConnected
     }
 
     func setAccessToken(_ token: String) {
@@ -132,6 +167,12 @@ final class NetworkManager {
     }
 
     func get<T: Decodable>(endpoint: String, queryItems: [URLQueryItem]? = nil) async throws -> T {
+        // Check network connection first
+        guard hasNetworkConnection else {
+            logger.logNetworkOperation(.requestFailure(method: "GET", endpoint: endpoint, error: NetworkError.noConnection))
+            throw NetworkError.noConnection
+        }
+        
         guard let url = buildURL(endpoint: endpoint, queryItems: queryItems) else {
             logger.logNetworkOperation(.requestFailure(method: "GET", endpoint: endpoint, error: NetworkError.invalidURL))
             throw NetworkError.invalidURL
@@ -143,6 +184,12 @@ final class NetworkManager {
     }
 
     func getRawData(endpoint: String, queryItems: [URLQueryItem]? = nil) async throws -> Data {
+        // Check network connection first
+        guard hasNetworkConnection else {
+            logger.logNetworkOperation(.requestFailure(method: "GET", endpoint: endpoint, error: NetworkError.noConnection))
+            throw NetworkError.noConnection
+        }
+        
         guard let url = buildURL(endpoint: endpoint, queryItems: queryItems) else {
             logger.logNetworkOperation(.requestFailure(method: "GET", endpoint: endpoint, error: NetworkError.invalidURL))
             throw NetworkError.invalidURL
@@ -160,6 +207,12 @@ final class NetworkManager {
     }
 
     func post<T: Decodable>(endpoint: String, body: Encodable) async throws -> T {
+        // Check network connection first
+        guard hasNetworkConnection else {
+            logger.logNetworkOperation(.requestFailure(method: "POST", endpoint: endpoint, error: NetworkError.noConnection))
+            throw NetworkError.noConnection
+        }
+        
         guard let url = buildURL(endpoint: endpoint) else {
             logger.logNetworkOperation(.requestFailure(method: "POST", endpoint: endpoint, error: NetworkError.invalidURL))
             throw NetworkError.invalidURL
@@ -171,6 +224,12 @@ final class NetworkManager {
     }
 
     func postRawData(endpoint: String, body: Encodable) async throws -> Data {
+        // Check network connection first
+        guard hasNetworkConnection else {
+            logger.logNetworkOperation(.requestFailure(method: "POST", endpoint: endpoint, error: NetworkError.noConnection))
+            throw NetworkError.noConnection
+        }
+        
         guard let url = buildURL(endpoint: endpoint) else {
             logger.logNetworkOperation(.requestFailure(method: "POST", endpoint: endpoint, error: NetworkError.invalidURL))
             throw NetworkError.invalidURL
@@ -194,6 +253,12 @@ final class NetworkManager {
     }
 
     func put<T: Decodable>(endpoint: String, body: Encodable) async throws -> T {
+        // Check network connection first
+        guard hasNetworkConnection else {
+            logger.logNetworkOperation(.requestFailure(method: "PUT", endpoint: endpoint, error: NetworkError.noConnection))
+            throw NetworkError.noConnection
+        }
+        
         guard let url = buildURL(endpoint: endpoint) else {
             logger.logNetworkOperation(.requestFailure(method: "PUT", endpoint: endpoint, error: NetworkError.invalidURL))
             throw NetworkError.invalidURL
@@ -205,6 +270,12 @@ final class NetworkManager {
     }
 
     func putRawData(endpoint: String, body: Encodable) async throws -> Data {
+        // Check network connection first
+        guard hasNetworkConnection else {
+            logger.logNetworkOperation(.requestFailure(method: "PUT", endpoint: endpoint, error: NetworkError.noConnection))
+            throw NetworkError.noConnection
+        }
+        
         guard let url = buildURL(endpoint: endpoint) else {
             logger.logNetworkOperation(.requestFailure(method: "PUT", endpoint: endpoint, error: NetworkError.invalidURL))
             throw NetworkError.invalidURL
@@ -227,22 +298,62 @@ final class NetworkManager {
         return data
     }
 
+    func delete<T: Decodable>(endpoint: String) async throws -> T {
+        // Check network connection first
+        guard hasNetworkConnection else {
+            logger.logNetworkOperation(.requestFailure(method: "DELETE", endpoint: endpoint, error: NetworkError.noConnection))
+            throw NetworkError.noConnection
+        }
+        
+        guard let url = buildURL(endpoint: endpoint) else {
+            logger.logNetworkOperation(.requestFailure(method: "DELETE", endpoint: endpoint, error: NetworkError.invalidURL))
+            throw NetworkError.invalidURL
+        }
+
+        logger.logNetworkOperation(.requestStarted(method: "DELETE", endpoint: endpoint, hasAuth: accessToken != nil))
+
+        return try await performRequestWithRetry(url: url, method: "DELETE", body: nil)
+    }
+
+    func deleteRawData(endpoint: String) async throws -> Data {
+        // Check network connection first
+        guard hasNetworkConnection else {
+            logger.logNetworkOperation(.requestFailure(method: "DELETE", endpoint: endpoint, error: NetworkError.noConnection))
+            throw NetworkError.noConnection
+        }
+        
+        guard let url = buildURL(endpoint: endpoint) else {
+            logger.logNetworkOperation(.requestFailure(method: "DELETE", endpoint: endpoint, error: NetworkError.invalidURL))
+            throw NetworkError.invalidURL
+        }
+
+        logger.logNetworkOperation(.requestStarted(method: "DELETE", endpoint: endpoint, hasAuth: accessToken != nil))
+
+        var request = try await createRequest(url: url, method: "DELETE")
+        let (data, response) = try await session.data(for: request)
+
+        // Validate response
+        try await validateResponseWithRetry(response: response, data: data, url: url, method: "DELETE", body: nil, retryCount: 0)
+
+        return data
+    }
+
     // MARK: - Request Execution with 401 Retry Logic
 
-    /// Perform request with automatic 401 response handling and token refresh retry
+    /// Perform request with enhanced retry logic for multiple error types
     private func performRequestWithRetry<T: Decodable>(
         url: URL,
         method: String,
         body: Encodable?,
         retryCount: Int = 0
     ) async throws -> T {
-        let maxRetries = 1 // Only retry once for 401 errors
+        let maxRetries = 3 // Increased from 1 to 3 for better resilience
 
         do {
             var request = try await createRequest(url: url, method: method)
 
             // Add body for POST/PUT requests
-            if let body {
+            if let body, method != "DELETE" {
                 let encoder = JSONEncoder()
                 encoder.keyEncodingStrategy = .convertToSnakeCase
                 request.httpBody = try encoder.encode(body)
@@ -250,7 +361,7 @@ final class NetworkManager {
 
             let (data, response) = try await session.data(for: request)
 
-            // Validate response and handle 401 with retry
+            // Validate response and handle retryable errors
             try await validateResponseWithRetry(response: response, data: data, url: url, method: method, body: body, retryCount: retryCount)
 
             // Decode successful response
@@ -263,17 +374,44 @@ final class NetworkManager {
                 throw NetworkError.decodingError
             }
 
-        } catch NetworkError.unauthorized where retryCount < maxRetries {
-            // Handle 401 response with token refresh retry
-            logger.logNetworkOperation(.unauthorizedResponse(endpoint: url.absoluteString))
+        } catch let networkError as NetworkError where networkError.canRetry && retryCount < maxRetries {
+            // Enhanced retry logic for multiple error types
             logger.logNetworkOperation(.retryAttempt(attempt: retryCount + 1, maxRetries: maxRetries, endpoint: url.absoluteString))
 
+            // Calculate exponential backoff delay
+            let baseDelay = networkError.retryDelay
+            let backoffDelay = baseDelay * pow(2.0, Double(retryCount))
+            let jitteredDelay = backoffDelay + Double.random(in: 0...0.5) // Add jitter to prevent thundering herd
+            
             do {
-                // Clear any cached tokens and force refresh
-                await AuthSessionManager.shared.clearTokens()
-
-                // Wait a moment before retry
-                try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                // Handle specific error types before retry
+                switch networkError {
+                case .unauthorized:
+                    // Clear any cached tokens and force refresh
+                    await AuthSessionManager.shared.clearTokens()
+                case .networkTimeout, .noConnection:
+                    // Check if connection is restored before retry
+                    if !hasNetworkConnection {
+                        // Wait for connection to be restored or timeout
+                        let connectionTimeout = 10.0 // 10 seconds
+                        let startTime = Date()
+                        while !hasNetworkConnection && Date().timeIntervalSince(startTime) < connectionTimeout {
+                            try await Task.sleep(nanoseconds: 500_000_000) // Check every 0.5 seconds
+                        }
+                        
+                        if !hasNetworkConnection {
+                            throw NetworkError.noConnection
+                        }
+                    }
+                case .serverError(let statusCode, _) where statusCode >= 500:
+                    // Server errors - use exponential backoff
+                    break
+                default:
+                    break
+                }
+                
+                // Wait before retry
+                try await Task.sleep(nanoseconds: UInt64(jitteredDelay * 1_000_000_000))
 
                 // Retry the request
                 return try await performRequestWithRetry(url: url, method: method, body: body, retryCount: retryCount + 1)
@@ -311,6 +449,13 @@ final class NetworkManager {
         case 408, 504:
             logger.logNetworkOperation(.requestFailure(method: method, endpoint: url.absoluteString, error: NetworkError.networkTimeout))
             throw NetworkError.networkTimeout
+        case 502, 503, 504:
+            // Additional server errors that should be retried
+            let errorMessage = parseErrorResponse(data: data)
+            let message = errorMessage ?? "Server temporarily unavailable"
+            let serverError = NetworkError.serverError(statusCode: httpResponse.statusCode, message: message)
+            logger.logNetworkOperation(.requestFailure(method: method, endpoint: url.absoluteString, error: serverError))
+            throw serverError
         default:
             // Implement structured error handling for different failure types
             let errorMessage = parseErrorResponse(data: data)

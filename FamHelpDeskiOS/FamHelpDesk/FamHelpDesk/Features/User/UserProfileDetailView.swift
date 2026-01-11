@@ -24,12 +24,6 @@ struct UserProfileDetailView: View {
                         }
 
                         HStack {
-                            Text("Nickname").foregroundColor(.secondary)
-                            Spacer()
-                            Text(user.nickName)
-                        }
-
-                        HStack {
                             Text("Email").foregroundColor(.secondary)
                             Spacer()
                             Text(user.email)
@@ -148,6 +142,9 @@ struct UserProfileDetailView: View {
                             .font(.caption)
                     }
                 }
+            }
+            .refreshable {
+                await userSession.refreshProfile()
             }
             .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.inline)

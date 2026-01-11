@@ -4,12 +4,13 @@ struct MainTabView: View {
     @EnvironmentObject var auth: AuthManager
     @State private var userSession = UserSession.shared
     @State private var notificationSession = NotificationSession.shared
+    @State private var navigationContext = NavigationContext.shared
     @State private var showProfile = false
     @State private var showNotifications = false
     @State private var showSearch = false
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationContext.navigationPath) {
             VStack(spacing: 0) {
                 // Custom Top Bar
                 CustomNavigationBar(
@@ -23,19 +24,52 @@ struct MainTabView: View {
                 HomeView()
             }
             .navigationBarHidden(true)
+            .navigationDestination(for: Family.self) { family in
+                FamilyDetailView(family: family)
+            }
+            .navigationDestination(for: FamilyGroup.self) { group in
+                GroupDetailView(group: group)
+            }
             .sheet(isPresented: $showProfile) {
                 UserProfileDetailView()
+                    .onAppear {
+                        navigationContext.navigateToProfile()
+                    }
             }
             .sheet(isPresented: $showNotifications) {
                 NotificationsView()
+                    .onAppear {
+                        navigationContext.navigateToNotifications()
+                    }
             }
             .sheet(isPresented: $showSearch) {
                 FamilySearchView()
+                    .onAppear {
+                        navigationContext.navigateToSearch()
+                    }
             }
         }
         .task {
             // Load notifications when app starts to get unread count
             await notificationSession.fetchNotifications(refresh: true)
+            
+            // Mark navigation context as ready for deep links
+            navigationContext.setReadyForDeepLinks()
+            
+            // Restore navigation state
+            navigationContext.restoreNavigationState()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+            // Save navigation state when app goes to background
+            navigationContext.saveNavigationState()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            // Mark as ready for deep links when app becomes active
+            navigationContext.setReadyForDeepLinks()
+        }
+        .onOpenURL { url in
+            // Handle deep links
+            navigationContext.processDeepLink(url)
         }
     }
 }

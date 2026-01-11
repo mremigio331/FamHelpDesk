@@ -52,15 +52,18 @@ struct UserProfileView: View {
 
 struct ProfileContentView: View {
     let profile: UserProfile
+    @Environment(UserSession.self) private var userSession
 
     var body: some View {
         List {
             Section("User Information") {
                 LabeledRow(label: "Display Name", value: profile.displayName)
-                LabeledRow(label: "Nickname", value: profile.nickName)
                 LabeledRow(label: "Email", value: profile.email)
                 LabeledRow(label: "User ID", value: profile.userId)
             }
+        }
+        .refreshable {
+            await userSession.refreshProfile()
         }
     }
 }

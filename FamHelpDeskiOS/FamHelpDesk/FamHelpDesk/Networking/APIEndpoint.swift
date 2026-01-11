@@ -18,6 +18,8 @@ enum APIEndpoint {
     case getAllGroups(familyId: String)
     case getMyGroups
     case createGroup
+    case updateGroup(groupId: String)
+    case deleteGroup(groupId: String)
 
     // Notification endpoints
     case getNotifications
@@ -28,6 +30,12 @@ enum APIEndpoint {
     // Membership endpoints
     case reviewMembershipRequest(familyId: String)
     case getGroupMembers(familyId: String, groupId: String)
+    case requestGroupMembership(familyId: String, groupId: String)
+    case addGroupMember(familyId: String, groupId: String)
+    case removeGroupMember(familyId: String, groupId: String, userId: String)
+    case getGroupMembershipRequests(familyId: String, groupId: String)
+    case updateGroupMemberRole(familyId: String, groupId: String, userId: String)
+    case getGroupMembersWithRoles(familyId: String, groupId: String)
 
     // Search endpoints
     case searchFamilies
@@ -58,6 +66,10 @@ enum APIEndpoint {
             "/group/mine"
         case .createGroup:
             "/group"
+        case let .updateGroup(groupId):
+            "/group/\(groupId)"
+        case let .deleteGroup(groupId):
+            "/group/\(groupId)"
         case .getNotifications:
             "/notifications"
         case let .acknowledgeNotification(notificationId):
@@ -70,6 +82,18 @@ enum APIEndpoint {
             "/membership/\(familyId)/review"
         case let .getGroupMembers(familyId, groupId):
             "/membership/\(familyId)/\(groupId)/members"
+        case let .requestGroupMembership(familyId, groupId):
+            "/membership/\(familyId)/\(groupId)/request"
+        case let .addGroupMember(familyId, groupId):
+            "/membership/\(familyId)/\(groupId)/add"
+        case let .removeGroupMember(familyId, groupId, userId):
+            "/membership/\(familyId)/\(groupId)/remove/\(userId)"
+        case let .getGroupMembershipRequests(familyId, groupId):
+            "/membership/\(familyId)/\(groupId)/requests"
+        case let .updateGroupMemberRole(familyId, groupId, userId):
+            "/membership/\(familyId)/\(groupId)/role/\(userId)"
+        case let .getGroupMembersWithRoles(familyId, groupId):
+            "/membership/\(familyId)/\(groupId)/members-with-roles"
         case .searchFamilies:
             "/family/search"
         }

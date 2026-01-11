@@ -2,6 +2,7 @@ import SwiftUI
 
 struct GroupDetailView: View {
     let group: FamilyGroup
+    @State private var navigationContext = NavigationContext.shared
 
     @State private var members: [GroupMember] = []
     @State private var isLoadingMembers = false
@@ -107,8 +108,15 @@ struct GroupDetailView: View {
         }
         .navigationTitle(group.groupName)
         .navigationBarTitleDisplayMode(.inline)
+        .refreshable {
+            await loadGroupMembers()
+        }
         .task {
             await loadGroupMembers()
+        }
+        .onAppear {
+            // Update navigation context when this view appears
+            navigationContext.selectedGroup = group
         }
     }
 

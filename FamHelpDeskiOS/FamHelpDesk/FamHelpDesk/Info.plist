@@ -4,5 +4,16 @@
 <dict>
 	<key>NSAppTransportSecurity</key>
 	<dict/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.famhelpdesk.deeplink</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>famhelpdesk</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
