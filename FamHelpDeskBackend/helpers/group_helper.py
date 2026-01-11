@@ -7,6 +7,7 @@ from helpers.audit_helper import AuditHelper
 from helpers.queue_helper import QueueHelper
 from helpers.group_membership_helper import GroupMembershipHelper
 from models.audit import AuditActions, AuditEntityTypes
+from exceptions.group_exceptions import GroupNotFound
 
 
 class GroupHelper:
@@ -112,7 +113,7 @@ class GroupHelper:
     ) -> GroupModel:
         group = self.get_group(family_id, group_id)
         if not group:
-            raise ValueError("Group does not exist")
+            raise GroupNotFound(f"Group {group_id} not found in family {family_id}")
 
         # Capture old state for auditing
         old_group_data = GroupModel.clean_returned_group(group)
@@ -148,7 +149,7 @@ class GroupHelper:
     ) -> bool:
         group = self.get_group(family_id, group_id)
         if not group:
-            raise ValueError("Group does not exist")
+            raise GroupNotFound(f"Group {group_id} not found in family {family_id}")
 
         # Delete all queues in the group first
         try:

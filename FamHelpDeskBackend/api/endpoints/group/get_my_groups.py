@@ -8,6 +8,7 @@ from decorators.exceptions_decorator import exceptions_decorator
 from exceptions.user_exceptions import InvalidUserIdException
 from helpers.group_helper import GroupHelper
 from helpers.group_membership_helper import GroupMembershipHelper
+from helpers.group_validation_helper import GroupValidationHelper
 from models.group import GroupModel
 from models.base import MembershipStatus
 
@@ -31,6 +32,10 @@ def get_my_groups(
     if not token_user_id:
         logger.warning("Token User ID could not be extracted from JWT.")
         raise InvalidUserIdException("Token User ID is required.")
+
+    # Validate family exists
+    validation_helper = GroupValidationHelper(request_id=request.state.request_id)
+    validation_helper.validate_family_exists(family_id)
 
     membership_helper = GroupMembershipHelper(request_id=request.state.request_id)
     memberships = membership_helper.get_all_memberships_by_user(token_user_id)

@@ -7,7 +7,9 @@ from typing import Optional
 from constants.services import API_SERVICE
 from decorators.exceptions_decorator import exceptions_decorator
 from exceptions.user_exceptions import InvalidUserIdException
+from exceptions.group_exceptions import InvalidGroupData
 from helpers.group_helper import GroupHelper
+from helpers.group_validation_helper import GroupValidationHelper
 from models.group import GroupModel
 
 logger = Logger(service=API_SERVICE)
@@ -36,8 +38,6 @@ def update_group(request: Request, body: UpdateGroupRequest):
         logger.warning("Token User ID could not be extracted from JWT.")
         raise InvalidUserIdException("Token User ID is required.")
 
-    helper = GroupHelper(request_id=request.state.request_id)
-
     # Build kwargs from non-None fields
     update_kwargs = {}
     if body.group_name is not None:
@@ -46,25 +46,26 @@ def update_group(request: Request, body: UpdateGroupRequest):
         update_kwargs["group_description"] = body.group_description
 
     if not update_kwargs:
-        return JSONResponse(
-            content={"error": "No fields to update provided"},
-            status_code=400,
-        )
+        raise InvalidGroupData("No fields to update provided")
 
-    try:
-        group = helper.update_group(
-            family_id=body.family_id,
-            group_id=body.group_id,
-            actor_user_id=token_user_id,
-            **update_kwargs,
-        )
+    # Validate group data
+    validation_helper = GroupValidationHelper(request_id=request.state.request_id)
+    validation_helper.validate_update_group_data(
+        family_id=body.family_id,
+        group_id=body.group_id,
+        group_name=body.group_name,
+        group_description=body.group_description,
+    )
 
-        return JSONResponse(
-            content={"group": GroupModel.clean_returned_group(group)},
-            status_code=200,
-        )
-    except ValueError as e:
-        return JSONResponse(
-            content={"error": str(e)},
-            status_code=404,
-        )
+    helper = GroupHelper(request_id=request.state.request_id)
+    group = helper.update_group(
+        family_id=body.family_id,
+        group_id=body.group_id,
+        actor_user_id=token_user_id,
+        **update_kwargs,
+    )
+
+    return JSONResponse(
+        content={"group": GroupModel.clean_returned_group(group)},
+        status_code=200,
+    )

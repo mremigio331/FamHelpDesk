@@ -8,6 +8,7 @@ from constants.services import API_SERVICE
 from decorators.exceptions_decorator import exceptions_decorator
 from exceptions.user_exceptions import InvalidUserIdException
 from helpers.group_helper import GroupHelper
+from helpers.group_validation_helper import GroupValidationHelper
 from models.group import GroupModel
 
 logger = Logger(service=API_SERVICE)
@@ -34,6 +35,14 @@ def create_group(request: Request, body: CreateGroupRequest):
     if not token_user_id:
         logger.warning("Token User ID could not be extracted from JWT.")
         raise InvalidUserIdException("Token User ID is required.")
+
+    # Validate group data
+    validation_helper = GroupValidationHelper(request_id=request.state.request_id)
+    validation_helper.validate_create_group_data(
+        family_id=body.family_id,
+        group_name=body.group_name,
+        group_description=body.group_description,
+    )
 
     helper = GroupHelper(request_id=request.state.request_id)
     group = helper.create_group(

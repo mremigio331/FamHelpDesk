@@ -6,6 +6,7 @@ from constants.services import API_SERVICE
 from decorators.exceptions_decorator import exceptions_decorator
 from exceptions.user_exceptions import InvalidUserIdException
 from helpers.group_helper import GroupHelper
+from helpers.group_validation_helper import GroupValidationHelper
 
 logger = Logger(service=API_SERVICE)
 router = APIRouter()
@@ -30,27 +31,22 @@ def delete_group(
         logger.warning("Token User ID could not be extracted from JWT.")
         raise InvalidUserIdException("Token User ID is required.")
 
-    helper = GroupHelper(request_id=request.state.request_id)
+    # Validate group operation
+    validation_helper = GroupValidationHelper(request_id=request.state.request_id)
+    validation_helper.validate_group_operation(family_id, group_id)
 
     try:
-        success = helper.delete_group(
+        helper = GroupHelper(request_id=request.state.request_id)
+        helper.delete_group(
             family_id=family_id,
             group_id=group_id,
             actor_user_id=token_user_id,
         )
 
-        if success:
-            return JSONResponse(
-                content={"message": "Group deleted successfully"},
-                status_code=200,
-            )
-        else:
-            return JSONResponse(
-                content={"error": "Failed to delete group"},
-                status_code=500,
-            )
-    except ValueError as e:
         return JSONResponse(
-            content={"error": str(e)},
-            status_code=400,
+            content={"message": "Group deleted successfully"},
+            status_code=200,
         )
+    except Exception as e:
+        logger.error(f"Failed to delete group {group_id}: {str(e)}")
+        raise Exception(f"Failed to delete group: {str(e)}")
