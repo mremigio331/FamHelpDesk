@@ -102,3 +102,89 @@ class GroupHelper:
                 items.append(item)
         self.logger.info(f"Fetched {len(items)} groups for family {family_id}.")
         return items
+
+    def update_group(
+        self,
+        family_id: str,
+        group_id: str,
+        actor_user_id: str,
+        **kwargs,
+    ) -> GroupModel:
+        group = self.get_group(family_id, group_id)
+        if not group:
+            raise ValueError("Group does not exist")
+
+        # Capture old state for auditing
+        old_group_data = GroupModel.clean_returned_group(group)
+
+        # Only allow updates to specific fields
+        allowed_fields = {"group_name", "group_description"}
+        for key, value in kwargs.items():
+            if key in allowed_fields and hasattr(group, key):
+                setattr(group, key, value)
+
+        group.save()
+        self.logger.info(f"Updated group {group_id} in family {family_id}")
+
+        # Audit record for update
+        new_group_data = GroupModel.clean_returned_group(group)
+        self.audit_helper.create_family_audit_record(
+            family_id=family_id,
+            entity_type=AuditEntityTypes.GROUP,
+            entity_id=group_id,
+            action=AuditActions.UPDATE,
+            actor_user_id=actor_user_id,
+            before=old_group_data,
+            after=new_group_data,
+        )
+
+        return group
+
+    def delete_group(
+        self,
+        family_id: str,
+        group_id: str,
+        actor_user_id: str,
+    ) -> bool:
+        group = self.get_group(family_id, group_id)
+        if not group:
+            raise ValueError("Group does not exist")
+
+        # Delete all queues in the group first
+        try:
+            deleted_queues = self.queue_helper.delete_all_queues_by_group(
+                family_id, group_id, actor_user_id
+            )
+            self.logger.info(f"Deleted {deleted_queues} queues for group {group_id}")
+        except Exception as e:
+            self.logger.error(f"Failed to delete queues for group {group_id}: {str(e)}")
+            raise ValueError("Failed to delete group queues")
+
+        # Capture group data for auditing before deletion
+        group_data = GroupModel.clean_returned_group(group)
+
+        # Delete all group memberships
+        try:
+            self.group_membership_helper.delete_all_group_memberships(
+                family_id, group_id
+            )
+            self.logger.info(f"Deleted all memberships for group {group_id}")
+        except Exception as e:
+            self.logger.error(f"Failed to delete group memberships: {str(e)}")
+            raise ValueError("Failed to delete group memberships")
+
+        # Delete the group
+        group.delete()
+        self.logger.info(f"Deleted group {group_id} from family {family_id}")
+
+        # Audit record for deletion
+        self.audit_helper.create_family_audit_record(
+            family_id=family_id,
+            entity_type=AuditEntityTypes.GROUP,
+            entity_id=group_id,
+            action=AuditActions.DELETE,
+            actor_user_id=actor_user_id,
+            before=group_data,
+        )
+
+        return True

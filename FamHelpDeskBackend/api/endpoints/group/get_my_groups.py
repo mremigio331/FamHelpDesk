@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Path
 from fastapi.responses import JSONResponse
 from aws_lambda_powertools import Logger
 
@@ -16,14 +16,16 @@ router = APIRouter()
 
 
 @router.get(
-    "/mine",
-    summary="Get groups for the requesting user",
+    "/{family_id}/mine",
+    summary="Get groups for the requesting user in a specific family",
     response_description="Dict keyed by group_id with membership and group info",
 )
 @exceptions_decorator
-def get_my_groups(request: Request):
+def get_my_groups(
+    request: Request, family_id: str = Path(..., description="Family ID")
+):
     logger.append_keys(request_id=request.state.request_id)
-    logger.info("Getting groups for requesting user.")
+    logger.info(f"Getting groups for requesting user in family {family_id}.")
 
     token_user_id = getattr(request.state, "user_token", None)
     if not token_user_id:
@@ -33,7 +35,14 @@ def get_my_groups(request: Request):
     membership_helper = GroupMembershipHelper(request_id=request.state.request_id)
     memberships = membership_helper.get_all_memberships_by_user(token_user_id)
     included_statuses = {MembershipStatus.MEMBER.value, MembershipStatus.AWAITING.value}
-    included_memberships = [m for m in memberships if m["status"] in included_statuses]
+
+    # Filter memberships to only include the specified family
+    included_memberships = [
+        m
+        for m in memberships
+        if m["status"] in included_statuses and m["family_id"] == family_id
+    ]
+
     group_keys = [(m["family_id"], m["group_id"]) for m in included_memberships]
 
     membership_by_group = {

@@ -7,7 +7,13 @@ from api.endpoints.family import (
     get_family,
     update_family,
 )
-from api.endpoints.group import create_group, get_all_groups, get_my_groups
+from api.endpoints.group import (
+    create_group,
+    get_all_groups,
+    get_my_groups,
+    update_group,
+    delete_group,
+)
 from api.endpoints.membership.family_membership import (
     family_request_membership,
     family_review_membership,
@@ -69,6 +75,8 @@ def get_all_routes(app: FastAPI) -> FastAPI:
     app.include_router(create_group.router, prefix=GROUP_PATH, tags=[GROUP_TAG])
     app.include_router(get_all_groups.router, prefix=GROUP_PATH, tags=[GROUP_TAG])
     app.include_router(get_my_groups.router, prefix=GROUP_PATH, tags=[GROUP_TAG])
+    app.include_router(update_group.router, prefix=GROUP_PATH, tags=[GROUP_TAG])
+    app.include_router(delete_group.router, prefix=GROUP_PATH, tags=[GROUP_TAG])
 
     app.include_router(
         family_request_membership.router,

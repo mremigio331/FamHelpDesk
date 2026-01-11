@@ -126,3 +126,61 @@ class QueueHelper:
             f"Fetched {len(items)} queues for group {group_id} in family {family_id}."
         )
         return items
+
+    def delete_queue(
+        self,
+        family_id: str,
+        group_id: str,
+        queue_id: str,
+        deleted_by: str,
+    ) -> bool:
+        queue = self.get_queue(family_id, group_id, queue_id)
+        if not queue:
+            self.logger.warning(
+                f"Queue {queue_id} not found in family {family_id} for deletion"
+            )
+            return False
+
+        # Capture queue data for auditing before deletion
+        queue_data = QueueModel.clean_returned_queue(queue)
+
+        # Delete the queue
+        queue.delete()
+        self.logger.info(f"Deleted queue {queue_id} from family {family_id}")
+
+        # Audit record for deletion
+        self.audit_helper.create_family_audit_record(
+            family_id=family_id,
+            entity_type=AuditEntityTypes.QUEUE,
+            entity_id=queue_id,
+            action=AuditActions.DELETE,
+            actor_user_id=deleted_by,
+            before=queue_data,
+        )
+
+        return True
+
+    def delete_all_queues_by_group(
+        self,
+        family_id: str,
+        group_id: str,
+        deleted_by: str,
+    ) -> int:
+        """Delete all queues for a group."""
+        queues = self.get_all_queues_by_group(family_id, group_id)
+        deleted_count = 0
+
+        for queue in queues:
+            try:
+                success = self.delete_queue(
+                    family_id, group_id, queue.queue_id, deleted_by
+                )
+                if success:
+                    deleted_count += 1
+            except Exception as e:
+                self.logger.error(f"Failed to delete queue {queue.queue_id}: {str(e)}")
+
+        self.logger.info(
+            f"Deleted {deleted_count} queues for group {group_id} in family {family_id}"
+        )
+        return deleted_count

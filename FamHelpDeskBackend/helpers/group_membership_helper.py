@@ -146,12 +146,24 @@ class GroupMembershipHelper:
     # List all group memberships by user across families/groups
     def get_all_memberships_by_user(self, user_id: str) -> List[dict]:
         items: List[dict] = []
-        # Use GSI for fast lookup by user_id
-        for item in GroupMembershipModel.user_index.query(user_id):
-            items.append(self._clean_membership(item))
-        self.logger.info(
-            f"Fetched {len(items)} group memberships for user {user_id} via GSI."
-        )
+        # Fallback to scan since GSI might not exist in all environments
+        try:
+            # Try GSI first
+            for item in GroupMembershipModel.user_index.query(user_id):
+                items.append(self._clean_membership(item))
+            self.logger.info(
+                f"Fetched {len(items)} group memberships for user {user_id} via GSI."
+            )
+        except Exception as e:
+            self.logger.warning(f"GSI query failed, falling back to scan: {str(e)}")
+            # Fallback to scan operation
+            for item in GroupMembershipModel.scan(
+                GroupMembershipModel.user_id == user_id
+            ):
+                items.append(self._clean_membership(item))
+            self.logger.info(
+                f"Fetched {len(items)} group memberships for user {user_id} via scan."
+            )
         return items
 
     # Get all pending membership requests for a group
@@ -422,6 +434,37 @@ class GroupMembershipHelper:
             f"Updated group access for user {target_user_id} in family {family_id}, group {group_id} by {granter_user_id} (admin_grant={make_admin})."
         )
         return after
+
+    def delete_all_group_memberships(self, family_id: str, group_id: str) -> int:
+        """Delete all memberships for a group."""
+        deleted_count = 0
+        pk = GroupMembershipModel.create_pk(family_id)
+        sk_prefix = f"GROUP#{group_id}#MEMBER#"
+
+        # Get all memberships for this group
+        memberships = []
+        for item in GroupMembershipModel.query(
+            pk, GroupMembershipModel.sk.startswith(sk_prefix)
+        ):
+            memberships.append(item)
+
+        # Delete each membership
+        for membership in memberships:
+            try:
+                membership.delete()
+                deleted_count += 1
+                self.logger.info(
+                    f"Deleted membership for user {membership.user_id} in group {group_id}"
+                )
+            except Exception as e:
+                self.logger.error(
+                    f"Failed to delete membership for user {membership.user_id}: {str(e)}"
+                )
+
+        self.logger.info(
+            f"Deleted {deleted_count} memberships for group {group_id} in family {family_id}"
+        )
+        return deleted_count
 
     @staticmethod
     def _clean_membership(item: GroupMembershipModel) -> dict:
