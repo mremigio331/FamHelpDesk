@@ -22,16 +22,6 @@ def handler(event: dict, context: LambdaContext) -> dict:
         email = user_attrs.get("email")
         # Prefer standard 'name', then given_name; default to 'unknown'
         full_name = user_attrs.get("name") or user_attrs.get("given_name") or "unknown"
-        # Prefer nickname, then given_name, then first token of full_name
-        nickname = (
-            user_attrs.get("nickname")
-            or user_attrs.get("given_name")
-            or (
-                full_name.split(" ")[0]
-                if full_name and full_name != "unknown"
-                else "unknown"
-            )
-        )
 
         # Determine provider (Cognito or Google) robustly
         provider = "Cognito"
@@ -58,7 +48,6 @@ def handler(event: dict, context: LambdaContext) -> dict:
             user_profile_helper.create_profile(
                 user_id=user_id,
                 display_name=full_name,
-                nick_name=nickname,
                 provider=provider,
                 email=email,
             )

@@ -23,20 +23,13 @@ class ProfileColorOptions(str, Enum):
     CYAN = "Cyan"
 
 
-class DarkModeOptions(MapAttribute):
-    web = BooleanAttribute(default=False)
-    mobile = BooleanAttribute(default=False)
-    ios = BooleanAttribute(default=False)
-
-
 class UserProfile(FamHelpDeskBaseModel):
     user_id = UnicodeAttribute()
     display_name = UnicodeAttribute()
-    nick_name = UnicodeAttribute()
     provider = UnicodeAttribute()
     email = UnicodeAttribute()
     profile_color = UnicodeAttribute(default=ProfileColorOptions.BLACK.value)
-    dark_mode = DarkModeOptions(default=lambda: DarkModeOptions())
+    dark_mode = BooleanAttribute(default=False)
 
     @staticmethod
     def create_pk(user_id: str) -> str:
@@ -51,12 +44,7 @@ class UserProfile(FamHelpDeskBaseModel):
         return {
             "user_id": profile.user_id,
             "display_name": profile.display_name,
-            "nick_name": profile.nick_name,
             "email": profile.email,
             "profile_color": profile.profile_color,
-            "dark_mode": (
-                profile.dark_mode.as_dict()
-                if hasattr(profile.dark_mode, "as_dict")
-                else dict(profile.dark_mode)
-            ),
+            "dark_mode": profile.dark_mode,
         }
