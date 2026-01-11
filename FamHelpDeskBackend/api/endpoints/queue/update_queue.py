@@ -7,8 +7,9 @@ from typing import Optional
 from constants.services import API_SERVICE
 from decorators.exceptions_decorator import exceptions_decorator
 from exceptions.user_exceptions import InvalidUserIdException
+from exceptions.queue_exceptions import QueueNotFound
 from helpers.queue_helper import QueueHelper
-from helpers.queue_validation_helper import QueueValidationHelper, QueueNotFound
+from helpers.queue_validation_helper import QueueValidationHelper
 from models.queue import QueueModel
 
 logger = Logger(service=API_SERVICE)
@@ -60,7 +61,7 @@ def update_queue(request: Request, body: UpdateQueueRequest):
 
     if queue is None:
         raise QueueNotFound(
-            f"Queue {body.queue_id} not found in group {body.group_id} of family {body.family_id}."
+            f"Queue {body.queue_id} not found in group {body.group_id} of family {body.family_id}"
         )
 
     return JSONResponse(

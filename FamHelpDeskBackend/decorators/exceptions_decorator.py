@@ -31,6 +31,16 @@ from exceptions.group_exceptions import (
     GroupDescriptionTooLong,
     FamilyNotFound,
 )
+from exceptions.queue_exceptions import (
+    QueueNotFound,
+    QueueAlreadyExists,
+    InvalidQueueData,
+    QueueNameTooLong,
+    QueueDescriptionTooLong,
+    QueueGroupMismatch,
+    QueuePermissionDenied,
+    QueueHasActiveTickets,
+)
 
 from fastapi.responses import JSONResponse
 from botocore.exceptions import ClientError
@@ -136,6 +146,53 @@ def exceptions_decorator(func):
             return JSONResponse(
                 content={"error": {"code": "FAMILY_NOT_FOUND", "message": str(exc)}},
                 status_code=404,
+            )
+
+        # Queue exceptions
+        except QueueNotFound as exc:
+            return JSONResponse(
+                content={"error": {"code": "QUEUE_NOT_FOUND", "message": str(exc)}},
+                status_code=404,
+            )
+        except QueueAlreadyExists as exc:
+            return JSONResponse(
+                content={
+                    "error": {"code": "QUEUE_ALREADY_EXISTS", "message": str(exc)}
+                },
+                status_code=409,
+            )
+        except InvalidQueueData as exc:
+            return JSONResponse(
+                content={"error": {"code": "INVALID_QUEUE_DATA", "message": str(exc)}},
+                status_code=400,
+            )
+        except QueueGroupMismatch as exc:
+            return JSONResponse(
+                content={
+                    "error": {"code": "QUEUE_GROUP_MISMATCH", "message": str(exc)}
+                },
+                status_code=400,
+            )
+        except QueuePermissionDenied as exc:
+            return JSONResponse(
+                content={
+                    "error": {"code": "QUEUE_PERMISSION_DENIED", "message": str(exc)}
+                },
+                status_code=403,
+            )
+        except QueueHasActiveTickets as exc:
+            return JSONResponse(
+                content={
+                    "error": {"code": "QUEUE_HAS_ACTIVE_TICKETS", "message": str(exc)}
+                },
+                status_code=409,
+            )
+        except (QueueNameTooLong, QueueDescriptionTooLong) as exc:
+            return JSONResponse(
+                content={
+                    "error": {"code": "INVALID_INPUT_LENGTH", "message": str(exc)}
+                },
+                status_code=400,
             )
 
         # Membership exceptions

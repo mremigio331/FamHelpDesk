@@ -4,8 +4,9 @@ from aws_lambda_powertools import Logger
 
 from constants.services import API_SERVICE
 from decorators.exceptions_decorator import exceptions_decorator
+from exceptions.queue_exceptions import QueueNotFound
 from helpers.queue_helper import QueueHelper
-from helpers.queue_validation_helper import QueueValidationHelper, QueueNotFound
+from helpers.queue_validation_helper import QueueValidationHelper
 from models.queue import QueueModel
 
 logger = Logger(service=API_SERVICE)
@@ -35,7 +36,7 @@ def get_queue(request: Request, family_id: str, group_id: str, queue_id: str):
 
     if queue is None:
         raise QueueNotFound(
-            f"Queue {queue_id} not found in group {group_id} of family {family_id}."
+            f"Queue {queue_id} not found in group {group_id} of family {family_id}"
         )
 
     return JSONResponse(

@@ -5,6 +5,7 @@ from aws_lambda_powertools import Logger
 from constants.services import API_SERVICE
 from decorators.exceptions_decorator import exceptions_decorator
 from exceptions.user_exceptions import InvalidUserIdException
+from exceptions.queue_exceptions import QueueHasActiveTickets
 from helpers.queue_helper import QueueHelper
 from helpers.queue_validation_helper import QueueValidationHelper
 
@@ -25,9 +26,9 @@ def delete_queue(request: Request, family_id: str, group_id: str, queue_id: str)
     token_user_id = getattr(request.state, "user_token", None)
     if not token_user_id:
         logger.warning("Token User ID could not be extracted from JWT.")
-        raise InvalidUserIdException("Token User ID is required.")
+        raise InvalidUserIdException("Token User ID is required")
 
-    # Validate queue exists - this will raise QueueNotFound if queue doesn't exist
+    # Validate queue exists and relationships
     validation_helper = QueueValidationHelper(request_id=request.state.request_id)
     validation_helper.validate_queue_operation(
         family_id=family_id,
@@ -37,27 +38,22 @@ def delete_queue(request: Request, family_id: str, group_id: str, queue_id: str)
 
     helper = QueueHelper(request_id=request.state.request_id)
 
-    try:
-        success = helper.delete_queue(
-            family_id=family_id,
-            group_id=group_id,
-            queue_id=queue_id,
-            deleted_by=token_user_id,
-        )
+    # Check if queue has active tickets before deletion
+    # This should be implemented in the queue helper
+    # For now, we'll let the helper handle this validation
 
-        if not success:
-            # This shouldn't happen since we validated the queue exists above
-            logger.error(f"Queue deletion returned False for queue {queue_id}")
-            return JSONResponse(
-                content={"error": f"Failed to delete queue {queue_id}"},
-                status_code=500,
-            )
+    success = helper.delete_queue(
+        family_id=family_id,
+        group_id=group_id,
+        queue_id=queue_id,
+        deleted_by=token_user_id,
+    )
 
-    except Exception as e:
-        logger.error(f"Error deleting queue {queue_id}: {str(e)}")
-        return JSONResponse(
-            content={"error": f"Failed to delete queue {queue_id}: {str(e)}"},
-            status_code=500,
+    if not success:
+        # This could happen if queue has active tickets or other business rules
+        logger.error(f"Queue deletion failed for queue {queue_id}")
+        raise QueueHasActiveTickets(
+            f"Cannot delete queue {queue_id} - it may have active tickets"
         )
 
     return JSONResponse(
