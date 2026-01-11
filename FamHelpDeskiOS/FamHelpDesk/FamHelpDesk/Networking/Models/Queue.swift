@@ -47,13 +47,13 @@ struct Queue: Codable, Identifiable, Hashable {
 enum QueueRole: String, Codable, CaseIterable {
     case assignee = "ASSIGNEE"
     case viewer = "VIEWER"
-    
+
     var displayName: String {
         switch self {
         case .assignee:
-            return "Assignee"
+            "Assignee"
         case .viewer:
-            return "Viewer"
+            "Viewer"
         }
     }
 }
