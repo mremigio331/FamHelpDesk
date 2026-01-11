@@ -150,10 +150,10 @@ final class AuthLogger {
 
         case let .retryAttempt(attempt, maxRetries, endpoint):
             logger.info("🔄 Retry attempt \(attempt)/\(maxRetries) for: \(endpoint)")
-            
+
         case .connectionRestored:
             logger.info("🌐 Network connection restored")
-            
+
         case .connectionLost:
             logger.warning("⚠️ Network connection lost")
         }

@@ -24,7 +24,7 @@ struct FamilyGroup: Codable, Identifiable, Hashable {
         case createdBy = "created_by"
         case creationDate = "creation_date"
     }
-    
+
     func hash(into hasher: inout Hasher) {
         hasher.combine(groupId)
     }

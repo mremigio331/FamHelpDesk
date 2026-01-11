@@ -3,12 +3,58 @@ import SwiftUI
 struct GroupDetailView: View {
     let group: FamilyGroup
     @State private var navigationContext = NavigationContext.shared
+    @State private var userSession = UserSession.shared
 
     @State private var members: [GroupMember] = []
+    @State private var membershipRequests: [GroupMembershipRequestItem] = []
     @State private var isLoadingMembers = false
+    @State private var isLoadingRequests = false
     @State private var membersError: String?
+    @State private var showingMembershipRequest = false
+    @State private var showingMembershipManagement = false
 
     private let membershipService = MembershipService()
+    private let groupService = GroupService()
+
+    // Computed property to check if current user is already a member
+    private var isCurrentUserMember: Bool {
+        guard let currentUserId = userSession.currentUser?.userId else {
+            return false
+        }
+
+        return members.contains { $0.userId == currentUserId }
+    }
+
+    // Computed property to check if current user is an admin of the group
+    private var isCurrentUserAdmin: Bool {
+        guard let currentUserId = userSession.currentUser?.userId else {
+            return false
+        }
+
+        let currentMember = members.first { $0.userId == currentUserId }
+        let isAdmin = currentMember?.isAdmin == true
+
+        print("🔍 Admin check for user \(currentUserId): \(isAdmin)")
+        if let member = currentMember {
+            print("   - Found member record: isAdmin = \(member.isAdmin)")
+        } else {
+            print("   - No member record found")
+        }
+
+        return isAdmin
+    }
+
+    // Computed property to check if current user has a pending membership request
+    private var hasCurrentUserPendingRequest: Bool {
+        guard let currentUserId = userSession.currentUser?.userId else { return false }
+
+        let hasPendingRequest = membershipRequests.contains { request in
+            request.userId == currentUserId && request.status == "AWAITING"
+        }
+
+        print("🔍 Checking pending requests for user \(currentUserId): \(hasPendingRequest)")
+        return hasPendingRequest
+    }
 
     var body: some View {
         List {
@@ -104,19 +150,98 @@ struct GroupDetailView: View {
                         GroupMemberRow(member: member)
                     }
                 }
+
+                // Pending Membership Requests - Show for all users (no section header since PENDING tag is clear)
+                if !membershipRequests.isEmpty {
+                    ForEach(membershipRequests) { request in
+                        PendingMembershipRequestRow(request: request)
+                    }
+                }
+
+                // Membership Actions - only show if user has available actions
+                if !isLoadingMembers, !isLoadingRequests, membersError == nil {
+                    let hasRequestAction = !isCurrentUserMember && !hasCurrentUserPendingRequest
+                    let hasManageAction = isCurrentUserAdmin
+
+                    if hasRequestAction || hasManageAction {
+                        VStack(spacing: 12) {
+                            // Only show "Request to Join" if user is not already a member and doesn't have a pending request
+                            if hasRequestAction {
+                                Button(action: {
+                                    showingMembershipRequest = true
+                                }) {
+                                    HStack {
+                                        Image(systemName: "person.badge.plus")
+                                        Text("Request to Join Group")
+                                    }
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color.blue)
+                                    .cornerRadius(10)
+                                }
+                                .buttonStyle(.plain)
+                            }
+
+                            // Only show "Manage Membership" for group admins
+                            if hasManageAction {
+                                Button(action: {
+                                    showingMembershipManagement = true
+                                }) {
+                                    HStack {
+                                        Image(systemName: "person.2.badge.gearshape")
+                                        Text("Manage Membership")
+                                    }
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.blue)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color.blue.opacity(0.1))
+                                    .cornerRadius(10)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.vertical, 8)
+                    }
+                }
             }
         }
         .navigationTitle(group.groupName)
         .navigationBarTitleDisplayMode(.inline)
         .refreshable {
-            await loadGroupMembers()
+            await refreshMembershipData()
         }
         .task {
+            // Load group members when view appears
             await loadGroupMembers()
+            await loadMembershipRequests()
+
+            // Ensure user session is loaded for membership check
+            if userSession.currentUser == nil, !userSession.isFetching, !userSession.isLoading {
+                print("🔄 Loading user profile for membership check...")
+                await userSession.loadUserProfile()
+            }
         }
         .onAppear {
             // Update navigation context when this view appears
             navigationContext.selectedGroup = group
+        }
+        .sheet(isPresented: $showingMembershipRequest) {
+            GroupMembershipRequestView(group: group) {
+                // Refresh membership data when request is successful
+                Task {
+                    await refreshMembershipData()
+                }
+            }
+        }
+        .sheet(isPresented: $showingMembershipManagement) {
+            NavigationStack {
+                GroupMembershipManagementView(group: group)
+            }
         }
     }
 
@@ -129,11 +254,47 @@ struct GroupDetailView: View {
                 familyId: group.familyId,
                 groupId: group.groupId
             )
+            print("🔍 Group members API response:")
+            print("🔍 Members count: \(members.count)")
+            for (index, member) in members.enumerated() {
+                print("🔍 Member \(index + 1):")
+                print("   - userId: \(member.userId)")
+                print("   - displayName: \(member.userDisplayName ?? "nil")")
+                print("   - email: \(member.userEmail ?? "nil")")
+                print("   - status: \(member.status)")
+                print("   - isAdmin: \(member.isAdmin)")
+            }
         } catch {
             membersError = "Failed to load group members: \(error.localizedDescription)"
+            print("❌ Error loading group members: \(error)")
         }
 
         isLoadingMembers = false
+    }
+
+    private func refreshMembershipData() async {
+        await loadGroupMembers()
+        await loadMembershipRequests()
+    }
+
+    private func loadMembershipRequests() async {
+        isLoadingRequests = true
+
+        do {
+            membershipRequests = try await groupService.getGroupMembershipRequests(
+                familyId: group.familyId,
+                groupId: group.groupId
+            )
+            print("🔍 Membership requests loaded: \(membershipRequests.count)")
+            for request in membershipRequests {
+                print("   - User: \(request.userId), Status: \(request.status), Name: \(request.userDisplayName ?? "nil")")
+            }
+        } catch {
+            print("❌ Error loading membership requests: \(error)")
+            // Don't set error state for requests - just log it
+        }
+
+        isLoadingRequests = false
     }
 
     private func formatDate(_ dateString: String) -> String {
@@ -146,6 +307,80 @@ struct GroupDetailView: View {
         displayFormatter.dateStyle = .medium
         displayFormatter.timeStyle = .none
         return displayFormatter.string(from: date)
+    }
+}
+
+// MARK: - Pending Membership Request Row
+
+struct PendingMembershipRequestRow: View {
+    let request: GroupMembershipRequestItem
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Request Avatar
+            Circle()
+                .fill(Color.orange.opacity(0.1))
+                .frame(width: 40, height: 40)
+                .overlay(
+                    Text(requestInitials)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.orange)
+                )
+
+            // Request Info
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(requestDisplayName)
+                        .font(.headline)
+                        .foregroundColor(.primary)
+
+                    Text("PENDING")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.orange.opacity(0.2))
+                        .foregroundColor(.orange)
+                        .cornerRadius(4)
+
+                    Spacer()
+                }
+
+                if let email = request.userEmail {
+                    Text(email)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+
+                Text("Requested \(formatRequestDate())")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var requestDisplayName: String {
+        request.userDisplayName ?? "Unknown User"
+    }
+
+    private var requestInitials: String {
+        let name = requestDisplayName
+        let components = name.split(separator: " ")
+        if components.count >= 2 {
+            return String(components[0].prefix(1) + components[1].prefix(1)).uppercased()
+        } else if let first = components.first {
+            return String(first.prefix(2)).uppercased()
+        }
+        return "?"
+    }
+
+    private func formatRequestDate() -> String {
+        let date = Date(timeIntervalSince1970: request.requestDate)
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
     }
 }
 

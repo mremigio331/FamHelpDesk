@@ -90,7 +90,7 @@ struct FamilySearchView: View {
         }
         isLoading = false
     }
-    
+
     @MainActor
     private func refreshSearchData() async {
         // Refresh both search results and family membership data

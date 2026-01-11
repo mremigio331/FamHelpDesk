@@ -52,10 +52,10 @@ struct MainTabView: View {
         .task {
             // Load notifications when app starts to get unread count
             await notificationSession.fetchNotifications(refresh: true)
-            
+
             // Mark navigation context as ready for deep links
             navigationContext.setReadyForDeepLinks()
-            
+
             // Restore navigation state
             navigationContext.restoreNavigationState()
         }

@@ -56,8 +56,49 @@ struct UserProfile: Codable, Identifiable {
     let darkMode: DarkModeSettings?
 
     var id: String { userId }
+
+    // Memberwise initializer for creating instances in code
+    init(userId: String, displayName: String, email: String, profileColor: String, darkMode: DarkModeSettings? = nil) {
+        self.userId = userId
+        self.displayName = displayName
+        self.email = email
+        self.profileColor = profileColor
+        self.darkMode = darkMode
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case displayName = "display_name"
+        case email
+        case profileColor = "profile_color"
+        case darkMode = "dark_mode"
+    }
+
+    // Custom decoder to handle both boolean and object dark_mode
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        userId = try container.decode(String.self, forKey: .userId)
+        displayName = try container.decode(String.self, forKey: .displayName)
+        email = try container.decode(String.self, forKey: .email)
+        profileColor = try container.decode(String.self, forKey: .profileColor)
+
+        // Handle dark_mode as either boolean or DarkModeSettings object
+        if let darkModeObject = try? container.decode(DarkModeSettings.self, forKey: .darkMode) {
+            darkMode = darkModeObject
+        } else if let darkModeBool = try? container.decode(Bool.self, forKey: .darkMode) {
+            // Convert boolean to DarkModeSettings
+            darkMode = DarkModeSettings(web: darkModeBool, mobile: darkModeBool, ios: darkModeBool)
+        } else {
+            darkMode = nil
+        }
+    }
 }
 
 struct UserProfileResponse: Codable {
     let userProfile: UserProfile
+
+    enum CodingKeys: String, CodingKey {
+        case userProfile = "user_profile"
+    }
 }

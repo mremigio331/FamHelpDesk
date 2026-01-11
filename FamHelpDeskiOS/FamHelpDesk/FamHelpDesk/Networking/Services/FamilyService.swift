@@ -51,7 +51,7 @@ final class FamilyService {
     func createFamily(name: String, description: String?) async throws -> Family {
         // Validate input before making API call
         try validateFamilyInput(name: name, description: description)
-        
+
         do {
             let request = CreateFamilyRequest(
                 familyName: name,
@@ -69,9 +69,9 @@ final class FamilyService {
             throw serviceError
         }
     }
-    
+
     // MARK: - Private Validation Methods
-    
+
     /// Validates family input according to business rules
     /// - Parameters:
     ///   - name: The family name to validate

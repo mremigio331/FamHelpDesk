@@ -28,12 +28,12 @@ struct HomeView: View {
                 .presentationDetents([.medium, .large])
         }
     }
-    
+
     private func refreshHomeData() async {
         // Refresh user profile and families data
         async let userRefresh = userSession.refreshProfile()
         async let familiesRefresh = familySession.refresh()
-        
+
         await userRefresh
         await familiesRefresh
     }

@@ -26,7 +26,7 @@ struct FamilyGroupsView: View {
                     .padding(.vertical, 20)
                 }
             } else if groups.isEmpty {
-                // Empty state
+                // Empty state - no groups exist for this family
                 Section {
                     VStack(spacing: 12) {
                         Image(systemName: "rectangle.3.group")
@@ -77,7 +77,8 @@ struct FamilyGroupsView: View {
             await groupSession.refreshFamilyGroups(familyId: family.familyId)
         }
         .task {
-            // Load groups when view appears
+            // Load groups when family groups view appears
+            // This is the desired behavior - load groups for the selected family
             if groups.isEmpty {
                 await groupSession.fetchFamilyGroups(familyId: family.familyId)
             }

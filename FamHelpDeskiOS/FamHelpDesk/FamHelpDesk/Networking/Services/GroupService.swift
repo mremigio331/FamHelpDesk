@@ -87,9 +87,9 @@ final class GroupService {
     /// - Throws: ServiceError for validation errors or network failures
     func updateGroup(groupId: String, name: String?, description: String?) async throws -> FamilyGroup {
         // Validate group input if provided
-        if let name = name {
+        if let name {
             try validateGroupInput(name: name, description: description)
-        } else if let description = description {
+        } else if let description {
             try validateGroupInput(name: "temp", description: description) // Just validate description
         }
 
@@ -189,12 +189,16 @@ final class GroupService {
     func requestGroupMembership(familyId: String, groupId: String) async throws -> GroupMembershipResponse {
         do {
             let request = GroupMembershipRequest(familyId: familyId, groupId: groupId)
-            let response: GroupMembershipResponse = try await networkManager.post(
+
+            // Use raw data request since we only care about 2xx status code
+            _ = try await networkManager.postRawData(
                 endpoint: APIEndpoint.requestGroupMembership(familyId: familyId, groupId: groupId).path,
                 body: request
             )
+
             print("📱 Requested Group Membership: \(groupId)")
-            return response
+            // Return a success response since we got a 2xx status code
+            return GroupMembershipResponse(success: true, message: "Membership request sent successfully")
         } catch {
             let serviceError = mapToServiceError(error)
             print("❌ Error requesting group membership: \(serviceError)")
@@ -255,11 +259,37 @@ final class GroupService {
     /// - Throws: ServiceError with structured error information
     func getGroupMembershipRequests(familyId: String, groupId: String) async throws -> [GroupMembershipRequestItem] {
         do {
-            let response: GetGroupMembershipRequestsResponse = try await networkManager.get(
+            // Use raw data to debug the response
+            let rawData = try await networkManager.getRawData(
                 endpoint: APIEndpoint.getGroupMembershipRequests(familyId: familyId, groupId: groupId).path
             )
-            print("📱 Group Membership Requests Response: \(response.requests.count) requests")
-            return response.requests
+
+            // Print the raw response for debugging
+            if let responseString = String(data: rawData, encoding: .utf8) {
+                print("🔍 Raw Group Membership Requests Response:")
+                print(responseString)
+            }
+
+            let decoder = JSONDecoder()
+
+            // Try to decode the response
+            do {
+                let response = try decoder.decode(GetGroupMembershipRequestsResponse.self, from: rawData)
+                print("📱 Group Membership Requests Response: \(response.requests.count) requests")
+                return response.requests
+            } catch let decodingError {
+                print("❌ Decoding error details: \(decodingError)")
+
+                // Try to decode as a simple array in case the API format is different
+                do {
+                    let requests = try decoder.decode([GroupMembershipRequestItem].self, from: rawData)
+                    print("📱 Group Membership Requests (direct array): \(requests.count) requests")
+                    return requests
+                } catch {
+                    print("❌ Failed to decode as direct array too: \(error)")
+                    throw decodingError // Throw the original error
+                }
+            }
         } catch {
             let serviceError = mapToServiceError(error)
             print("❌ Error fetching group membership requests: \(serviceError)")

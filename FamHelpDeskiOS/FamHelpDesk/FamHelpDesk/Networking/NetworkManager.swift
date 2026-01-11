@@ -25,7 +25,7 @@ final class NetworkManager {
     var environment: APIEnvironment = .current
     private let logger = AuthLogger.shared
     private let retryHelper = RetryHelper()
-    
+
     // Network monitoring
     private let networkMonitor = NWPathMonitor()
     private let networkQueue = DispatchQueue(label: "NetworkMonitor")
@@ -36,17 +36,17 @@ final class NetworkManager {
         configuration.timeoutIntervalForRequest = 30
         configuration.timeoutIntervalForResource = 60
         session = URLSession(configuration: configuration)
-        
+
         // Start network monitoring
         startNetworkMonitoring()
     }
-    
+
     deinit {
         networkMonitor.cancel()
     }
-    
+
     // MARK: - Network Monitoring
-    
+
     private func startNetworkMonitoring() {
         networkMonitor.pathUpdateHandler = { [weak self] path in
             DispatchQueue.main.async {
@@ -60,9 +60,9 @@ final class NetworkManager {
         }
         networkMonitor.start(queue: networkQueue)
     }
-    
+
     var hasNetworkConnection: Bool {
-        return isConnected
+        isConnected
     }
 
     func setAccessToken(_ token: String) {
@@ -172,7 +172,7 @@ final class NetworkManager {
             logger.logNetworkOperation(.requestFailure(method: "GET", endpoint: endpoint, error: NetworkError.noConnection))
             throw NetworkError.noConnection
         }
-        
+
         guard let url = buildURL(endpoint: endpoint, queryItems: queryItems) else {
             logger.logNetworkOperation(.requestFailure(method: "GET", endpoint: endpoint, error: NetworkError.invalidURL))
             throw NetworkError.invalidURL
@@ -189,7 +189,7 @@ final class NetworkManager {
             logger.logNetworkOperation(.requestFailure(method: "GET", endpoint: endpoint, error: NetworkError.noConnection))
             throw NetworkError.noConnection
         }
-        
+
         guard let url = buildURL(endpoint: endpoint, queryItems: queryItems) else {
             logger.logNetworkOperation(.requestFailure(method: "GET", endpoint: endpoint, error: NetworkError.invalidURL))
             throw NetworkError.invalidURL
@@ -212,7 +212,7 @@ final class NetworkManager {
             logger.logNetworkOperation(.requestFailure(method: "POST", endpoint: endpoint, error: NetworkError.noConnection))
             throw NetworkError.noConnection
         }
-        
+
         guard let url = buildURL(endpoint: endpoint) else {
             logger.logNetworkOperation(.requestFailure(method: "POST", endpoint: endpoint, error: NetworkError.invalidURL))
             throw NetworkError.invalidURL
@@ -229,7 +229,7 @@ final class NetworkManager {
             logger.logNetworkOperation(.requestFailure(method: "POST", endpoint: endpoint, error: NetworkError.noConnection))
             throw NetworkError.noConnection
         }
-        
+
         guard let url = buildURL(endpoint: endpoint) else {
             logger.logNetworkOperation(.requestFailure(method: "POST", endpoint: endpoint, error: NetworkError.invalidURL))
             throw NetworkError.invalidURL
@@ -258,7 +258,7 @@ final class NetworkManager {
             logger.logNetworkOperation(.requestFailure(method: "PUT", endpoint: endpoint, error: NetworkError.noConnection))
             throw NetworkError.noConnection
         }
-        
+
         guard let url = buildURL(endpoint: endpoint) else {
             logger.logNetworkOperation(.requestFailure(method: "PUT", endpoint: endpoint, error: NetworkError.invalidURL))
             throw NetworkError.invalidURL
@@ -275,7 +275,7 @@ final class NetworkManager {
             logger.logNetworkOperation(.requestFailure(method: "PUT", endpoint: endpoint, error: NetworkError.noConnection))
             throw NetworkError.noConnection
         }
-        
+
         guard let url = buildURL(endpoint: endpoint) else {
             logger.logNetworkOperation(.requestFailure(method: "PUT", endpoint: endpoint, error: NetworkError.invalidURL))
             throw NetworkError.invalidURL
@@ -304,7 +304,7 @@ final class NetworkManager {
             logger.logNetworkOperation(.requestFailure(method: "DELETE", endpoint: endpoint, error: NetworkError.noConnection))
             throw NetworkError.noConnection
         }
-        
+
         guard let url = buildURL(endpoint: endpoint) else {
             logger.logNetworkOperation(.requestFailure(method: "DELETE", endpoint: endpoint, error: NetworkError.invalidURL))
             throw NetworkError.invalidURL
@@ -321,7 +321,7 @@ final class NetworkManager {
             logger.logNetworkOperation(.requestFailure(method: "DELETE", endpoint: endpoint, error: NetworkError.noConnection))
             throw NetworkError.noConnection
         }
-        
+
         guard let url = buildURL(endpoint: endpoint) else {
             logger.logNetworkOperation(.requestFailure(method: "DELETE", endpoint: endpoint, error: NetworkError.invalidURL))
             throw NetworkError.invalidURL
@@ -381,8 +381,8 @@ final class NetworkManager {
             // Calculate exponential backoff delay
             let baseDelay = networkError.retryDelay
             let backoffDelay = baseDelay * pow(2.0, Double(retryCount))
-            let jitteredDelay = backoffDelay + Double.random(in: 0...0.5) // Add jitter to prevent thundering herd
-            
+            let jitteredDelay = backoffDelay + Double.random(in: 0 ... 0.5) // Add jitter to prevent thundering herd
+
             do {
                 // Handle specific error types before retry
                 switch networkError {
@@ -395,21 +395,21 @@ final class NetworkManager {
                         // Wait for connection to be restored or timeout
                         let connectionTimeout = 10.0 // 10 seconds
                         let startTime = Date()
-                        while !hasNetworkConnection && Date().timeIntervalSince(startTime) < connectionTimeout {
+                        while !hasNetworkConnection, Date().timeIntervalSince(startTime) < connectionTimeout {
                             try await Task.sleep(nanoseconds: 500_000_000) // Check every 0.5 seconds
                         }
-                        
+
                         if !hasNetworkConnection {
                             throw NetworkError.noConnection
                         }
                     }
-                case .serverError(let statusCode, _) where statusCode >= 500:
+                case let .serverError(statusCode, _) where statusCode >= 500:
                     // Server errors - use exponential backoff
                     break
                 default:
                     break
                 }
-                
+
                 // Wait before retry
                 try await Task.sleep(nanoseconds: UInt64(jitteredDelay * 1_000_000_000))
 

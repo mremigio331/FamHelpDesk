@@ -32,7 +32,7 @@ final class SearchService {
     func searchFamilies(query: String) async throws -> [Family] {
         // Validate search query
         try validateSearchQuery(query)
-        
+
         do {
             let queryItems = [URLQueryItem(name: "q", value: query)]
             let response: GetAllFamiliesResponse = try await networkManager.get(
@@ -47,19 +47,19 @@ final class SearchService {
             throw serviceError
         }
     }
-    
+
     // MARK: - Private Validation Methods
-    
+
     /// Validates search query according to business rules
     /// - Parameter query: The search query to validate
     /// - Throws: ValidationError if query is invalid
     private func validateSearchQuery(_ query: String) throws {
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        
+
         if trimmedQuery.isEmpty {
             throw ValidationError.emptySearchQuery
         }
-        
+
         if trimmedQuery.count < 2 {
             throw ValidationError.searchQueryTooShort
         }

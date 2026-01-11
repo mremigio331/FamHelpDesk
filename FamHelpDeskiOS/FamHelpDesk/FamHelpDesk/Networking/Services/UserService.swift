@@ -11,18 +11,36 @@ final class UserService {
     /// - Returns: UserProfile object
     /// - Throws: NetworkError if the request fails
     func getUserProfile() async throws -> UserProfile {
-        let response: UserProfileResponse = try await networkManager.get(
-            endpoint: APIEndpoint.getProfile.path
-        )
-        print("📱 User Profile Response:")
-        print("  - User ID: \(response.userProfile.userId)")
-        print("  - Display Name: \(response.userProfile.displayName)")
-        print("  - Email: \(response.userProfile.email)")
-        print("  - Profile Color: \(response.userProfile.profileColor)")
-        if let darkMode = response.userProfile.darkMode {
-            print("  - Dark Mode: Web=\(darkMode.web), Mobile=\(darkMode.mobile), iOS=\(darkMode.ios)")
+        do {
+            // Get raw data to see the actual API response
+            let rawData = try await networkManager.getRawData(
+                endpoint: APIEndpoint.getProfile.path
+            )
+
+            print("📱 Raw User Profile API Response:")
+            if let responseString = String(data: rawData, encoding: .utf8) {
+                print(responseString)
+            }
+
+            let decoder = JSONDecoder()
+
+            // The API returns {"user_profile": {...}} so decode as UserProfileResponse
+            let response = try decoder.decode(UserProfileResponse.self, from: rawData)
+
+            print("📱 User Profile Response:")
+            print("  - User ID: \(response.userProfile.userId)")
+            print("  - Display Name: \(response.userProfile.displayName)")
+            print("  - Email: \(response.userProfile.email)")
+            print("  - Profile Color: \(response.userProfile.profileColor)")
+            if let darkMode = response.userProfile.darkMode {
+                print("  - Dark Mode: Web=\(darkMode.web), Mobile=\(darkMode.mobile), iOS=\(darkMode.ios)")
+            }
+
+            return response.userProfile
+        } catch {
+            print("❌ Error in getUserProfile: \(error)")
+            throw error
         }
-        return response.userProfile
     }
 
     /// Updates the current user's profile

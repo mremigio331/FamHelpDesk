@@ -29,7 +29,7 @@ struct FamilyDetailView: View {
     private var isAdmin: Bool {
         familyItem?.membership.isAdmin ?? false
     }
-    
+
     private var selectedTab: Tab {
         get { navigationContext.selectedFamilyTab }
         set { navigationContext.selectedFamilyTab = newValue }
@@ -228,7 +228,7 @@ struct FamilyDetailView: View {
             await refreshFamilyData()
         }
     }
-    
+
     private func refreshFamilyData() async {
         // Refresh family session to update membership status
         await familySession.refresh()
