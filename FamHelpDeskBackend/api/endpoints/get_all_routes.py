@@ -14,6 +14,13 @@ from api.endpoints.group import (
     update_group,
     delete_group,
 )
+from api.endpoints.queue import (
+    create_queue,
+    get_queues,
+    get_queue,
+    update_queue,
+    delete_queue,
+)
 from api.endpoints.membership.family_membership import (
     family_request_membership,
     family_review_membership,
@@ -45,6 +52,8 @@ from constants.api import (
     FAMILY_PATH,
     GROUP_TAG,
     GROUP_PATH,
+    QUEUE_TAG,
+    QUEUE_PATH,
     GROUP_MEMBERSHIP_TAG,
     FAMILY_MEMBERSHIP_TAG,
     MEMBERSHIP_PATH,
@@ -81,6 +90,12 @@ def get_all_routes(app: FastAPI) -> FastAPI:
     app.include_router(get_my_groups.router, prefix=GROUP_PATH, tags=[GROUP_TAG])
     app.include_router(update_group.router, prefix=GROUP_PATH, tags=[GROUP_TAG])
     app.include_router(delete_group.router, prefix=GROUP_PATH, tags=[GROUP_TAG])
+
+    app.include_router(create_queue.router, prefix=QUEUE_PATH, tags=[QUEUE_TAG])
+    app.include_router(get_queues.router, prefix=QUEUE_PATH, tags=[QUEUE_TAG])
+    app.include_router(get_queue.router, prefix=QUEUE_PATH, tags=[QUEUE_TAG])
+    app.include_router(update_queue.router, prefix=QUEUE_PATH, tags=[QUEUE_TAG])
+    app.include_router(delete_queue.router, prefix=QUEUE_PATH, tags=[QUEUE_TAG])
 
     app.include_router(
         family_request_membership.router,

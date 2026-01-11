@@ -127,6 +127,24 @@ class QueueHelper:
         )
         return items
 
+    def get_all_queues_by_family(self, family_id: str) -> List[QueueModel]:
+        """Get all queues in a family across all groups."""
+        items: List[QueueModel] = []
+        sk_prefix = "GROUP#"
+
+        for item in QueueModel.query(
+            QueueModel.create_pk(family_id),
+            QueueModel.sk.startswith(sk_prefix),
+        ):
+            # Additional check to ensure it's a queue (not just any group item)
+            if "#QUEUE#" in item.sk:
+                items.append(item)
+
+        self.logger.info(
+            f"Fetched {len(items)} queues across all groups in family {family_id}."
+        )
+        return items
+
     def delete_queue(
         self,
         family_id: str,
