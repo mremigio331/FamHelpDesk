@@ -466,6 +466,66 @@ class GroupMembershipHelper:
         )
         return deleted_count
 
+    def update_member_role(
+        self,
+        family_id: str,
+        group_id: str,
+        admin_user_id: str,
+        target_user_id: str,
+        is_admin: bool,
+    ) -> dict:
+        """
+        Update a group member's role (admin/member).
+        Only group admins can update member roles.
+        This method can both promote members to admin and demote admins to regular members.
+        """
+        # Verify admin privileges
+        try:
+            admin_item = GroupMembershipModel.get(
+                GroupMembershipModel.create_pk(family_id),
+                GroupMembershipModel.create_sk(group_id, admin_user_id),
+            )
+        except DoesNotExist:
+            raise MemberPrivilegesRequired()
+
+        if (
+            admin_item.status != MembershipStatus.MEMBER.value
+            or not admin_item.is_admin
+        ):
+            raise AdminPrivilegesRequired()
+
+        # Get target membership
+        try:
+            target_item = GroupMembershipModel.get(
+                GroupMembershipModel.create_pk(family_id),
+                GroupMembershipModel.create_sk(group_id, target_user_id),
+            )
+        except DoesNotExist:
+            raise MembershipNotFound()
+
+        if target_item.status != MembershipStatus.MEMBER.value:
+            raise MembershipNotFound()
+
+        before = self._clean_membership(target_item)
+        target_item.is_admin = is_admin
+        target_item.save()
+
+        after = self._clean_membership(target_item)
+        self.audit_helper.create_family_audit_record(
+            family_id=family_id,
+            entity_type=AuditEntityTypes.MEMBER,
+            entity_id=target_user_id,
+            action=AuditActions.UPDATE,
+            actor_user_id=admin_user_id,
+            before=before,
+            after=after,
+        )
+
+        self.logger.info(
+            f"Updated role for user {target_user_id} in group {group_id} to admin={is_admin} by {admin_user_id}."
+        )
+        return after
+
     @staticmethod
     def _clean_membership(item: GroupMembershipModel) -> dict:
         return {

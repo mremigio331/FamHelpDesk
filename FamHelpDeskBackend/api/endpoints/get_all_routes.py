@@ -27,6 +27,8 @@ from api.endpoints.membership.group_membership import (
     get_group_members,
     add_group_member,
     remove_group_member,
+    update_group_member_role,
+    get_group_members_with_roles,
 )
 from api.endpoints.notifications import (
     get_notifications,
@@ -121,6 +123,16 @@ def get_all_routes(app: FastAPI) -> FastAPI:
     )
     app.include_router(
         remove_group_member.router, prefix=MEMBERSHIP_PATH, tags=[GROUP_MEMBERSHIP_TAG]
+    )
+    app.include_router(
+        update_group_member_role.router,
+        prefix=MEMBERSHIP_PATH,
+        tags=[GROUP_MEMBERSHIP_TAG],
+    )
+    app.include_router(
+        get_group_members_with_roles.router,
+        prefix=MEMBERSHIP_PATH,
+        tags=[GROUP_MEMBERSHIP_TAG],
     )
 
     app.include_router(
