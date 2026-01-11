@@ -82,6 +82,12 @@ enum ValidationError: Error, LocalizedError {
     case groupNameTooLong
     case groupDescriptionTooLong
 
+    // Queue validation
+    case emptyQueueName
+    case queueNameTooShort
+    case queueNameTooLong
+    case queueDescriptionTooLong
+
     // Family validation
     case emptyFamilyName
     case familyNameTooShort
@@ -110,6 +116,15 @@ enum ValidationError: Error, LocalizedError {
             "Group name cannot exceed 50 characters"
         case .groupDescriptionTooLong:
             "Group description cannot exceed 200 characters"
+        // Queue validation
+        case .emptyQueueName:
+            "Queue name cannot be empty"
+        case .queueNameTooShort:
+            "Queue name must be at least 2 characters long"
+        case .queueNameTooLong:
+            "Queue name cannot exceed 50 characters"
+        case .queueDescriptionTooLong:
+            "Queue description cannot exceed 200 characters"
         // Family validation
         case .emptyFamilyName:
             "Family name cannot be empty"

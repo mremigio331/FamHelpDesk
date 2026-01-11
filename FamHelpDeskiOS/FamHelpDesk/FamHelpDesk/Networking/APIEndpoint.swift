@@ -37,6 +37,15 @@ enum APIEndpoint {
     case updateGroupMemberRole(familyId: String, groupId: String, userId: String)
     case getGroupMembersWithRoles(familyId: String, groupId: String)
 
+    // Queue endpoints
+    case getAllQueues(familyId: String, groupId: String?)
+    case createQueue
+    case updateQueue(queueId: String)
+    case deleteQueue(queueId: String)
+    case getQueueMembers(queueId: String)
+    case assignQueueMember(queueId: String)
+    case removeQueueMember(queueId: String, userId: String)
+
     // Search endpoints
     case searchFamilies
 
@@ -94,6 +103,24 @@ enum APIEndpoint {
             "/membership/\(familyId)/\(groupId)/role/\(userId)"
         case let .getGroupMembersWithRoles(familyId, groupId):
             "/membership/\(familyId)/\(groupId)/members-with-roles"
+        case let .getAllQueues(familyId, groupId):
+            if let groupId {
+                "/queue/\(familyId)/\(groupId)"
+            } else {
+                "/queue/\(familyId)"
+            }
+        case .createQueue:
+            "/queue"
+        case let .updateQueue(queueId):
+            "/queue/\(queueId)"
+        case let .deleteQueue(queueId):
+            "/queue/\(queueId)"
+        case let .getQueueMembers(queueId):
+            "/queue/\(queueId)/members"
+        case let .assignQueueMember(queueId):
+            "/queue/\(queueId)/members"
+        case let .removeQueueMember(queueId, userId):
+            "/queue/\(queueId)/members/\(userId)"
         case .searchFamilies:
             "/family/search"
         }
