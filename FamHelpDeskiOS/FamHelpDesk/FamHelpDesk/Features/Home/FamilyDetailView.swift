@@ -4,6 +4,11 @@ struct FamilyDetailView: View {
     let family: Family
     @State private var familySession = FamilySession.shared
     @State private var navigationContext = NavigationContext.shared
+    @State private var notificationSession = NotificationSession.shared
+    @State private var showProfile = false
+    @State private var showNotifications = false
+    @State private var showSearch = false
+    @State private var navigationBarVisible = true
 
     enum Tab: String, CaseIterable {
         case overview = "Overview"
@@ -37,46 +42,84 @@ struct FamilyDetailView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Tab Picker
-            Picker("Tab", selection: Binding(
-                get: { selectedTab },
-                set: { navigationContext.selectedFamilyTab = $0 }
-            )) {
-                ForEach(availableTabs, id: \.self) { tab in
-                    Label(tab.rawValue, systemImage: tab.systemImage)
-                        .tag(tab)
-                }
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal)
-            .padding(.top, 8)
+            // Collapsible Navigation Bar
+            CollapsibleNavigationBar(
+                showProfile: $showProfile,
+                showNotifications: $showNotifications,
+                showSearch: $showSearch,
+                unreadCount: notificationSession.unreadCount,
+                isVisible: $navigationBarVisible,
+                isInFamilyContext: true
+            )
 
-            // Tab Content
-            TabView(selection: Binding(
-                get: { selectedTab },
-                set: { navigationContext.selectedFamilyTab = $0 }
-            )) {
-                ForEach(availableTabs, id: \.self) { tab in
-                    Group {
-                        switch tab {
-                        case .overview:
-                            overviewContent
-                        case .members:
-                            FamilyMembersView(family: family)
-                        case .groups:
-                            FamilyGroupsView(family: family)
+            // Family Content
+            VStack(spacing: 0) {
+                // Tab Picker
+                Picker("Tab", selection: Binding(
+                    get: { selectedTab },
+                    set: { navigationContext.selectedFamilyTab = $0 }
+                )) {
+                    ForEach(availableTabs, id: \.self) { tab in
+                        Label(tab.rawValue, systemImage: tab.systemImage)
+                            .tag(tab)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+                .padding(.top, 8)
+
+                // Tab Content with Collapsible Scroll
+                CollapsibleScrollView(navigationBarVisible: $navigationBarVisible) {
+                    TabView(selection: Binding(
+                        get: { selectedTab },
+                        set: { navigationContext.selectedFamilyTab = $0 }
+                    )) {
+                        ForEach(availableTabs, id: \.self) { tab in
+                            Group {
+                                switch tab {
+                                case .overview:
+                                    overviewContent
+                                case .members:
+                                    FamilyMembersView(family: family)
+                                case .groups:
+                                    FamilyGroupsView(family: family)
+                                }
+                            }
+                            .tag(tab)
                         }
                     }
-                    .tag(tab)
+                    .tabViewStyle(.page(indexDisplayMode: .never))
+                    .frame(minHeight: UIScreen.main.bounds.height - 200) // Ensure scrollable content
                 }
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
         }
-        .navigationTitle(family.familyName)
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarHidden(true)
+        .sheet(isPresented: $showProfile) {
+            UserProfileDetailView()
+                .onAppear {
+                    navigationContext.navigateToProfile()
+                }
+        }
+        .sheet(isPresented: $showNotifications) {
+            NotificationsView()
+                .onAppear {
+                    navigationContext.navigateToNotifications()
+                }
+        }
+        .sheet(isPresented: $showSearch) {
+            FamilySearchView()
+                .onAppear {
+                    navigationContext.navigateToSearch()
+                }
+        }
         .onAppear {
             // Update navigation context when this view appears
             navigationContext.selectedFamily = family
+
+            // Load notifications to get unread count
+            Task {
+                await notificationSession.fetchNotifications(refresh: false)
+            }
         }
     }
 
@@ -93,29 +136,35 @@ struct FamilyDetailView: View {
     }
 
     private var overviewContent: some View {
-        List {
-            Section {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Image(systemName: "person.3.fill")
-                            .font(.title)
-                            .foregroundColor(.blue)
+        VStack(spacing: 0) {
+            // Family Title Section
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Image(systemName: "person.3.fill")
+                        .font(.title)
+                        .foregroundColor(.blue)
 
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(family.familyName)
-                                .font(.title2)
-                                .fontWeight(.bold)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(family.familyName)
+                            .font(.title2)
+                            .fontWeight(.bold)
 
-                            if let description = family.familyDescription, !description.isEmpty {
-                                Text(description)
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                            }
+                        if let description = family.familyDescription, !description.isEmpty {
+                            Text(description)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
                         }
                     }
 
-                    Divider()
+                    Spacer()
+                }
+                .padding()
+                .background(Color(uiColor: .systemBackground))
+            }
 
+            // Family Details List
+            List {
+                Section {
                     if let item = familyItem {
                         // User has some relationship with this family
                         HStack {
@@ -221,11 +270,41 @@ struct FamilyDetailView: View {
                             .textSelection(.enabled)
                     }
                 }
-                .padding(.vertical, 8)
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+
+                // Add some extra content to make scrolling more apparent
+                Section("Additional Information") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Family Management")
+                            .font(.headline)
+
+                        Text("This family provides a centralized way to organize and manage help desk tickets. Members can create groups, manage queues, and collaborate on resolving issues.")
+                            .font(.body)
+                            .foregroundColor(.secondary)
+
+                        if let item = familyItem, item.membership.status == "MEMBER" {
+                            Text("As a member, you have access to:")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Label("View and manage family members", systemImage: "person.2")
+                                Label("Create and join groups", systemImage: "rectangle.3.group")
+                                Label("Manage tickets and queues", systemImage: "ticket")
+                                Label("Receive notifications", systemImage: "bell")
+                            }
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(.vertical, 8)
+                }
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
             }
-        }
-        .refreshable {
-            await refreshFamilyData()
+            .listStyle(.insetGrouped)
+            .refreshable {
+                await refreshFamilyData()
+            }
         }
     }
 

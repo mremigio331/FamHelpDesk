@@ -5,7 +5,12 @@ struct GroupDetailView: View {
     @State private var navigationContext = NavigationContext.shared
     @State private var userSession = UserSession.shared
     @State private var queueSession = QueueSession.shared
+    @State private var notificationSession = NotificationSession.shared
     @State private var selectedTab: GroupDetailTab = .overview
+    @State private var showProfile = false
+    @State private var showNotifications = false
+    @State private var showSearch = false
+    @State private var navigationBarVisible = true
 
     @State private var members: [GroupMember] = []
     @State private var membershipRequests: [GroupMembershipRequestItem] = []
@@ -74,55 +79,90 @@ struct GroupDetailView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Tab Picker
-            Picker("Tab", selection: $selectedTab) {
-                ForEach(GroupDetailTab.allCases, id: \.self) { tab in
-                    Label(tab.rawValue, systemImage: tab.systemImage)
-                        .tag(tab)
+            // Collapsible Navigation Bar
+            CollapsibleNavigationBar(
+                showProfile: $showProfile,
+                showNotifications: $showNotifications,
+                showSearch: $showSearch,
+                unreadCount: notificationSession.unreadCount,
+                isVisible: $navigationBarVisible,
+                isInFamilyContext: true
+            )
+
+            // Group Content
+            VStack(spacing: 0) {
+                // Tab Picker
+                Picker("Tab", selection: $selectedTab) {
+                    ForEach(GroupDetailTab.allCases, id: \.self) { tab in
+                        Label(tab.rawValue, systemImage: tab.systemImage)
+                            .tag(tab)
+                    }
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                .padding(.horizontal)
+                .padding(.top, 8)
+
+                // Tab Content with Collapsible Scroll
+                CollapsibleScrollView(navigationBarVisible: $navigationBarVisible) {
+                    VStack {
+                        switch selectedTab {
+                        case .overview:
+                            GroupOverviewView(
+                                group: group,
+                                members: members,
+                                membershipRequests: membershipRequests,
+                                isLoadingMembers: isLoadingMembers,
+                                isLoadingRequests: isLoadingRequests,
+                                membersError: membersError,
+                                isCurrentUserMember: isCurrentUserMember,
+                                isCurrentUserAdmin: isCurrentUserAdmin,
+                                hasCurrentUserPendingRequest: hasCurrentUserPendingRequest,
+                                showingMembershipRequest: $showingMembershipRequest,
+                                showingMembershipManagement: $showingMembershipManagement,
+                                refreshMembershipData: refreshMembershipData
+                            )
+                        case .queues:
+                            QueueListView(group: group)
+                        case .members:
+                            GroupMembersView(
+                                group: group,
+                                members: members,
+                                membershipRequests: membershipRequests,
+                                isLoadingMembers: isLoadingMembers,
+                                isLoadingRequests: isLoadingRequests,
+                                membersError: membersError,
+                                isCurrentUserMember: isCurrentUserMember,
+                                isCurrentUserAdmin: isCurrentUserAdmin,
+                                hasCurrentUserPendingRequest: hasCurrentUserPendingRequest,
+                                showingMembershipRequest: $showingMembershipRequest,
+                                showingMembershipManagement: $showingMembershipManagement,
+                                refreshMembershipData: refreshMembershipData
+                            )
+                        }
+                    }
+                    .frame(minHeight: UIScreen.main.bounds.height - 200) // Ensure scrollable content
                 }
             }
-            .pickerStyle(SegmentedPickerStyle())
-            .padding(.horizontal)
-            .padding(.top, 8)
-
-            // Tab Content
-            switch selectedTab {
-            case .overview:
-                GroupOverviewView(
-                    group: group,
-                    members: members,
-                    membershipRequests: membershipRequests,
-                    isLoadingMembers: isLoadingMembers,
-                    isLoadingRequests: isLoadingRequests,
-                    membersError: membersError,
-                    isCurrentUserMember: isCurrentUserMember,
-                    isCurrentUserAdmin: isCurrentUserAdmin,
-                    hasCurrentUserPendingRequest: hasCurrentUserPendingRequest,
-                    showingMembershipRequest: $showingMembershipRequest,
-                    showingMembershipManagement: $showingMembershipManagement,
-                    refreshMembershipData: refreshMembershipData
-                )
-            case .queues:
-                QueueListView(group: group)
-            case .members:
-                GroupMembersView(
-                    group: group,
-                    members: members,
-                    membershipRequests: membershipRequests,
-                    isLoadingMembers: isLoadingMembers,
-                    isLoadingRequests: isLoadingRequests,
-                    membersError: membersError,
-                    isCurrentUserMember: isCurrentUserMember,
-                    isCurrentUserAdmin: isCurrentUserAdmin,
-                    hasCurrentUserPendingRequest: hasCurrentUserPendingRequest,
-                    showingMembershipRequest: $showingMembershipRequest,
-                    showingMembershipManagement: $showingMembershipManagement,
-                    refreshMembershipData: refreshMembershipData
-                )
-            }
         }
-        .navigationTitle(group.groupName)
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarHidden(true)
+        .sheet(isPresented: $showProfile) {
+            UserProfileDetailView()
+                .onAppear {
+                    navigationContext.navigateToProfile()
+                }
+        }
+        .sheet(isPresented: $showNotifications) {
+            NotificationsView()
+                .onAppear {
+                    navigationContext.navigateToNotifications()
+                }
+        }
+        .sheet(isPresented: $showSearch) {
+            FamilySearchView()
+                .onAppear {
+                    navigationContext.navigateToSearch()
+                }
+        }
         .refreshable {
             await refreshMembershipData()
         }
@@ -139,6 +179,9 @@ struct GroupDetailView: View {
                 print("🔄 Loading user profile for membership check...")
                 await userSession.loadUserProfile()
             }
+
+            // Load notifications to get unread count
+            await notificationSession.fetchNotifications(refresh: false)
         }
         .onAppear {
             // Update navigation context when this view appears

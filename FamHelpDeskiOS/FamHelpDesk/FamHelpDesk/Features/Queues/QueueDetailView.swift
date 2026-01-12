@@ -5,7 +5,12 @@ struct QueueDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var queueSession = QueueSession.shared
     @State private var userSession = UserSession.shared
+    @State private var notificationSession = NotificationSession.shared
     @State private var selectedTab: QueueDetailTab = .overview
+    @State private var showProfile = false
+    @State private var showNotifications = false
+    @State private var showSearch = false
+    @State private var navigationBarVisible = true
 
     @State private var showingEditQueue = false
     @State private var alertType: AlertType?
@@ -48,62 +53,66 @@ struct QueueDetailView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Tab Picker
-            Picker("Tab", selection: $selectedTab) {
-                ForEach(QueueDetailTab.allCases, id: \.self) { tab in
-                    Label(tab.rawValue, systemImage: tab.systemImage)
-                        .tag(tab)
-                }
-            }
-            .pickerStyle(SegmentedPickerStyle())
-            .padding(.horizontal)
-            .padding(.top, 8)
+            // Collapsible Navigation Bar
+            CollapsibleNavigationBar(
+                showProfile: $showProfile,
+                showNotifications: $showNotifications,
+                showSearch: $showSearch,
+                unreadCount: notificationSession.unreadCount,
+                isVisible: $navigationBarVisible,
+                isInFamilyContext: true
+            )
 
-            // Tab Content
-            switch selectedTab {
-            case .overview:
-                QueueOverviewView(
-                    queue: queue,
-                    canEditQueue: canEditQueue,
-                    showingEditQueue: $showingEditQueue,
-                    onDeleteTapped: {
-                        alertType = .deleteConfirmation
+            // Queue Content
+            VStack(spacing: 0) {
+                // Tab Picker
+                Picker("Tab", selection: $selectedTab) {
+                    ForEach(QueueDetailTab.allCases, id: \.self) { tab in
+                        Label(tab.rawValue, systemImage: tab.systemImage)
+                            .tag(tab)
                     }
-                )
-            case .tickets:
-                QueueTicketsView(queue: queue)
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                .padding(.horizontal)
+                .padding(.top, 8)
+
+                // Tab Content with Collapsible Scroll
+                CollapsibleScrollView(navigationBarVisible: $navigationBarVisible) {
+                    VStack {
+                        switch selectedTab {
+                        case .overview:
+                            QueueOverviewView(
+                                queue: queue,
+                                canEditQueue: canEditQueue,
+                                showingEditQueue: $showingEditQueue,
+                                onDeleteTapped: {
+                                    alertType = .deleteConfirmation
+                                }
+                            )
+                        case .tickets:
+                            QueueTicketsView(queue: queue)
+                        }
+                    }
+                    .frame(minHeight: UIScreen.main.bounds.height - 200) // Ensure scrollable content
+                }
             }
         }
-        .navigationTitle(queue.queueName)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                if canEditQueue {
-                    Menu {
-                        Button(action: {
-                            showingEditQueue = true
-                        }) {
-                            Label("Edit Queue", systemImage: "pencil")
-                        }
-
-                        Divider()
-
-                        Button(role: .destructive, action: {
-                            alertType = .deleteConfirmation
-                        }) {
-                            Label("Delete Queue", systemImage: "trash")
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                    }
-                }
-            }
+        .navigationBarHidden(true)
+        .sheet(isPresented: $showProfile) {
+            UserProfileDetailView()
+        }
+        .sheet(isPresented: $showNotifications) {
+            NotificationsView()
+        }
+        .sheet(isPresented: $showSearch) {
+            FamilySearchView()
         }
         .refreshable {
             // No need to refresh members since queues don't have their own members
         }
         .task {
-            // No need to load queue members since they don't exist
+            // Load notifications to get unread count
+            await notificationSession.fetchNotifications(refresh: false)
         }
         .sheet(isPresented: $showingEditQueue) {
             EditQueueView(queue: queue)
@@ -247,6 +256,10 @@ struct QueueOverviewView: View {
                                 .foregroundColor(.blue)
                             Text("Edit Queue")
                                 .foregroundColor(.blue)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
                         }
                     }
 
@@ -258,6 +271,10 @@ struct QueueOverviewView: View {
                                 .foregroundColor(.red)
                             Text("Delete Queue")
                                 .foregroundColor(.red)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
                         }
                     }
                 }
