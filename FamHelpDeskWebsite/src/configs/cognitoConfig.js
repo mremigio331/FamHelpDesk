@@ -9,10 +9,10 @@ const STAGING_CLIENT_ID = "1omenujjf07khboa3ggtdujh63";
 const STAGING_REGION = "us-west-2";
 const STAGING_COGNITO_DOMAIN = "famhelpdesk-testing";
 
-const PROD_USER_POOL_ID = "us-west-2_4hHBH4CPn"; // Update with production values
-const PROD_CLIENT_ID = "1omenujjf07khboa3ggtdujh63"; // Update with production values
+const PROD_USER_POOL_ID = "us-west-2_KgiY8aKBk";
+const PROD_CLIENT_ID = "21rh7k5v6nbrihub67b102vdir";
 const PROD_REGION = "us-west-2";
-const PROD_COGNITO_DOMAIN = "famhelpdesk-prod"; // Update with production domain
+const PROD_COGNITO_DOMAIN = "famhelpdesk-prod";
 
 export const COGNITO_CONSTANTS = {
   DEV: {

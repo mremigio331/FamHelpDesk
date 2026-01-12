@@ -68,6 +68,14 @@ const Navbar = () => {
     },
   ];
 
+  // Example: get user profile from localStorage or context (replace with actual logic)
+  let userProfile = null;
+  try {
+    userProfile = JSON.parse(localStorage.getItem("user_profile"));
+  } catch {}
+  const profileColor = userProfile?.profile_color || "#001529";
+  const darkModeWeb = userProfile?.dark_mode?.web || false;
+
   return (
     <Header
       style={{
@@ -78,7 +86,8 @@ const Navbar = () => {
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        backgroundColor: "#001529",
+        backgroundColor: darkModeWeb ? "#111" : profileColor,
+        color: darkModeWeb ? "#eee" : "white",
         padding: "0 50px",
       }}
     >
@@ -126,7 +135,27 @@ const Navbar = () => {
 
           <Button
             type="text"
-            icon={<Avatar icon={<UserOutlined />} size="small" />}
+            icon={
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 32,
+                  height: 32,
+                  borderRadius: "50%",
+                  backgroundColor: profileColor,
+                  color: darkModeWeb ? "#eee" : "#fff",
+                  fontWeight: "bold",
+                  fontSize: "18px",
+                  textTransform: "uppercase",
+                  border: "2px solid #fff",
+                  boxShadow: "0 0 2px rgba(0,0,0,0.1)",
+                }}
+              >
+                {userProfile?.display_name?.[0] || <UserOutlined />}
+              </span>
+            }
             onClick={() => navigate("/profile")}
             style={{ color: "white" }}
           />

@@ -93,6 +93,25 @@ const UserProfileDesktop = ({
                 <Descriptions.Item label="Email">
                   {userProfile.email}
                 </Descriptions.Item>
+                <Descriptions.Item label="Profile Color">
+                  <span style={{ color: userProfile.profile_color }}>
+                    {userProfile.profile_color}
+                  </span>
+                </Descriptions.Item>
+                <Descriptions.Item label="Dark Mode">
+                  {userProfile.dark_mode &&
+                  typeof userProfile.dark_mode === "object" ? (
+                    <>
+                      <div>Web: {userProfile.dark_mode.web ? "On" : "Off"}</div>
+                      <div>
+                        Mobile: {userProfile.dark_mode.mobile ? "On" : "Off"}
+                      </div>
+                      <div>iOS: {userProfile.dark_mode.ios ? "On" : "Off"}</div>
+                    </>
+                  ) : (
+                    "Off"
+                  )}
+                </Descriptions.Item>
               </Descriptions>
 
               <Space size="middle">
