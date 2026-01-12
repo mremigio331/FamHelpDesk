@@ -13,7 +13,7 @@ router = APIRouter()
 
 
 @router.get(
-    "/{family_id}/groups/{group_id}",
+    "/{family_id}/{group_id}",
     summary="Get all queues in a group",
     response_description="List of queues",
 )
