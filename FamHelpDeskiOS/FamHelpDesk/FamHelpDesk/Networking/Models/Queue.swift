@@ -95,10 +95,16 @@ struct CreateQueueResponse: Codable {
 }
 
 struct UpdateQueueRequest: Codable {
-    let queueName: String?
+    let familyId: String
+    let groupId: String
+    let queueId: String
+    let queueName: String
     let queueDescription: String?
 
     enum CodingKeys: String, CodingKey {
+        case familyId = "family_id"
+        case groupId = "group_id"
+        case queueId = "queue_id"
         case queueName = "queue_name"
         case queueDescription = "queue_description"
     }

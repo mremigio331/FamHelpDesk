@@ -5,8 +5,17 @@ struct QueueListView: View {
     @State private var queueSession = QueueSession.shared
     @State private var userSession = UserSession.shared
     @State private var showingCreateQueue = false
-    @State private var showingAlert = false
-    @State private var alertMessage = ""
+    @State private var alertType: AlertType?
+
+    enum AlertType: Identifiable {
+        case error(String)
+
+        var id: String {
+            switch self {
+            case .error: "error"
+            }
+        }
+    }
 
     private var queues: [Queue] {
         queueSession.getQueuesForGroup(group.groupId)
@@ -54,13 +63,9 @@ struct QueueListView: View {
                 // Queues list
                 Section("Queues (\(queues.count))") {
                     ForEach(queues) { queue in
-                        Button(action: {
-                            // TODO: Navigate to QueueDetailView when implemented
-                            print("Navigate to queue: \(queue.queueName)")
-                        }) {
+                        NavigationLink(destination: QueueDetailView(initialQueue: queue)) {
                             QueueRowView(queue: queue)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -88,7 +93,7 @@ struct QueueListView: View {
             await queueSession.refreshGroupQueues(familyId: group.familyId, groupId: group.groupId)
         }
         .task {
-            // Load queues when view appears
+            // Queues are already loaded by GroupDetailView, but load if empty
             if queues.isEmpty {
                 await queueSession.fetchGroupQueues(familyId: group.familyId, groupId: group.groupId)
             }
@@ -96,17 +101,21 @@ struct QueueListView: View {
         .sheet(isPresented: $showingCreateQueue) {
             CreateQueueView(group: group)
         }
-        .alert("Error", isPresented: $showingAlert) {
-            Button("OK") {
-                queueSession.clearError()
+        .alert(item: $alertType) { alertType in
+            switch alertType {
+            case let .error(message):
+                Alert(
+                    title: Text("Error"),
+                    message: Text(message),
+                    dismissButton: .default(Text("OK")) {
+                        queueSession.clearError()
+                    }
+                )
             }
-        } message: {
-            Text(alertMessage)
         }
         .onChange(of: queueSession.errorMessage) { _, newValue in
             if let errorMessage = newValue {
-                alertMessage = errorMessage
-                showingAlert = true
+                alertType = .error(errorMessage)
             }
         }
     }
@@ -174,8 +183,17 @@ struct CreateQueueView: View {
     @State private var queueName = ""
     @State private var queueDescription = ""
     @State private var isCreating = false
-    @State private var showingAlert = false
-    @State private var alertMessage = ""
+    @State private var alertType: AlertType?
+
+    enum AlertType: Identifiable {
+        case error(String)
+
+        var id: String {
+            switch self {
+            case .error: "error"
+            }
+        }
+    }
 
     private var isFormValid: Bool {
         !queueName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -231,10 +249,15 @@ struct CreateQueueView: View {
                     .disabled(!isFormValid || isCreating)
                 }
             }
-            .alert("Error", isPresented: $showingAlert) {
-                Button("OK") {}
-            } message: {
-                Text(alertMessage)
+            .alert(item: $alertType) { alertType in
+                switch alertType {
+                case let .error(message):
+                    Alert(
+                        title: Text("Error"),
+                        message: Text(message),
+                        dismissButton: .default(Text("OK"))
+                    )
+                }
             }
         }
     }
@@ -246,7 +269,7 @@ struct CreateQueueView: View {
         let trimmedDescription = queueDescription.trimmingCharacters(in: .whitespacesAndNewlines)
         let finalDescription = trimmedDescription.isEmpty ? nil : trimmedDescription
 
-        let result = await queueSession.createQueue(
+        let success = await queueSession.createQueue(
             familyId: group.familyId,
             groupId: group.groupId,
             name: queueName,
@@ -255,13 +278,12 @@ struct CreateQueueView: View {
 
         isCreating = false
 
-        if result != nil {
+        if success {
             // Success - dismiss the sheet
             dismiss()
         } else if let errorMessage = queueSession.errorMessage {
             // Show error
-            alertMessage = errorMessage
-            showingAlert = true
+            alertType = .error(errorMessage)
         }
     }
 }

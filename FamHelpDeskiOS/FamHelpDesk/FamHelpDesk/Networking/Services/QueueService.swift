@@ -41,9 +41,9 @@ final class QueueService {
     ///   - groupId: The ID of the group
     ///   - name: The name of the queue
     ///   - description: Optional description
-    /// - Returns: The created Queue object
+    /// - Returns: Success indicator (true if 2xx response)
     /// - Throws: ServiceError for validation errors or network failures
-    func createQueue(familyId: String, groupId: String, name: String, description: String?) async throws -> Queue {
+    func createQueue(familyId: String, groupId: String, name: String, description: String?) async throws -> Bool {
         // Validate queue name requirements
         try validateQueueInput(name: name, description: description)
 
@@ -54,12 +54,15 @@ final class QueueService {
                 queueName: name,
                 queueDescription: description
             )
-            let response: CreateQueueResponse = try await networkManager.post(
+
+            // Use postRawData to avoid decoding issues - we only care about success
+            _ = try await networkManager.postRawData(
                 endpoint: APIEndpoint.createQueue.path,
                 body: request
             )
-            print("📱 Created Queue: \(response.queue.queueName)")
-            return response.queue
+
+            print("📱 Created Queue successfully")
+            return true
         } catch {
             let serviceError = mapToServiceError(error)
             print("❌ Error creating queue: \(serviceError)")
@@ -69,30 +72,36 @@ final class QueueService {
 
     /// Updates an existing queue with enhanced validation and error handling
     /// - Parameters:
+    ///   - familyId: The ID of the family
+    ///   - groupId: The ID of the group
     ///   - queueId: The ID of the queue to update
-    ///   - name: The new name of the queue (optional)
-    ///   - description: The new description (optional)
-    /// - Returns: The updated Queue object
+    ///   - name: The new name of the queue
+    ///   - description: The new description
+    /// - Returns: Success indicator (true if 2xx response)
     /// - Throws: ServiceError for validation errors or network failures
-    func updateQueue(queueId: String, name: String?, description: String?) async throws -> Queue {
-        // Validate queue input if provided
-        if let name {
-            try validateQueueInput(name: name, description: description)
-        } else if let description {
-            try validateQueueInput(name: "temp", description: description) // Just validate description
-        }
+    func updateQueue(familyId: String, groupId: String, queueId: String, name: String, description: String?) async throws -> Bool {
+        // Validate queue input
+        try validateQueueInput(name: name, description: description)
 
         do {
             let request = UpdateQueueRequest(
+                familyId: familyId,
+                groupId: groupId,
+                queueId: queueId,
                 queueName: name,
                 queueDescription: description
             )
-            let response: UpdateQueueResponse = try await networkManager.put(
-                endpoint: APIEndpoint.updateQueue(queueId: queueId).path,
+
+            print("🌐 Making update queue API call to: \(APIEndpoint.updateQueue.path)")
+            print("🌐 Request body: familyId=\(familyId), groupId=\(groupId), queueId=\(queueId), name=\(name), description=\(description ?? "nil")")
+
+            // Use postRawData to avoid decoding issues - we only care about success
+            _ = try await networkManager.postRawData(
+                endpoint: APIEndpoint.updateQueue.path,
                 body: request
             )
-            print("📱 Updated Queue: \(response.queue.queueName)")
-            return response.queue
+            print("📱 Updated Queue successfully")
+            return true
         } catch {
             let serviceError = mapToServiceError(error)
             print("❌ Error updating queue: \(serviceError)")
@@ -101,16 +110,20 @@ final class QueueService {
     }
 
     /// Deletes a queue with proper error handling
-    /// - Parameter queueId: The ID of the queue to delete
-    /// - Returns: Success response
+    /// - Parameters:
+    ///   - familyId: The ID of the family
+    ///   - groupId: The ID of the group
+    ///   - queueId: The ID of the queue to delete
+    /// - Returns: Success indicator (true if 2xx response)
     /// - Throws: ServiceError for network failures or business logic errors
-    func deleteQueue(queueId: String) async throws -> DeleteQueueResponse {
+    func deleteQueue(familyId: String, groupId: String, queueId: String) async throws -> Bool {
         do {
-            let response: DeleteQueueResponse = try await networkManager.delete(
-                endpoint: APIEndpoint.deleteQueue(queueId: queueId).path
+            // Use deleteRawData to avoid decoding issues - we only care about success
+            _ = try await networkManager.deleteRawData(
+                endpoint: APIEndpoint.deleteQueue(familyId: familyId, groupId: groupId, queueId: queueId).path
             )
             print("📱 Deleted Queue: \(queueId)")
-            return response
+            return true
         } catch {
             let serviceError = mapToServiceError(error)
             print("❌ Error deleting queue: \(serviceError)")

@@ -4,6 +4,7 @@ struct GroupDetailView: View {
     let group: FamilyGroup
     @State private var navigationContext = NavigationContext.shared
     @State private var userSession = UserSession.shared
+    @State private var queueSession = QueueSession.shared
     @State private var selectedTab: GroupDetailTab = .overview
 
     @State private var members: [GroupMember] = []
@@ -130,6 +131,9 @@ struct GroupDetailView: View {
             await loadGroupMembers()
             await loadMembershipRequests()
 
+            // Load queues for this group
+            await loadGroupQueues()
+
             // Ensure user session is loaded for membership check
             if userSession.currentUser == nil, !userSession.isFetching, !userSession.isLoading {
                 print("🔄 Loading user profile for membership check...")
@@ -158,6 +162,7 @@ struct GroupDetailView: View {
     private func refreshMembershipData() async {
         await loadGroupMembers()
         await loadMembershipRequests()
+        await loadGroupQueues()
     }
 
     private func loadGroupMembers() async {
@@ -207,6 +212,10 @@ struct GroupDetailView: View {
         isLoadingRequests = false
     }
 
+    private func loadGroupQueues() async {
+        await queueSession.fetchGroupQueues(familyId: group.familyId, groupId: group.groupId)
+    }
+
     private func formatDate(_ dateString: String) -> String {
         let formatter = ISO8601DateFormatter()
         guard let date = formatter.date(from: dateString) else {
@@ -235,6 +244,12 @@ struct GroupOverviewView: View {
     @Binding var showingMembershipRequest: Bool
     @Binding var showingMembershipManagement: Bool
     let refreshMembershipData: () async -> Void
+
+    @State private var queueSession = QueueSession.shared
+
+    private var queues: [Queue] {
+        queueSession.getQueuesForGroup(group.groupId)
+    }
 
     var body: some View {
         List {
@@ -292,6 +307,18 @@ struct GroupOverviewView: View {
                             .font(.title2)
                             .fontWeight(.bold)
                             .foregroundColor(.blue)
+                    }
+
+                    Spacer()
+
+                    VStack(alignment: .center, spacing: 4) {
+                        Text("Queues")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Text("\(queues.count)")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.green)
                     }
 
                     Spacer()

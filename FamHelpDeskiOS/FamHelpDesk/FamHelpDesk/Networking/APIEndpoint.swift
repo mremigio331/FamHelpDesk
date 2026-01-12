@@ -40,8 +40,8 @@ enum APIEndpoint {
     // Queue endpoints
     case getAllQueues(familyId: String, groupId: String?)
     case createQueue
-    case updateQueue(queueId: String)
-    case deleteQueue(queueId: String)
+    case updateQueue
+    case deleteQueue(familyId: String, groupId: String, queueId: String)
     case getQueueMembers(queueId: String)
     case assignQueueMember(queueId: String)
     case removeQueueMember(queueId: String, userId: String)
@@ -110,11 +110,11 @@ enum APIEndpoint {
                 "/queue/\(familyId)"
             }
         case .createQueue:
-            "/queue"
-        case let .updateQueue(queueId):
-            "/queue/\(queueId)"
-        case let .deleteQueue(queueId):
-            "/queue/\(queueId)"
+            "/queue/create"
+        case .updateQueue:
+            "/queue/update"
+        case let .deleteQueue(familyId, groupId, queueId):
+            "/queue/\(familyId)/\(groupId)/\(queueId)"
         case let .getQueueMembers(queueId):
             "/queue/\(queueId)/members"
         case let .assignQueueMember(queueId):
