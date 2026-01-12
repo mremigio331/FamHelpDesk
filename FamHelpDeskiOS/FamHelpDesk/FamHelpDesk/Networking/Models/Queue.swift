@@ -8,10 +8,7 @@ struct Queue: Codable, Identifiable, Hashable {
     let groupId: String
     let queueName: String
     let queueDescription: String?
-    let createdBy: String
     let creationDate: TimeInterval
-    let openTicketCount: Int
-    let totalTicketCount: Int
 
     var id: String { queueId }
 
@@ -27,10 +24,7 @@ struct Queue: Codable, Identifiable, Hashable {
         case groupId = "group_id"
         case queueName = "queue_name"
         case queueDescription = "queue_description"
-        case createdBy = "created_by"
         case creationDate = "creation_date"
-        case openTicketCount = "open_ticket_count"
-        case totalTicketCount = "total_ticket_count"
     }
 
     func hash(into hasher: inout Hasher) {

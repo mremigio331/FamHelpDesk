@@ -4,6 +4,7 @@ struct GroupDetailView: View {
     let group: FamilyGroup
     @State private var navigationContext = NavigationContext.shared
     @State private var userSession = UserSession.shared
+    @State private var selectedTab: GroupDetailTab = .overview
 
     @State private var members: [GroupMember] = []
     @State private var membershipRequests: [GroupMembershipRequestItem] = []
@@ -15,6 +16,20 @@ struct GroupDetailView: View {
 
     private let membershipService = MembershipService()
     private let groupService = GroupService()
+
+    enum GroupDetailTab: String, CaseIterable {
+        case overview = "Overview"
+        case queues = "Queues"
+        case members = "Members"
+
+        var systemImage: String {
+            switch self {
+            case .overview: "info.circle"
+            case .queues: "tray.2"
+            case .members: "person.2"
+            }
+        }
+    }
 
     // Computed property to check if current user is already a member
     private var isCurrentUserMember: Bool {
@@ -55,6 +70,171 @@ struct GroupDetailView: View {
         print("🔍 Checking pending requests for user \(currentUserId): \(hasPendingRequest)")
         return hasPendingRequest
     }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Tab Picker
+            Picker("Tab", selection: $selectedTab) {
+                ForEach(GroupDetailTab.allCases, id: \.self) { tab in
+                    Label(tab.rawValue, systemImage: tab.systemImage)
+                        .tag(tab)
+                }
+            }
+            .pickerStyle(SegmentedPickerStyle())
+            .padding(.horizontal)
+            .padding(.top, 8)
+
+            // Tab Content
+            switch selectedTab {
+            case .overview:
+                GroupOverviewView(
+                    group: group,
+                    members: members,
+                    membershipRequests: membershipRequests,
+                    isLoadingMembers: isLoadingMembers,
+                    isLoadingRequests: isLoadingRequests,
+                    membersError: membersError,
+                    isCurrentUserMember: isCurrentUserMember,
+                    isCurrentUserAdmin: isCurrentUserAdmin,
+                    hasCurrentUserPendingRequest: hasCurrentUserPendingRequest,
+                    showingMembershipRequest: $showingMembershipRequest,
+                    showingMembershipManagement: $showingMembershipManagement,
+                    refreshMembershipData: refreshMembershipData
+                )
+            case .queues:
+                QueueListView(group: group)
+            case .members:
+                GroupMembersView(
+                    group: group,
+                    members: members,
+                    membershipRequests: membershipRequests,
+                    isLoadingMembers: isLoadingMembers,
+                    isLoadingRequests: isLoadingRequests,
+                    membersError: membersError,
+                    isCurrentUserMember: isCurrentUserMember,
+                    isCurrentUserAdmin: isCurrentUserAdmin,
+                    hasCurrentUserPendingRequest: hasCurrentUserPendingRequest,
+                    showingMembershipRequest: $showingMembershipRequest,
+                    showingMembershipManagement: $showingMembershipManagement,
+                    refreshMembershipData: refreshMembershipData
+                )
+            }
+        }
+        .navigationTitle(group.groupName)
+        .navigationBarTitleDisplayMode(.inline)
+        .refreshable {
+            await refreshMembershipData()
+        }
+        .task {
+            // Load group members when view appears
+            await loadGroupMembers()
+            await loadMembershipRequests()
+
+            // Ensure user session is loaded for membership check
+            if userSession.currentUser == nil, !userSession.isFetching, !userSession.isLoading {
+                print("🔄 Loading user profile for membership check...")
+                await userSession.loadUserProfile()
+            }
+        }
+        .onAppear {
+            // Update navigation context when this view appears
+            navigationContext.selectedGroup = group
+        }
+        .sheet(isPresented: $showingMembershipRequest) {
+            GroupMembershipRequestView(group: group) {
+                // Refresh membership data when request is successful
+                Task {
+                    await refreshMembershipData()
+                }
+            }
+        }
+        .sheet(isPresented: $showingMembershipManagement) {
+            NavigationStack {
+                GroupMembershipManagementView(group: group)
+            }
+        }
+    }
+
+    private func refreshMembershipData() async {
+        await loadGroupMembers()
+        await loadMembershipRequests()
+    }
+
+    private func loadGroupMembers() async {
+        isLoadingMembers = true
+        membersError = nil
+
+        do {
+            members = try await membershipService.getGroupMembers(
+                familyId: group.familyId,
+                groupId: group.groupId
+            )
+            print("🔍 Group members API response:")
+            print("🔍 Members count: \(members.count)")
+            for (index, member) in members.enumerated() {
+                print("🔍 Member \(index + 1):")
+                print("   - userId: \(member.userId)")
+                print("   - displayName: \(member.userDisplayName ?? "nil")")
+                print("   - email: \(member.userEmail ?? "nil")")
+                print("   - status: \(member.status)")
+                print("   - isAdmin: \(member.isAdmin)")
+            }
+        } catch {
+            membersError = "Failed to load group members: \(error.localizedDescription)"
+            print("❌ Error loading group members: \(error)")
+        }
+
+        isLoadingMembers = false
+    }
+
+    private func loadMembershipRequests() async {
+        isLoadingRequests = true
+
+        do {
+            membershipRequests = try await groupService.getGroupMembershipRequests(
+                familyId: group.familyId,
+                groupId: group.groupId
+            )
+            print("🔍 Membership requests loaded: \(membershipRequests.count)")
+            for request in membershipRequests {
+                print("   - User: \(request.userId), Status: \(request.status), Name: \(request.userDisplayName ?? "nil")")
+            }
+        } catch {
+            print("❌ Error loading membership requests: \(error)")
+            // Don't set error state for requests - just log it
+        }
+
+        isLoadingRequests = false
+    }
+
+    private func formatDate(_ dateString: String) -> String {
+        let formatter = ISO8601DateFormatter()
+        guard let date = formatter.date(from: dateString) else {
+            return dateString
+        }
+
+        let displayFormatter = DateFormatter()
+        displayFormatter.dateStyle = .medium
+        displayFormatter.timeStyle = .none
+        return displayFormatter.string(from: date)
+    }
+}
+
+// MARK: - Group Overview View
+
+struct GroupOverviewView: View {
+    let group: FamilyGroup
+    let members: [GroupMember]
+    let membershipRequests: [GroupMembershipRequestItem]
+    let isLoadingMembers: Bool
+    let isLoadingRequests: Bool
+    let membersError: String?
+    let isCurrentUserMember: Bool
+    let isCurrentUserAdmin: Bool
+    let hasCurrentUserPendingRequest: Bool
+    @Binding var showingMembershipRequest: Bool
+    @Binding var showingMembershipManagement: Bool
+    let refreshMembershipData: () async -> Void
 
     var body: some View {
         List {
@@ -101,6 +281,70 @@ struct GroupDetailView: View {
                 .padding(.vertical, 8)
             }
 
+            // Quick Stats Section
+            Section("Quick Stats") {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Members")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Text("\(members.count)")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.blue)
+                    }
+
+                    Spacer()
+
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text("Pending Requests")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Text("\(membershipRequests.count)")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.orange)
+                    }
+                }
+                .padding(.vertical, 8)
+            }
+        }
+        .refreshable {
+            await refreshMembershipData()
+        }
+    }
+
+    private func formatDate(_ dateString: String) -> String {
+        let formatter = ISO8601DateFormatter()
+        guard let date = formatter.date(from: dateString) else {
+            return dateString
+        }
+
+        let displayFormatter = DateFormatter()
+        displayFormatter.dateStyle = .medium
+        displayFormatter.timeStyle = .none
+        return displayFormatter.string(from: date)
+    }
+}
+
+// MARK: - Group Members View
+
+struct GroupMembersView: View {
+    let group: FamilyGroup
+    let members: [GroupMember]
+    let membershipRequests: [GroupMembershipRequestItem]
+    let isLoadingMembers: Bool
+    let isLoadingRequests: Bool
+    let membersError: String?
+    let isCurrentUserMember: Bool
+    let isCurrentUserAdmin: Bool
+    let hasCurrentUserPendingRequest: Bool
+    @Binding var showingMembershipRequest: Bool
+    @Binding var showingMembershipManagement: Bool
+    let refreshMembershipData: () async -> Void
+
+    var body: some View {
+        List {
             // Members Section
             Section("Members") {
                 if isLoadingMembers {
@@ -124,7 +368,7 @@ struct GroupDetailView: View {
                             .multilineTextAlignment(.center)
                         Button("Retry") {
                             Task {
-                                await loadGroupMembers()
+                                await refreshMembershipData()
                             }
                         }
                         .buttonStyle(.bordered)
@@ -210,103 +454,9 @@ struct GroupDetailView: View {
                 }
             }
         }
-        .navigationTitle(group.groupName)
-        .navigationBarTitleDisplayMode(.inline)
         .refreshable {
             await refreshMembershipData()
         }
-        .task {
-            // Load group members when view appears
-            await loadGroupMembers()
-            await loadMembershipRequests()
-
-            // Ensure user session is loaded for membership check
-            if userSession.currentUser == nil, !userSession.isFetching, !userSession.isLoading {
-                print("🔄 Loading user profile for membership check...")
-                await userSession.loadUserProfile()
-            }
-        }
-        .onAppear {
-            // Update navigation context when this view appears
-            navigationContext.selectedGroup = group
-        }
-        .sheet(isPresented: $showingMembershipRequest) {
-            GroupMembershipRequestView(group: group) {
-                // Refresh membership data when request is successful
-                Task {
-                    await refreshMembershipData()
-                }
-            }
-        }
-        .sheet(isPresented: $showingMembershipManagement) {
-            NavigationStack {
-                GroupMembershipManagementView(group: group)
-            }
-        }
-    }
-
-    private func loadGroupMembers() async {
-        isLoadingMembers = true
-        membersError = nil
-
-        do {
-            members = try await membershipService.getGroupMembers(
-                familyId: group.familyId,
-                groupId: group.groupId
-            )
-            print("🔍 Group members API response:")
-            print("🔍 Members count: \(members.count)")
-            for (index, member) in members.enumerated() {
-                print("🔍 Member \(index + 1):")
-                print("   - userId: \(member.userId)")
-                print("   - displayName: \(member.userDisplayName ?? "nil")")
-                print("   - email: \(member.userEmail ?? "nil")")
-                print("   - status: \(member.status)")
-                print("   - isAdmin: \(member.isAdmin)")
-            }
-        } catch {
-            membersError = "Failed to load group members: \(error.localizedDescription)"
-            print("❌ Error loading group members: \(error)")
-        }
-
-        isLoadingMembers = false
-    }
-
-    private func refreshMembershipData() async {
-        await loadGroupMembers()
-        await loadMembershipRequests()
-    }
-
-    private func loadMembershipRequests() async {
-        isLoadingRequests = true
-
-        do {
-            membershipRequests = try await groupService.getGroupMembershipRequests(
-                familyId: group.familyId,
-                groupId: group.groupId
-            )
-            print("🔍 Membership requests loaded: \(membershipRequests.count)")
-            for request in membershipRequests {
-                print("   - User: \(request.userId), Status: \(request.status), Name: \(request.userDisplayName ?? "nil")")
-            }
-        } catch {
-            print("❌ Error loading membership requests: \(error)")
-            // Don't set error state for requests - just log it
-        }
-
-        isLoadingRequests = false
-    }
-
-    private func formatDate(_ dateString: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        guard let date = formatter.date(from: dateString) else {
-            return dateString
-        }
-
-        let displayFormatter = DateFormatter()
-        displayFormatter.dateStyle = .medium
-        displayFormatter.timeStyle = .none
-        return displayFormatter.string(from: date)
     }
 }
 
