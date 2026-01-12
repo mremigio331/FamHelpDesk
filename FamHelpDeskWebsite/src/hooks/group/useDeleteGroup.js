@@ -1,44 +1,42 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useContext } from "react";
 import { UserAuthenticationContext } from "../../provider/UserAuthenticationProvider";
-import { apiRequestPost } from "../../api/apiRequest";
+import { apiRequestDelete } from "../../api/apiRequest";
 import { useApi } from "../../provider/ApiProvider";
 
-const useCreateGroup = () => {
+const useDeleteGroup = () => {
   const { accessToken } = useContext(UserAuthenticationContext);
   const { apiEndpoint } = useApi();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: (groupData) =>
-      apiRequestPost({
-        apiEndpoint: `${apiEndpoint}/group`,
+    mutationFn: ({ familyId, groupId }) =>
+      apiRequestDelete({
+        apiEndpoint: `${apiEndpoint}/group/${familyId}/${groupId}`,
         accessToken,
-        body: groupData,
       }),
     onSuccess: (data, variables) => {
       // Invalidate and refetch relevant queries
       queryClient.invalidateQueries({ queryKey: ["groups"] });
       queryClient.invalidateQueries({
-        queryKey: ["groups", "all", variables.family_id],
+        queryKey: ["groups", "all", variables.familyId],
       });
       queryClient.invalidateQueries({ queryKey: ["groups", "mine"] });
     },
     onError: (error) => {
-      console.error("Failed to create group:", error);
+      console.error("Failed to delete group:", error);
     },
   });
 
   return {
-    createGroup: mutation.mutate,
-    createGroupAsync: mutation.mutateAsync,
-    isCreating: mutation.isPending,
-    isCreateError: mutation.isError,
-    createError: mutation.error,
-    isCreateSuccess: mutation.isSuccess,
-    createdGroup: mutation.data?.data?.group || null,
-    resetCreateState: mutation.reset,
+    deleteGroup: mutation.mutate,
+    deleteGroupAsync: mutation.mutateAsync,
+    isDeleting: mutation.isPending,
+    isDeleteError: mutation.isError,
+    deleteError: mutation.error,
+    isDeleteSuccess: mutation.isSuccess,
+    resetDeleteState: mutation.reset,
   };
 };
 
-export default useCreateGroup;
+export default useDeleteGroup;
