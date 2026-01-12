@@ -5,7 +5,7 @@ USE_HTTPS=false
 for arg in "$@"
 do
     if [ "$arg" == "--https" ]; then
-        USE_HTTPS=true
+        USE_HTTPS=true        
     fi
 done
 
@@ -19,9 +19,10 @@ export COGNITO_CLIENT_ID=$(aws cognito-idp list-user-pools --max-results 60 --re
     --output text
 )
 export COGNITO_REGION="us-west-2"
-export COGNITO_API_REDIRECT_URI="https://localhost:5000/"
+
 export COGNITO_DOMAIN="https://famhelpdesk-testing.auth.us-west-2.amazoncognito.com"
 export API_URL="https://api.testing.famhelpdesk.com"
+export COGNITO_API_REDIRECT_URI="http://localhost:5000/"
 
 # Run with or without HTTPS based on flag
 if [ "$USE_HTTPS" = true ]; then

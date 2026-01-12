@@ -88,6 +88,7 @@ export class CognitoStack extends Stack {
           TABLE_NAME: userTable.tableName,
           POWERTOOLS_LOG_LEVEL: "INFO",
           USER_ADDED_TOPIC_ARN: userAddedTopic.topicArn,
+          STAGE: stage
         },
       },
     );

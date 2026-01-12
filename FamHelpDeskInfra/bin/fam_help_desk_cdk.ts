@@ -4,6 +4,7 @@ import { famHelpDesk } from "../lib/constants";
 import { DatabaseStack } from "../lib/stacks/database-stack";
 import { CognitoStack } from "../lib/stacks/cognito-stack";
 import { ApiStack } from "../lib/stacks/api-stack";
+import { WebsiteStack } from "../lib/stacks/website-stack";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -15,20 +16,37 @@ async function getEnvConfig() {
     !!process.env.CODEPIPELINE_EXECUTION_ID ||
     !!process.env.CODEDEPLOY_DEPLOYMENT_ID ||
     !!process.env.USE_SECRETS_MANAGER;
-  if (isCICD) {
-    // Expect a single environment variable CDK_ENV_CONFIG containing the JSON config
-    if (!process.env.CDK_ENV_CONFIG) {
+  
+  try {
+    if (isCICD) {
+      // Expect a single environment variable CDK_ENV_CONFIG containing the JSON config
+      if (!process.env.CDK_ENV_CONFIG) {
+        throw new Error(
+          "CDK_ENV_CONFIG environment variable not set in CI/CD environment",
+        );
+      }
+      return JSON.parse(process.env.CDK_ENV_CONFIG);
+    } else {
+      // Local fallback
+      const envFilePath = path.resolve(__dirname, "../cdk.env.json");
+      console.log(`[CDK ENV DETECT] Using local env file: ${envFilePath}`);
+      
+      if (!fs.existsSync(envFilePath)) {
+        throw new Error(
+          `Environment configuration file not found: ${envFilePath}. Please ensure cdk.env.json exists.`
+        );
+      }
+      
+      const envFileContent = fs.readFileSync(envFilePath, "utf-8");
+      return JSON.parse(envFileContent);
+    }
+  } catch (error) {
+    if (error instanceof SyntaxError) {
       throw new Error(
-        "CDK_ENV_CONFIG environment variable not set in CI/CD environment",
+        `Invalid JSON in environment configuration: ${error.message}`
       );
     }
-    return JSON.parse(process.env.CDK_ENV_CONFIG);
-  } else {
-    // Local fallback
-    const envFilePath = path.resolve(__dirname, "../cdk.env.json");
-    console.log(`[CDK ENV DETECT] Using local env file`);
-    const envFileContent = fs.readFileSync(envFilePath, "utf-8");
-    return JSON.parse(envFileContent);
+    throw error;
   }
 }
 
@@ -88,6 +106,15 @@ async function main() {
       userTable: databaseStack.table,
       escalationEmail: escalationEmail,
       escalationNumber: escalationNumber,
+    });
+
+    new WebsiteStack(app, `${famHelpDesk}-WebsiteStack-${stage}`, {
+      env: awsEnv,
+      websiteDomainName: websiteDomainName,
+      rootDomainName: websiteDomainName,
+      certificateArn: wildcardCertificateArn,
+      hostedZoneId: hostedZoneId,
+      stage,
     });
   }
 }

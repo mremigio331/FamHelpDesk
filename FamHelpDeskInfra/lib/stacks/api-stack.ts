@@ -15,7 +15,7 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
 import * as path from "path";
 import { addApiMonitoring } from "../monitoring/api-monitoring";
-import { famHelpDesk, UserPoolMappings } from "../constants";
+import { famHelpDesk } from "../constants";
 
 interface ApiStackProps extends StackProps {
   apiDomainName: string;
@@ -130,7 +130,6 @@ export class ApiStack extends Stack {
               : `https://famhelpdesk-${stage.toLowerCase()}.auth.us-west-2.amazoncognito.com`,
           STAGE: stage.toLowerCase(),
           API_DOMAIN_NAME: apiDomainName,
-          USER_POOL_MAPPINGS: JSON.stringify(UserPoolMappings),
         },
       },
     );

@@ -11,6 +11,7 @@ logger = Logger(service="FamHelpDesk-Cognito-User-Creator")
 @logger.inject_lambda_context
 def handler(event: dict, context: LambdaContext) -> dict:
     logger.info("POST_CONFIRMATION Lambda triggered.")
+    stage = os.getenv("STAGE", "Testing")
 
     # Handle any PostConfirmation variant (AdminConfirmSignUp, ConfirmSignUp, etc.)
     if event.get("triggerSource", "").startswith("PostConfirmation_"):
@@ -80,7 +81,7 @@ def handler(event: dict, context: LambdaContext) -> dict:
                 sns = boto3.client("sns")
                 response = sns.publish(
                     TopicArn=topic_arn,
-                    Subject="New FamHelpDesk User Signup",
+                    Subject=f"New FamHelpDesk {stage} User Signup",
                     Message=f"New user signed up:\nID: {user_id}\nEmail: {email}\nName: {full_name}\nProvider: {provider}",
                 )
                 logger.info(
