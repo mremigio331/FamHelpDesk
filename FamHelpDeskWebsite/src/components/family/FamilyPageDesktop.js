@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Layout,
@@ -21,6 +21,9 @@ import {
 import { useMyFamilies } from "../../provider/MyFamiliesProvider";
 import useFamilyPage from "./useFamilyPage";
 import MembersDesktop from "./membership/MembersDesktop";
+import GroupList from "../group/GroupList";
+import CreateGroupModal from "../group/CreateGroupModal";
+import useGroups from "../../hooks/group/useGroups";
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -31,6 +34,16 @@ const FamilyPageDesktop = () => {
   const { myFamilies, isMyFamiliesFetching, isMyFamiliesError } =
     useMyFamilies();
   const { activeSection, handleSectionChange } = useFamilyPage();
+  const [isCreateGroupModalVisible, setIsCreateGroupModalVisible] =
+    useState(false);
+
+  // Fetch groups for this family
+  const {
+    allGroups,
+    isLoading: isGroupsLoading,
+    hasError: hasGroupsError,
+    refetchGroups,
+  } = useGroups(familyId, true);
 
   if (isMyFamiliesFetching) {
     return (
@@ -167,16 +180,48 @@ const FamilyPageDesktop = () => {
         );
       case "groups":
         return (
-          <Card>
-            <div style={{ textAlign: "center", padding: "60px 20px" }}>
-              <TeamOutlined style={{ fontSize: "64px", color: "#bfbfbf" }} />
-              <Title level={3} style={{ marginTop: "16px", color: "#595959" }}>
-                Groups
-              </Title>
-              <Text type="secondary" style={{ fontSize: "16px" }}>
-                Coming Soon
-              </Text>
-            </div>
+          <Card
+            title={
+              <Space style={{ width: "100%", justifyContent: "space-between" }}>
+                <Space>
+                  <TeamOutlined />
+                  <span>Groups</span>
+                </Space>
+                {isMember && (
+                  <Button
+                    type="primary"
+                    icon={<PlusCircleOutlined />}
+                    onClick={() => setIsCreateGroupModalVisible(true)}
+                  >
+                    Create Group
+                  </Button>
+                )}
+              </Space>
+            }
+          >
+            {isGroupsLoading ? (
+              <div style={{ textAlign: "center", padding: "40px" }}>
+                <Spin size="large" />
+              </div>
+            ) : hasGroupsError ? (
+              <Alert
+                message="Error"
+                description="Failed to load groups"
+                type="error"
+                showIcon
+              />
+            ) : (
+              <GroupList
+                groups={allGroups || []}
+                onItemClick={(group) =>
+                  navigate(`/family/${familyId}/group/${group.group_id}`)
+                }
+                emptyDescription="No groups yet. Create your first group to get started!"
+                showCreatedDate={false}
+                showStats={false}
+                showMembershipStatus={false}
+              />
+            )}
           </Card>
         );
       case "queues":
@@ -271,6 +316,16 @@ const FamilyPageDesktop = () => {
           </Sider>
           <Content style={{ marginLeft: "24px" }}>{renderContent()}</Content>
         </Layout>
+
+        {/* Create Group Modal */}
+        <CreateGroupModal
+          visible={isCreateGroupModalVisible}
+          onClose={() => setIsCreateGroupModalVisible(false)}
+          familyId={familyId}
+          onSuccess={() => {
+            refetchGroups();
+          }}
+        />
       </div>
     </div>
   );

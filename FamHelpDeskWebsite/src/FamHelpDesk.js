@@ -7,6 +7,7 @@ import EditProfilePage from "./pages/user/EditProfilePage";
 import FamilyPageWrapper from "./components/family/FamilyPageWrapper";
 import CreateFamilyPage from "./pages/family/CreateFamilyPage";
 import FindFamilyPage from "./pages/family/FindFamilyPage";
+import GroupDetail from "./components/group/GroupDetailWrapper";
 import NotificationsPage from "./components/notifications/NotificationsPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import Navbar from "./components/Navbar";
@@ -28,6 +29,10 @@ const FamHelpDesk = () => {
             <Route path="/family/create" element={<CreateFamilyPage />} />
             <Route path="/family/find" element={<FindFamilyPage />} />
             <Route path="/family/:familyId" element={<FamilyPageWrapper />} />
+            <Route
+              path="/family/:familyId/group/:groupId"
+              element={<GroupDetail />}
+            />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Content>

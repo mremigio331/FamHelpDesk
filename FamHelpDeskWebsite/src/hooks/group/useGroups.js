@@ -1,8 +1,8 @@
-import { useGetAllGroups } from "./useGetAllGroups";
-import { useGetMyGroups } from "./useGetMyGroups";
-import { useCreateGroup } from "./useCreateGroup";
-import { useUpdateGroup } from "./useUpdateGroup";
-import { useDeleteGroup } from "./useDeleteGroup";
+import useGetAllGroups from "./useGetAllGroups";
+import useGetMyGroups from "./useGetMyGroups";
+import useCreateGroup from "./useCreateGroup";
+import useUpdateGroup from "./useUpdateGroup";
+import useDeleteGroup from "./useDeleteGroup";
 
 /**
  * Comprehensive hook for group management with CRUD operations
@@ -25,7 +25,7 @@ const useGroups = (familyId = null, enabled = true) => {
     isMyGroupsError,
     myGroupsError,
     myGroupsRefetch: refetchMyGroups,
-  } = useGetMyGroups(enabled);
+  } = useGetMyGroups(familyId, enabled);
 
   const {
     createGroup,

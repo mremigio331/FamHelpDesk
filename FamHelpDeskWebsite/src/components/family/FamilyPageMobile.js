@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, Typography, Button, Space, Spin, Alert } from "antd";
 import {
@@ -12,6 +12,9 @@ import {
 import { useMyFamilies } from "../../provider/MyFamiliesProvider";
 import useFamilyPage from "./useFamilyPage";
 import MembersMobile from "./membership/MembersMobile";
+import GroupList from "../group/GroupList";
+import CreateGroupModal from "../group/CreateGroupModal";
+import useGroups from "../../hooks/group/useGroups";
 
 const { Title, Text } = Typography;
 
@@ -21,6 +24,16 @@ const FamilyPageMobile = () => {
   const { myFamilies, isMyFamiliesFetching, isMyFamiliesError } =
     useMyFamilies();
   const { activeSection, handleSectionChange } = useFamilyPage();
+  const [isCreateGroupModalVisible, setIsCreateGroupModalVisible] =
+    useState(false);
+
+  // Fetch groups for this family
+  const {
+    allGroups,
+    isLoading: isGroupsLoading,
+    hasError: hasGroupsError,
+    refetchGroups,
+  } = useGroups(familyId, true);
 
   if (isMyFamiliesFetching) {
     return (
@@ -121,12 +134,43 @@ const FamilyPageMobile = () => {
         );
       case "groups":
         return (
-          <div style={{ textAlign: "center", padding: "40px 20px" }}>
-            <TeamOutlined style={{ fontSize: "48px", color: "#bfbfbf" }} />
-            <Title level={4} style={{ marginTop: "12px", color: "#595959" }}>
-              Groups
-            </Title>
-            <Text type="secondary">Coming Soon</Text>
+          <div>
+            {isMember && (
+              <div style={{ marginBottom: "16px" }}>
+                <Button
+                  type="primary"
+                  icon={<PlusCircleOutlined />}
+                  onClick={() => setIsCreateGroupModalVisible(true)}
+                  block
+                  size="large"
+                >
+                  Create Group
+                </Button>
+              </div>
+            )}
+            {isGroupsLoading ? (
+              <div style={{ textAlign: "center", padding: "40px" }}>
+                <Spin size="large" />
+              </div>
+            ) : hasGroupsError ? (
+              <Alert
+                message="Error"
+                description="Failed to load groups"
+                type="error"
+                showIcon
+              />
+            ) : (
+              <GroupList
+                groups={allGroups || []}
+                onItemClick={(group) =>
+                  navigate(`/family/${familyId}/group/${group.group_id}`)
+                }
+                emptyDescription="No groups yet. Create your first group to get started!"
+                showCreatedDate={false}
+                showStats={false}
+                showMembershipStatus={false}
+              />
+            )}
           </div>
         );
       case "queues":
@@ -266,6 +310,16 @@ const FamilyPageMobile = () => {
           </button>
         ))}
       </div>
+
+      {/* Create Group Modal */}
+      <CreateGroupModal
+        visible={isCreateGroupModalVisible}
+        onClose={() => setIsCreateGroupModalVisible(false)}
+        familyId={familyId}
+        onSuccess={() => {
+          refetchGroups();
+        }}
+      />
     </div>
   );
 };

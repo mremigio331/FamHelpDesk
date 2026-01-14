@@ -4,7 +4,7 @@ import { UserAuthenticationContext } from "../../provider/UserAuthenticationProv
 import { apiRequestGet } from "../../api/apiRequest";
 import { useApi } from "../../provider/ApiProvider";
 
-const useGetMyGroups = (enabled = true) => {
+const useGetMyGroups = (familyId, enabled = true) => {
   const { accessToken } = useContext(UserAuthenticationContext);
   const { apiEndpoint } = useApi();
 
@@ -13,13 +13,15 @@ const useGetMyGroups = (enabled = true) => {
       enabled &&
       !!accessToken &&
       typeof accessToken === "string" &&
-      accessToken.length > 0,
-    [enabled, accessToken],
+      accessToken.length > 0 &&
+      !!familyId,
+    [enabled, accessToken, familyId],
   );
 
   const { data, isFetching, isError, status, error, refetch } = useQuery({
-    queryKey: ["groups", "mine"],
-    queryFn: () => apiRequestGet(apiEndpoint, "/group/mine", accessToken),
+    queryKey: ["groups", "mine", familyId],
+    queryFn: () =>
+      apiRequestGet(apiEndpoint, `/group/${familyId}/mine`, accessToken),
     enabled: isEnabled,
     keepPreviousData: true,
     staleTime: 1000 * 60 * 5,
