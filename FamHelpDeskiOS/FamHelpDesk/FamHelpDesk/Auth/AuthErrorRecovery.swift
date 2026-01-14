@@ -345,7 +345,7 @@ final class AuthErrorRecovery {
 
     private func getAlternativeConfigFiles(for environment: AppStage) -> [String] {
         switch environment {
-        case .dev, .staging:
+        case .dev, .testing:
             ["amplifyconfiguration.prod", "amplifyconfiguration"]
         case .prod:
             ["amplifyconfiguration.testing", "amplifyconfiguration"]

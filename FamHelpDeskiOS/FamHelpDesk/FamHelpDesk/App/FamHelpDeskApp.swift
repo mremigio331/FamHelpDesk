@@ -104,7 +104,7 @@ struct FamHelpDeskApp: App {
 
     private func getConfigurationFileName() -> String {
         switch AppStage.current {
-        case .dev, .staging:
+        case .dev, .testing:
             "amplifyconfiguration.testing"
         case .prod:
             "amplifyconfiguration.prod"
@@ -115,14 +115,14 @@ struct FamHelpDeskApp: App {
 // Environment detection (matches your existing AppStage)
 enum AppStage {
     case dev
-    case staging
+    case testing
     case prod
 
     static var current: AppStage {
         #if DEBUG
             return .dev
-        #elseif STAGING
-            return .staging
+        #elseif testing
+            return .testing
         #else
             return .prod
         #endif
@@ -191,8 +191,8 @@ extension AppStage {
         switch self {
         case .dev:
             "development"
-        case .staging:
-            "staging"
+        case .testing:
+            "testing"
         case .prod:
             "production"
         }

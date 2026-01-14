@@ -2,14 +2,14 @@ import React, { createContext, useReducer, useMemo, useContext } from "react";
 import getStage from "../utility/getStage";
 import {
   PROD_API_ENDPOINT,
-  STAGING_API_ENDPOINT,
+  TESTING_API_ENDPOINT,
   DEV_API_ENDPOINT,
 } from "../constants/endpoints";
-import { DEV, PROD, STAGING } from "../constants/stages";
+import { DEV, PROD, TESTING } from "../constants/stages";
 
 const endpointMap = {
   [PROD]: PROD_API_ENDPOINT,
-  [STAGING]: STAGING_API_ENDPOINT,
+  [TESTING]: TESTING_API_ENDPOINT,
   [DEV]: DEV_API_ENDPOINT,
 };
 

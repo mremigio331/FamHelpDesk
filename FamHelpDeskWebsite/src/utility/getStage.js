@@ -1,14 +1,17 @@
-import { STAGING, PROD, DEV } from "../constants/stages";
+import { TESTING, PROD, DEV } from "../constants/stages";
 
 const getStage = () => {
   const domain = window.location.hostname.trim();
 
-  if (domain === "staging.famhelpdesk.com") {
-    return STAGING;
+  if (domain === "testing.famhelpdesk.com") {
+    console.log(`Stage ${TESTING}`);
+    return TESTING;
   } else if (domain === "famhelpdesk.com") {
+    console.log(`Stage: ${PROD}`);
     return PROD;
   }
 
+  console.log(`Stage: ${DEV}`);
   return DEV;
 };
 

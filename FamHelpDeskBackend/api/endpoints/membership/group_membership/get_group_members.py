@@ -64,6 +64,7 @@ def get_group_members(request: Request, family_id: str, group_id: str):
                 user_profile.get("display_name") if user_profile else None
             ),
             "user_email": user_profile.get("email") if user_profile else None,
+            "is_current_user": user_id == token_user_id,
         }
         enriched_members.append(enriched_member)
 

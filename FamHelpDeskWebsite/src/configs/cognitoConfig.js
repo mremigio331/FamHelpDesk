@@ -1,13 +1,13 @@
 import {
   PROD_WEBSITE_ENDPOINT,
-  STAGING_WEBSITE_ENDPOINT,
+  TESTING_WEBSITE_ENDPOINT,
 } from "../constants/endpoints";
 
 // Based on iOS AuthConfig.swift
-const STAGING_USER_POOL_ID = "us-west-2_4hHBH4CPn";
-const STAGING_CLIENT_ID = "1omenujjf07khboa3ggtdujh63";
-const STAGING_REGION = "us-west-2";
-const STAGING_COGNITO_DOMAIN = "famhelpdesk-testing";
+const TESTING_USER_POOL_ID = "us-west-2_4hHBH4CPn";
+const TESTING_CLIENT_ID = "1omenujjf07khboa3ggtdujh63";
+const TESTING_REGION = "us-west-2";
+const TESTING_COGNITO_DOMAIN = "famhelpdesk-testing";
 
 const PROD_USER_POOL_ID = "us-west-2_KgiY8aKBk";
 const PROD_CLIENT_ID = "21rh7k5v6nbrihub67b102vdir";
@@ -16,18 +16,18 @@ const PROD_COGNITO_DOMAIN = "famhelpdesk-prod";
 
 export const COGNITO_CONSTANTS = {
   DEV: {
-    clientId: STAGING_CLIENT_ID,
-    domain: STAGING_COGNITO_DOMAIN,
+    clientId: TESTING_CLIENT_ID,
+    domain: TESTING_COGNITO_DOMAIN,
     redirectUri: "http://localhost:8080/",
-    region: STAGING_REGION,
-    userPoolId: STAGING_USER_POOL_ID,
+    region: TESTING_REGION,
+    userPoolId: TESTING_USER_POOL_ID,
   },
-  STAGING: {
-    clientId: STAGING_CLIENT_ID,
-    domain: STAGING_COGNITO_DOMAIN,
-    redirectUri: `${STAGING_WEBSITE_ENDPOINT}/`,
-    region: STAGING_REGION,
-    userPoolId: STAGING_USER_POOL_ID,
+  TESTING: {
+    clientId: TESTING_CLIENT_ID,
+    domain: TESTING_COGNITO_DOMAIN,
+    redirectUri: `${TESTING_WEBSITE_ENDPOINT}/`,
+    region: TESTING_REGION,
+    userPoolId: TESTING_USER_POOL_ID,
   },
   PROD: {
     clientId: PROD_CLIENT_ID,
