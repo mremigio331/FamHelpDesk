@@ -19,6 +19,7 @@ import {
   Statistic,
   Row,
   Col,
+  Drawer,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -39,7 +40,11 @@ import useGetGroupMembershipRequests from "../../hooks/group/membership/useGetGr
 import useReviewGroupMembership from "../../hooks/group/membership/useReviewGroupMembership";
 import useRemoveGroupMember from "../../hooks/group/membership/useRemoveGroupMember";
 import useUpdateGroupMemberRole from "../../hooks/group/membership/useUpdateGroupMemberRole";
+import useGetQueues from "../../hooks/queue/useGetQueues";
+import useDeleteQueue from "../../hooks/queue/useDeleteQueue";
 import EditGroupModal from "./EditGroupModal";
+import QueueList from "../queue/QueueList";
+import CreateQueueModal from "../queue/CreateQueueModal";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -56,6 +61,12 @@ const GroupDetailDesktop = () => {
     isDeleteModalVisible,
     showDeleteModal,
     hideDeleteModal,
+    isCreateQueueModalVisible,
+    showCreateQueueModal,
+    hideCreateQueueModal,
+    selectedQueue,
+    selectQueue,
+    clearSelectedQueue,
   } = useGroupDetail();
 
   const {
@@ -92,6 +103,15 @@ const GroupDetailDesktop = () => {
 
   const { updateMemberRole, isUpdatingRole, isUpdateRoleSuccess } =
     useUpdateGroupMemberRole();
+
+  const { queues, isQueuesFetching, isQueuesError, queuesRefetch } =
+    useGetQueues(familyId, groupId);
+
+  const {
+    deleteQueue,
+    isDeleting: isDeletingQueue,
+    isDeleteSuccess: isQueueDeleteSuccess,
+  } = useDeleteQueue();
 
   // Find the current group
   const group = allGroups?.find((g) => g.group_id === groupId);
@@ -137,6 +157,14 @@ const GroupDetailDesktop = () => {
       refetchMembers();
     }
   }, [isUpdateRoleSuccess, refetchMembers]);
+
+  useEffect(() => {
+    if (isQueueDeleteSuccess) {
+      message.success("Queue deleted successfully");
+      queuesRefetch();
+      clearSelectedQueue();
+    }
+  }, [isQueueDeleteSuccess, queuesRefetch, clearSelectedQueue]);
 
   const handleDelete = async () => {
     try {
@@ -199,6 +227,21 @@ const GroupDetailDesktop = () => {
     } catch (error) {
       message.error("Failed to update member role");
     }
+  };
+
+  const handleDeleteQueue = async (queueId) => {
+    try {
+      await deleteQueue({
+        family_id: familyId,
+        queue_id: queueId,
+      });
+    } catch (error) {
+      message.error("Failed to delete queue");
+    }
+  };
+
+  const handleQueueClick = (queue) => {
+    selectQueue(queue);
   };
 
   if (isGroupsLoading) {
@@ -464,16 +507,68 @@ const GroupDetailDesktop = () => {
   };
 
   const renderQueues = () => (
-    <Card>
-      <div style={{ textAlign: "center", padding: "60px 20px" }}>
-        <InboxOutlined style={{ fontSize: "64px", color: "#bfbfbf" }} />
-        <Title level={3} style={{ marginTop: "16px", color: "#595959" }}>
-          Queues
-        </Title>
-        <Text type="secondary" style={{ fontSize: "16px" }}>
-          Queue management coming soon
-        </Text>
-      </div>
+    <Card
+      title={
+        <Space>
+          <InboxOutlined />
+          <span>Queues ({queues?.length || 0})</span>
+        </Space>
+      }
+      extra={
+        isAdmin && (
+          <Button
+            type="primary"
+            icon={<InboxOutlined />}
+            onClick={showCreateQueueModal}
+          >
+            Create Queue
+          </Button>
+        )
+      }
+    >
+      {isQueuesFetching ? (
+        <div style={{ textAlign: "center", padding: "20px" }}>
+          <Spin />
+        </div>
+      ) : isQueuesError ? (
+        <Alert
+          message="Error"
+          description="Failed to load queues"
+          type="error"
+          showIcon
+        />
+      ) : (
+        <QueueList
+          queues={queues || []}
+          onItemClick={handleQueueClick}
+          renderActions={
+            isAdmin
+              ? (queue) => [
+                  <Popconfirm
+                    key="delete"
+                    title="Delete this queue?"
+                    description="Are you sure you want to delete this queue? This action cannot be undone."
+                    onConfirm={() => handleDeleteQueue(queue.queue_id)}
+                    okText="Yes"
+                    cancelText="No"
+                  >
+                    <Button
+                      type="link"
+                      danger
+                      icon={<DeleteOutlined />}
+                      loading={isDeletingQueue}
+                    >
+                      Delete
+                    </Button>
+                  </Popconfirm>,
+                ]
+              : null
+          }
+          emptyDescription="No queues in this group yet"
+          showCreatedDate={true}
+          showStats={true}
+        />
+      )}
     </Card>
   );
 
@@ -683,6 +778,107 @@ const GroupDetailDesktop = () => {
             Are you sure you want to delete <strong>{group.group_name}</strong>?
           </Paragraph>
         </Modal>
+
+        {/* Create Queue Modal */}
+        <CreateQueueModal
+          visible={isCreateQueueModalVisible}
+          onClose={hideCreateQueueModal}
+          familyId={familyId}
+          groupId={groupId}
+          onSuccess={() => {
+            queuesRefetch();
+          }}
+        />
+
+        {/* Queue Detail Drawer */}
+        <Drawer
+          title={selectedQueue?.queue_name}
+          placement="right"
+          width={720}
+          onClose={clearSelectedQueue}
+          open={!!selectedQueue}
+        >
+          {selectedQueue && (
+            <Space direction="vertical" size="large" style={{ width: "100%" }}>
+              <div>
+                <Title level={4}>Queue Information</Title>
+                <Descriptions bordered column={1} size="small">
+                  <Descriptions.Item label="Name">
+                    {selectedQueue.queue_name}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Description">
+                    {selectedQueue.queue_description || "No description"}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Created">
+                    {new Date(
+                      selectedQueue.creation_date * 1000,
+                    ).toLocaleDateString()}
+                  </Descriptions.Item>
+                </Descriptions>
+              </div>
+
+              <div>
+                <Title level={4}>Statistics</Title>
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Card>
+                      <Statistic
+                        title="Open Tickets"
+                        value={selectedQueue.open_ticket_count || 0}
+                        prefix={<InboxOutlined />}
+                        valueStyle={{ color: "#1890ff" }}
+                      />
+                    </Card>
+                  </Col>
+                  <Col span={12}>
+                    <Card>
+                      <Statistic
+                        title="Total Tickets"
+                        value={selectedQueue.total_ticket_count || 0}
+                        prefix={<InboxOutlined />}
+                      />
+                    </Card>
+                  </Col>
+                </Row>
+              </div>
+
+              {isAdmin && (
+                <div>
+                  <Title level={4}>Actions</Title>
+                  <Space>
+                    <Button
+                      type="primary"
+                      icon={<EditOutlined />}
+                      onClick={() => {
+                        // TODO: Open edit modal for selected queue
+                        message.info("Edit queue functionality coming soon");
+                      }}
+                    >
+                      Edit Queue
+                    </Button>
+                    <Popconfirm
+                      title="Delete this queue?"
+                      description="Are you sure you want to delete this queue? This action cannot be undone."
+                      onConfirm={() =>
+                        handleDeleteQueue(selectedQueue.queue_id)
+                      }
+                      okText="Yes"
+                      cancelText="No"
+                    >
+                      <Button
+                        danger
+                        icon={<DeleteOutlined />}
+                        loading={isDeletingQueue}
+                      >
+                        Delete Queue
+                      </Button>
+                    </Popconfirm>
+                  </Space>
+                </div>
+              )}
+            </Space>
+          )}
+        </Drawer>
       </div>
     </div>
   );

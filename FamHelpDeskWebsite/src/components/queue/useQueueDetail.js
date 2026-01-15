@@ -1,16 +1,13 @@
 import { useState, useCallback } from "react";
 
 /**
- * Custom hook for GroupDetail logic
- * Handles tab navigation and state management for group detail view
+ * Custom hook for QueueDetail logic
+ * Handles tab navigation and state management for queue detail view
  */
-const useGroupDetail = () => {
+const useQueueDetail = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
-  const [isCreateQueueModalVisible, setIsCreateQueueModalVisible] =
-    useState(false);
-  const [selectedQueue, setSelectedQueue] = useState(null);
 
   const handleTabChange = useCallback((tab) => {
     setActiveTab(tab);
@@ -32,22 +29,6 @@ const useGroupDetail = () => {
     setIsDeleteModalVisible(false);
   }, []);
 
-  const showCreateQueueModal = useCallback(() => {
-    setIsCreateQueueModalVisible(true);
-  }, []);
-
-  const hideCreateQueueModal = useCallback(() => {
-    setIsCreateQueueModalVisible(false);
-  }, []);
-
-  const selectQueue = useCallback((queue) => {
-    setSelectedQueue(queue);
-  }, []);
-
-  const clearSelectedQueue = useCallback(() => {
-    setSelectedQueue(null);
-  }, []);
-
   return {
     activeTab,
     handleTabChange,
@@ -57,13 +38,7 @@ const useGroupDetail = () => {
     isDeleteModalVisible,
     showDeleteModal,
     hideDeleteModal,
-    isCreateQueueModalVisible,
-    showCreateQueueModal,
-    hideCreateQueueModal,
-    selectedQueue,
-    selectQueue,
-    clearSelectedQueue,
   };
 };
 
-export default useGroupDetail;
+export default useQueueDetail;
