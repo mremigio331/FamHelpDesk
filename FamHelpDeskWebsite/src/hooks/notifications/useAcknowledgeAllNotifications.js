@@ -5,7 +5,7 @@ import { apiRequestPut } from "../../api/apiRequest";
 import { useApi } from "../../provider/ApiProvider";
 
 const useAcknowledgeAllNotifications = () => {
-  const { accessToken } = useContext(UserAuthenticationContext);
+  const { idToken } = useContext(UserAuthenticationContext);
   const { apiEndpoint } = useApi();
   const queryClient = useQueryClient();
 
@@ -13,7 +13,7 @@ const useAcknowledgeAllNotifications = () => {
     mutationFn: () =>
       apiRequestPut({
         apiEndpoint: `${apiEndpoint}/notifications/acknowledge-all`,
-        accessToken,
+        idToken,
         body: {},
       }),
     onSuccess: () => {

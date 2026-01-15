@@ -10,7 +10,7 @@ import { DEV, PROD, TESTING } from "../constants/stages";
 const endpointMap = {
   [PROD]: PROD_API_ENDPOINT,
   [TESTING]: TESTING_API_ENDPOINT,
-  [DEV]: DEV_API_ENDPOINT,
+  [DEV]: TESTING_API_ENDPOINT,
 };
 
 const ApiContext = createContext();

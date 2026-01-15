@@ -9,7 +9,7 @@ import { useApi } from "../../../provider/ApiProvider";
  * Allows group admins to remove members or members to remove themselves
  */
 const useRemoveGroupMember = () => {
-  const { accessToken } = useContext(UserAuthenticationContext);
+  const { idToken } = useContext(UserAuthenticationContext);
   const { apiEndpoint } = useApi();
   const queryClient = useQueryClient();
 
@@ -17,7 +17,7 @@ const useRemoveGroupMember = () => {
     mutationFn: ({ familyId, groupId, targetUserId }) =>
       apiRequestDelete({
         apiEndpoint: `${apiEndpoint}/membership/${familyId}/${groupId}/members/${targetUserId}`,
-        accessToken,
+        idToken,
       }),
     onSuccess: (data, variables) => {
       // Invalidate and refetch relevant queries

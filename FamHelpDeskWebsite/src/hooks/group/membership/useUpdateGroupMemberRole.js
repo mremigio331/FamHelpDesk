@@ -9,7 +9,7 @@ import { useApi } from "../../../provider/ApiProvider";
  * Allows group admins to promote members to admin or demote admins to regular members
  */
 const useUpdateGroupMemberRole = () => {
-  const { accessToken } = useContext(UserAuthenticationContext);
+  const { idToken } = useContext(UserAuthenticationContext);
   const { apiEndpoint } = useApi();
   const queryClient = useQueryClient();
 
@@ -17,7 +17,7 @@ const useUpdateGroupMemberRole = () => {
     mutationFn: ({ familyId, groupId, targetUserId, isAdmin }) =>
       apiRequestPut({
         apiEndpoint: `${apiEndpoint}/membership/${familyId}/${groupId}/members/role`,
-        accessToken,
+        idToken,
         body: {
           target_user_id: targetUserId,
           is_admin: isAdmin,

@@ -155,6 +155,13 @@ const UserAuthenticationProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    console.log("Environment Stage:", stage);
+    console.log("Cognito Config:", cognitoConfig);
+    console.log("Cookies at Load:", {
+      idToken: Cookies.get("idToken"),
+      accessToken: Cookies.get("accessToken"),
+    });
+
     loadUserSessionFromCookies();
     fetchUserSession();
     // eslint-disable-next-line

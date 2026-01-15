@@ -5,23 +5,23 @@ import { apiRequestGet } from "../../api/apiRequest";
 import { useApi } from "../../provider/ApiProvider";
 
 const useGetMyGroups = (familyId, enabled = true) => {
-  const { accessToken } = useContext(UserAuthenticationContext);
+  const { idToken } = useContext(UserAuthenticationContext);
   const { apiEndpoint } = useApi();
 
   const isEnabled = useMemo(
     () =>
       enabled &&
-      !!accessToken &&
-      typeof accessToken === "string" &&
-      accessToken.length > 0 &&
+      !!idToken &&
+      typeof idToken === "string" &&
+      idToken.length > 0 &&
       !!familyId,
-    [enabled, accessToken, familyId],
+    [enabled, idToken, familyId],
   );
 
   const { data, isFetching, isError, status, error, refetch } = useQuery({
     queryKey: ["groups", "mine", familyId],
     queryFn: () =>
-      apiRequestGet(apiEndpoint, `/group/${familyId}/mine`, accessToken),
+      apiRequestGet(apiEndpoint, `/group/${familyId}/mine`, idToken),
     enabled: isEnabled,
     keepPreviousData: true,
     staleTime: 1000 * 60 * 5,

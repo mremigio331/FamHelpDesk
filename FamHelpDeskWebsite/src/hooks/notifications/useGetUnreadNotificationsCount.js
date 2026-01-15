@@ -5,22 +5,18 @@ import { apiRequestGet } from "../../api/apiRequest";
 import { useApi } from "../../provider/ApiProvider";
 
 const useGetUnreadNotificationsCount = (enabled = true) => {
-  const { accessToken } = useContext(UserAuthenticationContext);
+  const { idToken } = useContext(UserAuthenticationContext);
   const { apiEndpoint } = useApi();
 
   const isEnabled = useMemo(
     () =>
-      enabled &&
-      !!accessToken &&
-      typeof accessToken === "string" &&
-      accessToken.length > 0,
-    [enabled, accessToken],
+      enabled && !!idToken && typeof idToken === "string" && idToken.length > 0,
+    [enabled, idToken],
   );
 
   const { data, isFetching, isError, status, error, refetch } = useQuery({
     queryKey: ["unreadNotificationsCount"],
-    queryFn: () =>
-      apiRequestGet(apiEndpoint, "/notifications/unread", accessToken),
+    queryFn: () => apiRequestGet(apiEndpoint, "/notifications/unread", idToken),
     enabled: isEnabled,
     refetchInterval: 1000 * 60 * 2, // Refetch every 2 minutes
     staleTime: 1000 * 60, // 1 minute

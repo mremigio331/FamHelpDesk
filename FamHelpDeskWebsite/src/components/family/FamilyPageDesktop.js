@@ -144,11 +144,6 @@ const FamilyPageDesktop = () => {
       label: "Groups",
     },
     {
-      key: "queues",
-      icon: <InboxOutlined />,
-      label: "Queues",
-    },
-    {
       key: "members",
       icon: <UserOutlined />,
       label: "Members",

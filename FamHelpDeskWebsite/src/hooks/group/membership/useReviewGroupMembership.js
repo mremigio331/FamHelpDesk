@@ -9,7 +9,7 @@ import { useApi } from "../../../provider/ApiProvider";
  * Allows group admins to approve or reject membership requests
  */
 const useReviewGroupMembership = () => {
-  const { accessToken } = useContext(UserAuthenticationContext);
+  const { idToken } = useContext(UserAuthenticationContext);
   const { apiEndpoint } = useApi();
   const queryClient = useQueryClient();
 
@@ -17,7 +17,7 @@ const useReviewGroupMembership = () => {
     mutationFn: ({ familyId, groupId, targetUserId, approve }) =>
       apiRequestPut({
         apiEndpoint: `${apiEndpoint}/membership/${familyId}/${groupId}/review`,
-        accessToken,
+        idToken,
         body: {
           target_user_id: targetUserId,
           approve: approve,

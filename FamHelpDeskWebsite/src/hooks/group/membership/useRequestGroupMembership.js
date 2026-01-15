@@ -9,7 +9,7 @@ import { useApi } from "../../../provider/ApiProvider";
  * Allows users to request to join a group
  */
 const useRequestGroupMembership = () => {
-  const { accessToken } = useContext(UserAuthenticationContext);
+  const { idToken } = useContext(UserAuthenticationContext);
   const { apiEndpoint } = useApi();
   const queryClient = useQueryClient();
 
@@ -17,7 +17,7 @@ const useRequestGroupMembership = () => {
     mutationFn: ({ familyId, groupId }) =>
       apiRequestPost({
         apiEndpoint: `${apiEndpoint}/membership/${familyId}/${groupId}/request`,
-        accessToken,
+        idToken,
         body: {},
       }),
     onSuccess: (data, variables) => {

@@ -5,7 +5,7 @@ import { apiRequestPost } from "../../api/apiRequest";
 import { useApi } from "../../provider/ApiProvider";
 
 const useCreateFamily = () => {
-  const { accessToken } = useContext(UserAuthenticationContext);
+  const { idToken } = useContext(UserAuthenticationContext);
   const { apiEndpoint } = useApi();
   const queryClient = useQueryClient();
 
@@ -13,7 +13,7 @@ const useCreateFamily = () => {
     mutationFn: (familyData) =>
       apiRequestPost({
         apiEndpoint: `${apiEndpoint}/family`,
-        accessToken,
+        idToken,
         body: familyData,
       }),
     onSuccess: () => {

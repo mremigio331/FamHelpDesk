@@ -5,7 +5,7 @@ import { apiRequestPut } from "../../api/apiRequest";
 import { useApi } from "../../provider/ApiProvider";
 
 const useUpdateUserProfile = () => {
-  const { accessToken } = useContext(UserAuthenticationContext);
+  const { idToken } = useContext(UserAuthenticationContext);
   const { apiEndpoint } = useApi();
   const queryClient = useQueryClient();
 
@@ -13,7 +13,7 @@ const useUpdateUserProfile = () => {
     mutationFn: (updateData) =>
       apiRequestPut({
         apiEndpoint: `${apiEndpoint}/user/profile`,
-        accessToken,
+        idToken,
         body: updateData,
       }),
     onSuccess: () => {

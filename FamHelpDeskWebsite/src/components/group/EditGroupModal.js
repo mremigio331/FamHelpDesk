@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { Modal, Form, Input, message, Space, Button } from "antd";
 import { EditOutlined } from "@ant-design/icons";
 import useUpdateGroup from "../../hooks/group/useUpdateGroup";
@@ -24,6 +24,9 @@ const EditGroupModal = ({ visible, onClose, group, onSuccess }) => {
     resetUpdateState,
   } = useUpdateGroup();
 
+  // Track if we've already handled this success to prevent infinite loops
+  const handledSuccessRef = useRef(false);
+
   // Initialize form with group data when modal opens
   useEffect(() => {
     if (visible && group) {
@@ -31,12 +34,14 @@ const EditGroupModal = ({ visible, onClose, group, onSuccess }) => {
         group_name: group.group_name,
         group_description: group.group_description || "",
       });
+      handledSuccessRef.current = false; // Reset when modal opens
     }
   }, [visible, group, form]);
 
   // Handle successful update
   useEffect(() => {
-    if (isUpdateSuccess && updatedGroup) {
+    if (isUpdateSuccess && updatedGroup && !handledSuccessRef.current) {
+      handledSuccessRef.current = true;
       message.success("Group updated successfully");
       if (onSuccess) {
         onSuccess(updatedGroup);
@@ -58,6 +63,7 @@ const EditGroupModal = ({ visible, onClose, group, onSuccess }) => {
   const handleCancel = () => {
     form.resetFields();
     resetUpdateState();
+    handledSuccessRef.current = false; // Reset the ref when modal closes
     onClose();
   };
 

@@ -5,7 +5,7 @@ import { apiRequestPost } from "../../api/apiRequest";
 import { useApi } from "../../provider/ApiProvider";
 
 const useRequestFamilyMembership = () => {
-  const { accessToken } = useContext(UserAuthenticationContext);
+  const { idToken } = useContext(UserAuthenticationContext);
   const { apiEndpoint } = useApi();
   const queryClient = useQueryClient();
 
@@ -13,7 +13,7 @@ const useRequestFamilyMembership = () => {
     mutationFn: ({ familyId }) => {
       return apiRequestPost({
         apiEndpoint: `${apiEndpoint}/membership/${familyId}/request`,
-        accessToken,
+        idToken,
         body: {},
       });
     },

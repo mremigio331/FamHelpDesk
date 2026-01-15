@@ -5,7 +5,7 @@ import { apiRequestDelete } from "../../api/apiRequest";
 import { useApi } from "../../provider/ApiProvider";
 
 const useDeleteGroup = () => {
-  const { accessToken } = useContext(UserAuthenticationContext);
+  const { idToken } = useContext(UserAuthenticationContext);
   const { apiEndpoint } = useApi();
   const queryClient = useQueryClient();
 
@@ -13,7 +13,7 @@ const useDeleteGroup = () => {
     mutationFn: ({ familyId, groupId }) =>
       apiRequestDelete({
         apiEndpoint: `${apiEndpoint}/group/${familyId}/${groupId}`,
-        accessToken,
+        idToken,
       }),
     onSuccess: (data, variables) => {
       // Invalidate and refetch relevant queries

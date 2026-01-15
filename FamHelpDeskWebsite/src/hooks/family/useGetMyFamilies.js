@@ -5,21 +5,18 @@ import { apiRequestGet } from "../../api/apiRequest";
 import { useApi } from "../../provider/ApiProvider";
 
 const useGetMyFamilies = (enabled = true) => {
-  const { accessToken } = useContext(UserAuthenticationContext);
+  const { idToken } = useContext(UserAuthenticationContext);
   const { apiEndpoint } = useApi();
 
   const isEnabled = useMemo(
     () =>
-      enabled &&
-      !!accessToken &&
-      typeof accessToken === "string" &&
-      accessToken.length > 0,
-    [enabled, accessToken],
+      enabled && !!idToken && typeof idToken === "string" && idToken.length > 0,
+    [enabled, idToken],
   );
 
   const { data, isFetching, isError, status, error, refetch } = useQuery({
     queryKey: ["families", "mine"],
-    queryFn: () => apiRequestGet(apiEndpoint, "/family/mine", accessToken),
+    queryFn: () => apiRequestGet(apiEndpoint, "/family/mine", idToken),
     enabled: isEnabled,
     keepPreviousData: true,
     staleTime: 1000 * 60 * 5,

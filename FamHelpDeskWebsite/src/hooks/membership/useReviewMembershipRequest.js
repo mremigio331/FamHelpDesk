@@ -6,14 +6,14 @@ import { useApi } from "../../provider/ApiProvider";
 
 const useReviewMembershipRequest = (familyId) => {
   const queryClient = useQueryClient();
-  const { accessToken } = useContext(UserAuthenticationContext);
+  const { idToken } = useContext(UserAuthenticationContext);
   const { apiEndpoint } = useApi();
 
   const mutation = useMutation({
     mutationFn: ({ targetUserId, approved }) =>
       apiRequestPut({
         apiEndpoint: `${apiEndpoint}/membership/${familyId}/review`,
-        accessToken,
+        idToken,
         body: { target_user_id: targetUserId, approve: approved },
       }),
     onSuccess: () => {

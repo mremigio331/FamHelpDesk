@@ -9,7 +9,7 @@ import { useApi } from "../../provider/ApiProvider";
  * Allows updating group name and description
  */
 const useUpdateGroup = () => {
-  const { accessToken } = useContext(UserAuthenticationContext);
+  const { idToken } = useContext(UserAuthenticationContext);
   const { apiEndpoint } = useApi();
   const queryClient = useQueryClient();
 
@@ -17,7 +17,7 @@ const useUpdateGroup = () => {
     mutationFn: ({ family_id, group_id, group_name, group_description }) =>
       apiRequestPut({
         apiEndpoint: `${apiEndpoint}/group/edit`,
-        accessToken,
+        idToken,
         body: {
           family_id,
           group_id,

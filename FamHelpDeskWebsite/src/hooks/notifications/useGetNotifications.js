@@ -5,16 +5,13 @@ import { apiRequestGet } from "../../api/apiRequest";
 import { useApi } from "../../provider/ApiProvider";
 
 const useGetNotifications = (limit = 50, viewed = null, enabled = true) => {
-  const { accessToken } = useContext(UserAuthenticationContext);
+  const { idToken } = useContext(UserAuthenticationContext);
   const { apiEndpoint } = useApi();
 
   const isEnabled = useMemo(
     () =>
-      enabled &&
-      !!accessToken &&
-      typeof accessToken === "string" &&
-      accessToken.length > 0,
-    [enabled, accessToken],
+      enabled && !!idToken && typeof idToken === "string" && idToken.length > 0,
+    [enabled, idToken],
   );
 
   const {
@@ -37,7 +34,7 @@ const useGetNotifications = (limit = 50, viewed = null, enabled = true) => {
       if (pageParam) {
         url += `&next_token=${encodeURIComponent(pageParam)}`;
       }
-      return apiRequestGet(apiEndpoint, url, accessToken);
+      return apiRequestGet(apiEndpoint, url, idToken);
     },
     enabled: isEnabled,
     getNextPageParam: (lastPage) => {

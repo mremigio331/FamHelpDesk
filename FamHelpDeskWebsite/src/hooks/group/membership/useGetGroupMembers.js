@@ -9,18 +9,18 @@ import { useApi } from "../../../provider/ApiProvider";
  * Returns member list with user details and roles
  */
 const useGetGroupMembers = (familyId, groupId, enabled = true) => {
-  const { accessToken } = useContext(UserAuthenticationContext);
+  const { idToken } = useContext(UserAuthenticationContext);
   const { apiEndpoint } = useApi();
 
   const isEnabled = useMemo(
     () =>
       enabled &&
-      !!accessToken &&
-      typeof accessToken === "string" &&
-      accessToken.length > 0 &&
+      !!idToken &&
+      typeof idToken === "string" &&
+      idToken.length > 0 &&
       !!familyId &&
       !!groupId,
-    [enabled, accessToken, familyId, groupId],
+    [enabled, idToken, familyId, groupId],
   );
 
   const { data, isFetching, isError, error, refetch } = useQuery({
@@ -29,7 +29,7 @@ const useGetGroupMembers = (familyId, groupId, enabled = true) => {
       apiRequestGet(
         apiEndpoint,
         `/membership/${familyId}/${groupId}/members`,
-        accessToken,
+        idToken,
       ),
     enabled: isEnabled,
     keepPreviousData: true,

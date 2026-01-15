@@ -5,21 +5,20 @@ import { apiRequestGet } from "../../api/apiRequest";
 import { useApi } from "../../provider/ApiProvider";
 
 const useGetUserProfile = (enabled = true) => {
-  const { accessToken } = useContext(UserAuthenticationContext);
+  const { idToken } = useContext(UserAuthenticationContext);
   const { apiEndpoint } = useApi();
 
+  console.log("idToken", idToken);
+  console.log("apiEndpoint", apiEndpoint);
   const isEnabled = useMemo(
     () =>
-      enabled &&
-      !!accessToken &&
-      typeof accessToken === "string" &&
-      accessToken.length > 0,
-    [enabled, accessToken],
+      enabled && !!idToken && typeof idToken === "string" && idToken.length > 0,
+    [enabled, idToken],
   );
 
   const { data, isFetching, isError, status, error, refetch } = useQuery({
     queryKey: ["userProfile"],
-    queryFn: () => apiRequestGet(apiEndpoint, "/user/profile", accessToken),
+    queryFn: () => apiRequestGet(apiEndpoint, "/user/profile", idToken),
     enabled: isEnabled,
     keepPreviousData: true,
     staleTime: 1000 * 60 * 10, // 10 minutes: prevents refetch if data is fresh

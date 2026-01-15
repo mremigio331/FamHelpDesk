@@ -9,7 +9,7 @@ import { useApi } from "../../../provider/ApiProvider";
  * Allows group admins to add users to the group without requiring a membership request
  */
 const useAddGroupMember = () => {
-  const { accessToken } = useContext(UserAuthenticationContext);
+  const { idToken } = useContext(UserAuthenticationContext);
   const { apiEndpoint } = useApi();
   const queryClient = useQueryClient();
 
@@ -17,7 +17,7 @@ const useAddGroupMember = () => {
     mutationFn: ({ familyId, groupId, targetUserId, makeAdmin = false }) =>
       apiRequestPost({
         apiEndpoint: `${apiEndpoint}/membership/${familyId}/${groupId}/members`,
-        accessToken,
+        idToken,
         body: {
           target_user_id: targetUserId,
           make_admin: makeAdmin,

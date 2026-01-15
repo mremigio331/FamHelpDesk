@@ -214,11 +214,6 @@ const FamilyPageMobile = () => {
       label: "Groups",
     },
     {
-      key: "queues",
-      icon: <InboxOutlined style={{ fontSize: "20px" }} />,
-      label: "Queues",
-    },
-    {
       key: "members",
       icon: <UserOutlined style={{ fontSize: "20px" }} />,
       label: "Members",
