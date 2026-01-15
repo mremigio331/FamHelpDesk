@@ -38,7 +38,11 @@ const GroupMembershipRequestCardMobile = ({
               <Text strong style={{ fontSize: "14px" }}>
                 {request.user_display_name || "Unknown User"}
               </Text>
-              <Tag color="orange" icon={<ClockCircleOutlined />} style={{ fontSize: "11px" }}>
+              <Tag
+                color="orange"
+                icon={<ClockCircleOutlined />}
+                style={{ fontSize: "11px" }}
+              >
                 Pending
               </Tag>
             </Space>

@@ -1,13 +1,5 @@
 import React from "react";
-import {
-  List,
-  Avatar,
-  Space,
-  Typography,
-  Tag,
-  Button,
-  Popconfirm,
-} from "antd";
+import { List, Avatar, Space, Typography, Tag, Button, Popconfirm } from "antd";
 import {
   UserOutlined,
   CheckCircleOutlined,

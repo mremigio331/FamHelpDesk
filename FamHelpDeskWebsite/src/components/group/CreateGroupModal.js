@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { Modal, Form, Input, message, Space, Button } from "antd";
 import { TeamOutlined } from "@ant-design/icons";
 import useCreateGroup from "../../hooks/group/useCreateGroup";
@@ -24,9 +24,13 @@ const CreateGroupModal = ({ visible, onClose, familyId, onSuccess }) => {
     resetCreateState,
   } = useCreateGroup();
 
+  // Track if we've already handled this success to prevent infinite loops
+  const handledSuccessRef = useRef(false);
+
   // Handle successful creation
   useEffect(() => {
-    if (isCreateSuccess && createdGroup) {
+    if (isCreateSuccess && createdGroup && !handledSuccessRef.current) {
+      handledSuccessRef.current = true;
       message.success("Group created successfully");
       form.resetFields();
       if (onSuccess) {
@@ -49,6 +53,7 @@ const CreateGroupModal = ({ visible, onClose, familyId, onSuccess }) => {
   const handleCancel = () => {
     form.resetFields();
     resetCreateState();
+    handledSuccessRef.current = false; // Reset the ref when modal closes
     onClose();
   };
 

@@ -40,9 +40,7 @@ const AddGroupMemberModal = ({
 
   // Filter out users who are already group members
   const availableMembers = useMemo(() => {
-    const currentMemberIds = new Set(
-      currentGroupMembers.map((m) => m.user_id),
-    );
+    const currentMemberIds = new Set(currentGroupMembers.map((m) => m.user_id));
     return familyMembers.filter((m) => !currentMemberIds.has(m.user_id));
   }, [familyMembers, currentGroupMembers]);
 
@@ -68,9 +66,7 @@ const AddGroupMemberModal = ({
             }
           },
           onError: (error) => {
-            message.error(
-              error?.message || "Failed to add member to group",
-            );
+            message.error(error?.message || "Failed to add member to group");
           },
         },
       );

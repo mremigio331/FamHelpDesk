@@ -43,12 +43,24 @@ const GroupMemberCardMobile = ({
                 {member.user_display_name || "Unknown User"}
               </Text>
               {member.is_admin && (
-                <Tag color="blue" icon={<CrownOutlined />} style={{ fontSize: "11px" }}>
+                <Tag
+                  color="blue"
+                  icon={<CrownOutlined />}
+                  style={{ fontSize: "11px" }}
+                >
                   Admin
                 </Tag>
               )}
-              {isCurrentUser && <Tag color="green" style={{ fontSize: "11px" }}>You</Tag>}
-              <Tag color="green" icon={<CheckCircleOutlined />} style={{ fontSize: "11px" }}>
+              {isCurrentUser && (
+                <Tag color="green" style={{ fontSize: "11px" }}>
+                  You
+                </Tag>
+              )}
+              <Tag
+                color="green"
+                icon={<CheckCircleOutlined />}
+                style={{ fontSize: "11px" }}
+              >
                 Active
               </Tag>
             </Space>

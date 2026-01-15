@@ -1,6 +1,10 @@
 import React, { useState } from "react";
 import { Space, Empty, Spin, Alert, Segmented, Button } from "antd";
-import { UserOutlined, ClockCircleOutlined, UserAddOutlined } from "@ant-design/icons";
+import {
+  UserOutlined,
+  ClockCircleOutlined,
+  UserAddOutlined,
+} from "@ant-design/icons";
 import useGetGroupMembers from "../../../hooks/group/membership/useGetGroupMembers";
 import useGetGroupMembershipRequests from "../../../hooks/group/membership/useGetGroupMembershipRequests";
 import useReviewGroupMembership from "../../../hooks/group/membership/useReviewGroupMembership";
@@ -237,7 +241,7 @@ const GroupMembersMobile = ({ familyId, groupId, isAdmin }) => {
         block
         style={{ fontSize: "12px" }}
       />
-      
+
       {isAdmin && activeTab === "members" && (
         <Button
           type="primary"
@@ -249,7 +253,7 @@ const GroupMembersMobile = ({ familyId, groupId, isAdmin }) => {
           Add Member
         </Button>
       )}
-      
+
       {renderContent()}
 
       <AddGroupMemberModal

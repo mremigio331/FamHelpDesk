@@ -1,6 +1,20 @@
 import React, { useState } from "react";
-import { Card, List, Typography, Empty, Spin, Alert, Tabs, Button, Space } from "antd";
-import { UserOutlined, ClockCircleOutlined, UserAddOutlined } from "@ant-design/icons";
+import {
+  Card,
+  List,
+  Typography,
+  Empty,
+  Spin,
+  Alert,
+  Tabs,
+  Button,
+  Space,
+} from "antd";
+import {
+  UserOutlined,
+  ClockCircleOutlined,
+  UserAddOutlined,
+} from "@ant-design/icons";
 import useGetGroupMembers from "../../../hooks/group/membership/useGetGroupMembers";
 import useGetGroupMembershipRequests from "../../../hooks/group/membership/useGetGroupMembershipRequests";
 import useReviewGroupMembership from "../../../hooks/group/membership/useReviewGroupMembership";
@@ -130,7 +144,8 @@ const GroupMembersDesktop = ({ familyId, groupId, isAdmin }) => {
               key: "members",
               label: (
                 <span>
-                  <UserOutlined /> Members {memberCount > 0 && `(${memberCount})`}
+                  <UserOutlined /> Members{" "}
+                  {memberCount > 0 && `(${memberCount})`}
                 </span>
               ),
               children: (
