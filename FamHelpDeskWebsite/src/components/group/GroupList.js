@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { List, Empty, Input } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import GroupListItem from "./GroupListItem";
+import { useMobileDetection } from "../../provider/MobileDetectionProvider";
 
 /**
  * Reusable component for displaying a list of groups
@@ -25,6 +26,7 @@ const GroupList = ({
   showMembershipStatus = true,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
+  const { isMobile } = useMobileDetection();
 
   // Filter and sort groups
   const filteredAndSortedGroups = useMemo(() => {
@@ -68,7 +70,11 @@ const GroupList = ({
         prefix={<SearchOutlined />}
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
-        style={{ marginBottom: "16px" }}
+        style={{
+          marginBottom: isMobile ? "12px" : "16px",
+          fontSize: isMobile ? "16px" : "14px",
+          height: isMobile ? "44px" : "32px",
+        }}
         allowClear
       />
 
@@ -82,6 +88,11 @@ const GroupList = ({
         <List
           itemLayout="horizontal"
           dataSource={filteredAndSortedGroups}
+          style={{
+            backgroundColor: isMobile ? "#f5f5f5" : "transparent",
+            padding: isMobile ? "4px" : "0",
+            borderRadius: isMobile ? "8px" : "0",
+          }}
           renderItem={(group) => {
             const membership = memberships[group.group_id] || null;
             const actions = renderActions

@@ -19,6 +19,7 @@ import {
   Row,
   Col,
   Drawer,
+  Empty,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -31,6 +32,7 @@ import {
   UserAddOutlined,
   UserDeleteOutlined,
   CrownOutlined,
+  PlusOutlined,
 } from "@ant-design/icons";
 import useGroupDetail from "./useGroupDetail";
 import useGroups from "../../hooks/group/useGroups";
@@ -39,7 +41,10 @@ import useGetGroupMembershipRequests from "../../hooks/group/membership/useGetGr
 import useReviewGroupMembership from "../../hooks/group/membership/useReviewGroupMembership";
 import useRemoveGroupMember from "../../hooks/group/membership/useRemoveGroupMember";
 import useUpdateGroupMemberRole from "../../hooks/group/membership/useUpdateGroupMemberRole";
+import useGetQueues from "../../hooks/queue/useGetQueues";
 import EditGroupModal from "./EditGroupModal";
+import CreateQueueModal from "../queue/CreateQueueModal";
+import QueueListItemMobile from "../queue/QueueListItemMobile";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -57,6 +62,9 @@ const GroupDetailMobile = () => {
     showDeleteModal,
     hideDeleteModal,
   } = useGroupDetail();
+
+  const [isCreateQueueModalVisible, setIsCreateQueueModalVisible] =
+    React.useState(false);
 
   const {
     allGroups,
@@ -92,6 +100,14 @@ const GroupDetailMobile = () => {
 
   const { updateMemberRole, isUpdatingRole, isUpdateRoleSuccess } =
     useUpdateGroupMemberRole();
+
+  // Fetch queues for this group
+  const {
+    queues,
+    isQueuesFetching,
+    isQueuesError,
+    queuesRefetch,
+  } = useGetQueues(familyId, groupId, true);
 
   // Find the current group
   const group = allGroups?.find((g) => g.group_id === groupId);
@@ -252,7 +268,7 @@ const GroupDetailMobile = () => {
         <Title level={5}>Statistics</Title>
         <Row gutter={[8, 8]}>
           <Col span={24}>
-            <Card size="small">
+            <Card size="small" style={{ backgroundColor: "#f0f5ff" }}>
               <Statistic
                 title="Members"
                 value={memberCount}
@@ -261,16 +277,16 @@ const GroupDetailMobile = () => {
             </Card>
           </Col>
           <Col span={24}>
-            <Card size="small">
+            <Card size="small" style={{ backgroundColor: "#f6ffed" }}>
               <Statistic
                 title="Queues"
-                value={group.queue_count || 0}
+                value={queues?.length || 0}
                 prefix={<InboxOutlined />}
               />
             </Card>
           </Col>
           <Col span={24}>
-            <Card size="small">
+            <Card size="small" style={{ backgroundColor: "#fff7e6" }}>
               <Statistic
                 title="Pending Requests"
                 value={requestCount}
@@ -310,6 +326,10 @@ const GroupDetailMobile = () => {
           dataSource={members}
           renderItem={(member) => (
             <List.Item
+              style={{
+                padding: "12px 0",
+                minHeight: "60px",
+              }}
               actions={
                 isAdmin && !member.is_current_user
                   ? [
@@ -322,6 +342,7 @@ const GroupDetailMobile = () => {
                           handleToggleAdmin(member.user_id, member.is_admin)
                         }
                         loading={isUpdatingRole}
+                        style={{ fontSize: "12px" }}
                       >
                         {member.is_admin ? "Remove Admin" : "Make Admin"}
                       </Button>,
@@ -339,6 +360,7 @@ const GroupDetailMobile = () => {
                           danger
                           icon={<UserDeleteOutlined />}
                           loading={isRemovingMember}
+                          style={{ fontSize: "12px" }}
                         >
                           Remove
                         </Button>
@@ -348,10 +370,16 @@ const GroupDetailMobile = () => {
               }
             >
               <List.Item.Meta
-                avatar={<Avatar size="small" icon={<UserOutlined />} />}
+                avatar={
+                  <Avatar
+                    size={40}
+                    icon={<UserOutlined />}
+                    style={{ backgroundColor: "#1890ff" }}
+                  />
+                }
                 title={
-                  <Space size="small">
-                    <span style={{ fontSize: "14px" }}>
+                  <Space size="small" wrap>
+                    <span style={{ fontSize: "14px", fontWeight: "500" }}>
                       {member.user_display_name || member.user_email}
                     </span>
                     {member.is_admin && (
@@ -423,31 +451,43 @@ const GroupDetailMobile = () => {
             dataSource={requests}
             renderItem={(request) => (
               <List.Item
+                style={{
+                  padding: "12px 0",
+                  minHeight: "60px",
+                }}
                 actions={[
                   <Button
                     key="approve"
                     type="primary"
-                    size="small"
+                    size="middle"
                     onClick={() => handleApproveRequest(request.user_id)}
                     loading={isReviewingMembership}
+                    style={{ minWidth: "80px", height: "40px" }}
                   >
                     Approve
                   </Button>,
                   <Button
                     key="reject"
                     danger
-                    size="small"
+                    size="middle"
                     onClick={() => handleRejectRequest(request.user_id)}
                     loading={isReviewingMembership}
+                    style={{ minWidth: "80px", height: "40px" }}
                   >
                     Reject
                   </Button>,
                 ]}
               >
                 <List.Item.Meta
-                  avatar={<Avatar size="small" icon={<UserOutlined />} />}
+                  avatar={
+                    <Avatar
+                      size={40}
+                      icon={<UserOutlined />}
+                      style={{ backgroundColor: "#52c41a" }}
+                    />
+                  }
                   title={
-                    <span style={{ fontSize: "14px" }}>
+                    <span style={{ fontSize: "14px", fontWeight: "500" }}>
                       {request.user_display_name || request.user_email}
                     </span>
                   }
@@ -474,15 +514,69 @@ const GroupDetailMobile = () => {
 
   const renderQueues = () => (
     <Card size="small">
-      <div style={{ textAlign: "center", padding: "40px 20px" }}>
-        <InboxOutlined style={{ fontSize: "48px", color: "#bfbfbf" }} />
-        <Title level={4} style={{ marginTop: "12px", color: "#595959" }}>
-          Queues
-        </Title>
-        <Text type="secondary" style={{ fontSize: "14px" }}>
-          Queue management coming soon
-        </Text>
-      </div>
+      <Space
+        direction="vertical"
+        size="middle"
+        style={{ width: "100%", padding: "8px 0" }}
+      >
+        {/* Create Queue Button */}
+        {isAdmin && (
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setIsCreateQueueModalVisible(true)}
+            block
+            size="large"
+            style={{ height: "44px" }}
+          >
+            Create Queue
+          </Button>
+        )}
+
+        {/* Queue List */}
+        {isQueuesFetching ? (
+          <div style={{ textAlign: "center", padding: "40px 20px" }}>
+            <Spin size="large" />
+          </div>
+        ) : isQueuesError ? (
+          <Alert
+            message="Error"
+            description="Failed to load queues"
+            type="error"
+            showIcon
+          />
+        ) : queues && queues.length > 0 ? (
+          <div>
+            {queues.map((queue) => (
+              <QueueListItemMobile
+                key={queue.queue_id}
+                queue={queue}
+                onClick={() =>
+                  navigate(`/family/${familyId}/queue/${queue.queue_id}`, {
+                    state: { queue, groupId },
+                  })
+                }
+                showCreatedDate={true}
+                showStats={true}
+              />
+            ))}
+          </div>
+        ) : (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description={
+              <Space direction="vertical" size="small">
+                <Text>No queues yet</Text>
+                <Text type="secondary" style={{ fontSize: "12px" }}>
+                  {isAdmin
+                    ? "Create a queue to organize tickets"
+                    : "Queues will appear here once created"}
+                </Text>
+              </Space>
+            }
+          />
+        )}
+      </Space>
     </Card>
   );
 
@@ -574,7 +668,16 @@ const GroupDetailMobile = () => {
     },
     {
       key: "queues",
-      label: "Queues",
+      label: (
+        <span>
+          Queues
+          {queues && queues.length > 0 && (
+            <Tag color="green" style={{ marginLeft: "4px", fontSize: "10px" }}>
+              {queues.length}
+            </Tag>
+          )}
+        </span>
+      ),
       children: renderQueues(),
     },
     {
@@ -591,7 +694,7 @@ const GroupDetailMobile = () => {
           type="link"
           icon={<ArrowLeftOutlined />}
           onClick={() => navigate(`/family/${familyId}`)}
-          style={{ paddingLeft: 0 }}
+          style={{ paddingLeft: 0, fontSize: "15px", height: "44px" }}
         >
           Back
         </Button>
@@ -609,21 +712,23 @@ const GroupDetailMobile = () => {
               </Text>
             )}
             {isAdmin && (
-              <Space size="small" style={{ width: "100%" }}>
+              <Space size="small" style={{ width: "100%", marginTop: "8px" }}>
                 <Button
-                  size="small"
+                  size="middle"
                   icon={<EditOutlined />}
                   onClick={showEditModal}
                   block
+                  style={{ height: "40px" }}
                 >
                   Edit
                 </Button>
                 <Button
-                  size="small"
+                  size="middle"
                   danger
                   icon={<DeleteOutlined />}
                   onClick={showDeleteModal}
                   block
+                  style={{ height: "40px" }}
                 >
                   Delete
                 </Button>
@@ -650,13 +755,26 @@ const GroupDetailMobile = () => {
         }}
       />
 
+      {/* Create Queue Modal */}
+      <CreateQueueModal
+        visible={isCreateQueueModalVisible}
+        onClose={() => setIsCreateQueueModalVisible(false)}
+        familyId={familyId}
+        groupId={groupId}
+        onSuccess={() => {
+          queuesRefetch();
+          setIsCreateQueueModalVisible(false);
+          message.success("Queue created successfully");
+        }}
+      />
+
       {/* Delete Group Modal */}
       <Modal
         title="Delete Group"
         open={isDeleteModalVisible}
         onCancel={hideDeleteModal}
         footer={[
-          <Button key="cancel" onClick={hideDeleteModal} block>
+          <Button key="cancel" onClick={hideDeleteModal} block size="large">
             Cancel
           </Button>,
           <Button
@@ -666,6 +784,7 @@ const GroupDetailMobile = () => {
             loading={isDeleting}
             onClick={handleDelete}
             block
+            size="large"
           >
             Delete Group
           </Button>,
