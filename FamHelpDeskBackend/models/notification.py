@@ -9,6 +9,7 @@ class NotificationType(Enum):
     MEMBERSHIP_REQUEST = "Membership Request"
     MEMBERSHIP_APPROVED = "Membership Approved"
     MEMBERSHIP_DENIED = "Membership Denied"
+    TICKET_CREATION = "Ticket Creation"
     TICKET_ASSIGNED = "Ticket Assigned"
     TICKET_COMMENT = "Ticket Comment"
     TICKET_STATUS_CHANGED = "Ticket Status Changed"
