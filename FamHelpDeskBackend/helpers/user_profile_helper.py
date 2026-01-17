@@ -1,6 +1,7 @@
 from models.user_profile import UserProfile
 from helpers.audit_helper import AuditHelper
 from helpers.notification_helper import NotificationHelper
+from helpers.notification_settings_helper import NotificationSettingsHelper
 from models.notification import NotificationType
 from models.audit import AuditActions, AuditEntityTypes
 
@@ -12,6 +13,7 @@ from typing import Optional
 class UserProfileHelper:
     def __init__(self, request_id: str = None):
         self.logger = Logger()
+        self.request_id = request_id
         if request_id:
             self.logger.append_keys(request_id=request_id)
 
@@ -39,6 +41,12 @@ class UserProfileHelper:
 
         profile.save()
         self.logger.info(f"Created user profile for {user_id}")
+
+        # Create default notification settings (only instantiate when needed)
+        notification_settings_helper = NotificationSettingsHelper(
+            request_id=self.request_id
+        )
+        notification_settings_helper.create_default_settings(user_id)
 
         # Always create audit record
         profile_data = UserProfile.clean_returned_profile(profile)
