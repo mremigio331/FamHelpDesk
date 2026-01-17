@@ -30,13 +30,26 @@ export class DatabaseStack extends Stack {
     });
 
     this.table.addGlobalSecondaryIndex({
-      indexName: "GSI1",
+      indexName: "TicketGroupIndex",
       partitionKey: {
-        name: "GSI1PK",
+        name: "TicketGroupPK",
         type: dynamodb.AttributeType.STRING,
       },
       sortKey: {
-        name: "GSI1SK",
+        name: "TicketGroupSK",
+        type: dynamodb.AttributeType.STRING,
+      },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
+    this.table.addGlobalSecondaryIndex({
+      indexName: "TicketAssignmentIndex",
+      partitionKey: {
+        name: "TicketAssignmentPK",
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: "TicketAssignmentSK",
         type: dynamodb.AttributeType.STRING,
       },
       projectionType: dynamodb.ProjectionType.ALL,

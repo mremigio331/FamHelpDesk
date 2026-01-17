@@ -19,3 +19,16 @@ class TicketCommentModel(FamHelpDeskBaseModel):
     @staticmethod
     def create_sk(queue_id: str, ticket_id: str, comment_id: str) -> str:
         return f"QUEUE#{queue_id}#TICKET#{ticket_id}#COMMENT#{comment_id}"
+
+    @staticmethod
+    def clean_returned_comment(comment: "TicketCommentModel") -> dict:
+        return {
+            "family_id": comment.family_id,
+            "queue_id": comment.queue_id,
+            "ticket_id": comment.ticket_id,
+            "comment_id": comment.comment_id,
+            "comment_user": comment.comment_user,
+            "comment_body": comment.comment_body,
+            "comment_date": comment.comment_date,
+            "last_update": comment.last_update,
+        }
