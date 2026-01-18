@@ -27,6 +27,13 @@ class UserProfileHelper:
         provider: str,
         email: str,
     ) -> UserProfile:
+        # Check if profile already exists (idempotency check)
+        existing_profile = self.get_profile(user_id)
+        if existing_profile:
+            self.logger.info(
+                f"User profile already exists for {user_id}, returning existing profile"
+            )
+            return existing_profile
 
         profile = UserProfile(
             pk=UserProfile.create_pk(user_id),
@@ -39,14 +46,30 @@ class UserProfileHelper:
             dark_mode=False,
         )
 
-        profile.save()
-        self.logger.info(f"Created user profile for {user_id}")
+        try:
+            profile.save()
+            self.logger.info(f"Created user profile for {user_id}")
+        except Exception as e:
+            # Handle potential race condition where profile was created between check and save
+            if (
+                "ConditionalCheckFailedException" in str(e)
+                or "already exists" in str(e).lower()
+            ):
+                self.logger.info(
+                    f"Profile creation race condition for {user_id}, fetching existing profile"
+                )
+                return self.get_profile(user_id)
+            raise
 
         # Create default notification settings (only instantiate when needed)
         notification_settings_helper = NotificationSettingsHelper(
             request_id=self.request_id
         )
-        notification_settings_helper.create_default_settings(user_id)
+
+        # Check if settings already exist before creating
+        existing_settings = notification_settings_helper.get_settings(user_id)
+        if not existing_settings:
+            notification_settings_helper.create_default_settings(user_id)
 
         # Always create audit record
         profile_data = UserProfile.clean_returned_profile(profile)
@@ -56,12 +79,18 @@ class UserProfileHelper:
             after=profile_data,
         )
 
-        # Send welcome notification
-        self.notification_helper.create_notification(
-            user_id=user_id,
-            message="Welcome to Fam Help Desk! We're excited to have you here.",
-            notification_type=NotificationType.WELCOME,
-        )
+        # Send welcome notification (check if already sent)
+        try:
+            self.notification_helper.create_notification(
+                user_id=user_id,
+                message="Welcome to Fam Help Desk! We're excited to have you here.",
+                notification_type=NotificationType.WELCOME,
+            )
+        except Exception as e:
+            # Log but don't fail if notification already exists
+            self.logger.warning(
+                f"Failed to create welcome notification for {user_id}: {e}"
+            )
 
         return profile
 

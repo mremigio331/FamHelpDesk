@@ -23,13 +23,22 @@ class NotificationSettingsHelper:
     def create_default_settings(self, user_id: str) -> NotificationSettingsModel:
         """
         Generate default notification settings for new user.
+        Idempotent - returns existing settings if they already exist.
 
         Args:
             user_id: The user ID to create settings for
 
         Returns:
-            NotificationSettingsModel: The created settings object
+            NotificationSettingsModel: The created or existing settings object
         """
+        # Check if settings already exist
+        existing_settings = self.get_settings(user_id)
+        if existing_settings:
+            self.logger.info(
+                f"Notification settings already exist for user {user_id}, returning existing"
+            )
+            return existing_settings
+
         current_time = int(time.time())
 
         settings = NotificationSettingsModel(
@@ -48,9 +57,22 @@ class NotificationSettingsHelper:
             last_updated=current_time,
         )
 
-        settings.save()
-
-        self.logger.info(f"Created default notification settings for user {user_id}")
+        try:
+            settings.save()
+            self.logger.info(
+                f"Created default notification settings for user {user_id}"
+            )
+        except Exception as e:
+            # Handle race condition where settings were created between check and save
+            if (
+                "ConditionalCheckFailedException" in str(e)
+                or "already exists" in str(e).lower()
+            ):
+                self.logger.info(
+                    f"Settings creation race condition for {user_id}, fetching existing"
+                )
+                return self.get_settings(user_id)
+            raise
 
         return settings
 

@@ -46,6 +46,15 @@ def handler(event: dict, context: LambdaContext) -> dict:
 
         try:
             user_profile_helper = UserProfileHelper(request_id=context.aws_request_id)
+
+            # Check if user profile already exists to prevent duplicates
+            existing_profile = user_profile_helper.get_profile(user_id)
+            if existing_profile:
+                logger.info(
+                    f"User profile already exists for {user_id}, skipping creation"
+                )
+                return event
+
             user_profile_helper.create_profile(
                 user_id=user_id,
                 display_name=full_name,
