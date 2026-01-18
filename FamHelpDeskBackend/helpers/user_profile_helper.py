@@ -79,17 +79,17 @@ class UserProfileHelper:
             after=profile_data,
         )
 
-        # Send welcome notification (check if already sent)
+        # Send welcome notification (async for better performance)
         try:
-            self.notification_helper.create_notification(
+            self.notification_helper.create_notification_async(
                 user_id=user_id,
                 message="Welcome to Fam Help Desk! We're excited to have you here.",
                 notification_type=NotificationType.WELCOME,
             )
         except Exception as e:
-            # Log but don't fail if notification already exists
+            # Log but don't fail if notification fails
             self.logger.warning(
-                f"Failed to create welcome notification for {user_id}: {e}"
+                f"Failed to send welcome notification for {user_id}: {e}"
             )
 
         return profile

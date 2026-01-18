@@ -24,6 +24,13 @@ export COGNITO_DOMAIN="https://famhelpdesk-testing.auth.us-west-2.amazoncognito.
 export API_URL="https://api.testing.famhelpdesk.com"
 export COGNITO_API_REDIRECT_URI="http://localhost:5000/"
 
+# Fetch notification topic ARN from CloudFormation exports
+export NOTIFICATION_TOPIC_ARN=$(
+    aws cloudformation list-exports --region us-west-2 \
+    --query "Exports[?Name=='FamHelpDesk-NotificationTopicArn-Testing'].Value" \
+    --output text
+)
+
 # Run with or without HTTPS based on flag
 if [ "$USE_HTTPS" = true ]; then
     echo "Starting API with HTTPS..."

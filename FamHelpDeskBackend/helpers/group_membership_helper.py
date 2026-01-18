@@ -99,11 +99,12 @@ class GroupMembershipHelper:
         # Notify all group admins about the membership request
         admin_ids = self.get_all_admins(family_id, group_id)
         for admin_id in admin_ids:
-            self.notification_helper.create_notification(
+            self.notification_helper.create_notification_async(
                 user_id=admin_id,
                 message=f"User {user_id} has requested to join the group.",
                 notification_type=NotificationType.MEMBERSHIP_REQUEST,
                 family_id=family_id,
+                group_id=group_id,
             )
 
         return after
@@ -322,18 +323,20 @@ class GroupMembershipHelper:
 
         # Notify the target user about approval/denial
         if approve:
-            self.notification_helper.create_notification(
+            self.notification_helper.create_notification_async(
                 user_id=target_user_id,
                 message=f"Your request to join the group has been approved.",
                 notification_type=NotificationType.MEMBERSHIP_APPROVED,
                 family_id=family_id,
+                group_id=group_id,
             )
         else:
-            self.notification_helper.create_notification(
+            self.notification_helper.create_notification_async(
                 user_id=target_user_id,
                 message=f"Your request to join the group has been denied.",
                 notification_type=NotificationType.MEMBERSHIP_DENIED,
                 family_id=family_id,
+                group_id=group_id,
             )
 
         return after

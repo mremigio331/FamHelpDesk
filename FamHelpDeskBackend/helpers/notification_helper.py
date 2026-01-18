@@ -1,15 +1,20 @@
 import time
 import uuid
+import json
+import os
 from typing import Optional
 from aws_lambda_powertools import Logger
 from models.notification import NotificationModel, NotificationType
 from pynamodb.exceptions import DoesNotExist
+import boto3
 
 
 class NotificationHelper:
     def __init__(self, request_id: str):
         self.logger = Logger()
         self.logger.append_keys(request_id=request_id)
+        self.sns_client = boto3.client("sns")
+        self.notification_topic_arn = os.environ.get("NOTIFICATION_TOPIC_ARN")
 
     def create_notification(
         self,
@@ -227,3 +232,65 @@ class NotificationHelper:
         )
 
         return updated_count
+
+    def create_notification_async(
+        self, user_id: str, message: str, notification_type: NotificationType, **kwargs
+    ) -> bool:
+        """
+        Create a notification asynchronously by publishing to SNS.
+        This method is lightweight and returns immediately while the actual
+        notification creation happens in the background via Lambda.
+
+        Args:
+            user_id: The user to notify
+            message: The notification message
+            notification_type: Type of notification (NotificationType enum)
+            **kwargs: Optional parameters like family_id, ticket_id, group_id, queue_id, etc.
+
+        Returns:
+            bool: True if successfully published to SNS, False otherwise
+        """
+        if not self.notification_topic_arn:
+            self.logger.warning(
+                "NOTIFICATION_TOPIC_ARN not configured, skipping async notification"
+            )
+            return False
+
+        try:
+            # Create the notification payload
+            notification_payload = {
+                "user_id": user_id,
+                "message": message,
+                "notification_type": notification_type.value,
+                **kwargs,  # Unpack any additional parameters
+            }
+
+            # Publish to SNS topic
+            response = self.sns_client.publish(
+                TopicArn=self.notification_topic_arn,
+                Message=json.dumps(notification_payload),
+                Subject=f"Notification: {notification_type.value}",
+            )
+
+            self.logger.info(
+                f"Published notification to SNS for user {user_id}: {message} [{notification_type.value}]",
+                extra={
+                    "user_id": user_id,
+                    "notification_type": notification_type.value,
+                    "message_id": response.get("MessageId"),
+                    "topic_arn": self.notification_topic_arn,
+                },
+            )
+
+            return True
+
+        except Exception as e:
+            self.logger.error(
+                f"Failed to publish notification to SNS: {str(e)}",
+                extra={
+                    "user_id": user_id,
+                    "notification_type": notification_type.value,
+                    "error": str(e),
+                },
+            )
+            return False

@@ -10,3 +10,4 @@ fpdf
 pytz
 reportlab
 pynamodb
+tenacity
