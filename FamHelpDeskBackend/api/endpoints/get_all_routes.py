@@ -25,6 +25,10 @@ from api.endpoints.ticket.create_ticket import router as create_ticket_router
 from api.endpoints.ticket.update_ticket import router as update_ticket_router
 from api.endpoints.ticket.get_ticket import router as get_ticket_router
 from api.endpoints.ticket.get_tickets import router as get_tickets_router
+from api.endpoints.ticket.create_comment import router as create_comment_router
+from api.endpoints.ticket.update_comment import router as update_comment_router
+from api.endpoints.ticket.delete_comment import router as delete_comment_router
+from api.endpoints.ticket.get_comments import router as get_comments_router
 from api.endpoints.membership.family_membership import (
     family_request_membership,
     family_review_membership,
@@ -107,6 +111,10 @@ def get_all_routes(app: FastAPI) -> FastAPI:
     app.include_router(update_ticket_router, prefix=TICKET_PATH, tags=[TICKET_TAG])
     app.include_router(get_ticket_router, prefix=TICKET_PATH, tags=[TICKET_TAG])
     app.include_router(get_tickets_router, prefix=TICKET_PATH, tags=[TICKET_TAG])
+    app.include_router(create_comment_router, prefix=TICKET_PATH, tags=[TICKET_TAG])
+    app.include_router(update_comment_router, prefix=TICKET_PATH, tags=[TICKET_TAG])
+    app.include_router(delete_comment_router, prefix=TICKET_PATH, tags=[TICKET_TAG])
+    app.include_router(get_comments_router, prefix=TICKET_PATH, tags=[TICKET_TAG])
 
     app.include_router(
         family_request_membership.router,
