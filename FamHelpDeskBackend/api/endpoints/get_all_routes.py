@@ -51,24 +51,27 @@ from api.endpoints.notifications import (
     acknowledge_notification,
     acknowledge_all,
 )
+from api.endpoints.notifications.get_settings import router as get_settings_router
+from api.endpoints.notifications.update_settings import router as update_settings_router
 from constants.api import (
-    HOME_TAG,
+    FAMILY_MEMBERSHIP_TAG,
+    FAMILY_PATH,
+    FAMILY_TAG,
+    GROUP_MEMBERSHIP_TAG,
+    GROUP_PATH,
+    GROUP_TAG,
     HOME_PATH,
+    HOME_TAG,
+    MEMBERSHIP_PATH,
+    NOTIFICATIONS_PATH,
+    NOTIFICATIONS_TAG,
+    QUEUE_PATH,
+    QUEUE_TAG,
+    TICKET_COMMENTS_TAG,
+    TICKET_PATH,
+    TICKET_TAG,
     USER_PATH,
     USER_TAG,
-    FAMILY_TAG,
-    FAMILY_PATH,
-    GROUP_TAG,
-    GROUP_PATH,
-    QUEUE_TAG,
-    QUEUE_PATH,
-    TICKET_TAG,
-    TICKET_PATH,
-    GROUP_MEMBERSHIP_TAG,
-    FAMILY_MEMBERSHIP_TAG,
-    MEMBERSHIP_PATH,
-    NOTIFICATIONS_TAG,
-    NOTIFICATIONS_PATH,
 )
 from fastapi import FastAPI
 
@@ -83,39 +86,17 @@ def get_all_routes(app: FastAPI) -> FastAPI:
     Returns:
         FastAPI: The updated FastAPI application instance with all routes registered.
     """
+    # Home routes
     app.include_router(home.router, prefix=HOME_PATH, tags=[HOME_TAG])
 
-    app.include_router(get_requester.router, prefix=USER_PATH, tags=[USER_TAG])
-    app.include_router(get_user_profile.router, prefix=USER_PATH, tags=[USER_TAG])
-    app.include_router(update_user_profile.router, prefix=USER_PATH, tags=[USER_TAG])
-
+    # Family routes
     app.include_router(create_family.router, prefix=FAMILY_PATH, tags=[FAMILY_TAG])
     app.include_router(get_all_families.router, prefix=FAMILY_PATH, tags=[FAMILY_TAG])
     app.include_router(get_my_families.router, prefix=FAMILY_PATH, tags=[FAMILY_TAG])
     app.include_router(get_family.router, prefix=FAMILY_PATH, tags=[FAMILY_TAG])
     app.include_router(update_family.router, prefix=FAMILY_PATH, tags=[FAMILY_TAG])
 
-    app.include_router(create_group.router, prefix=GROUP_PATH, tags=[GROUP_TAG])
-    app.include_router(get_all_groups.router, prefix=GROUP_PATH, tags=[GROUP_TAG])
-    app.include_router(get_my_groups.router, prefix=GROUP_PATH, tags=[GROUP_TAG])
-    app.include_router(update_group.router, prefix=GROUP_PATH, tags=[GROUP_TAG])
-    app.include_router(delete_group.router, prefix=GROUP_PATH, tags=[GROUP_TAG])
-
-    app.include_router(create_queue.router, prefix=QUEUE_PATH, tags=[QUEUE_TAG])
-    app.include_router(get_queues.router, prefix=QUEUE_PATH, tags=[QUEUE_TAG])
-    app.include_router(get_queue.router, prefix=QUEUE_PATH, tags=[QUEUE_TAG])
-    app.include_router(update_queue.router, prefix=QUEUE_PATH, tags=[QUEUE_TAG])
-    app.include_router(delete_queue.router, prefix=QUEUE_PATH, tags=[QUEUE_TAG])
-
-    app.include_router(create_ticket_router, prefix=TICKET_PATH, tags=[TICKET_TAG])
-    app.include_router(update_ticket_router, prefix=TICKET_PATH, tags=[TICKET_TAG])
-    app.include_router(get_ticket_router, prefix=TICKET_PATH, tags=[TICKET_TAG])
-    app.include_router(get_tickets_router, prefix=TICKET_PATH, tags=[TICKET_TAG])
-    app.include_router(create_comment_router, prefix=TICKET_PATH, tags=[TICKET_TAG])
-    app.include_router(update_comment_router, prefix=TICKET_PATH, tags=[TICKET_TAG])
-    app.include_router(delete_comment_router, prefix=TICKET_PATH, tags=[TICKET_TAG])
-    app.include_router(get_comments_router, prefix=TICKET_PATH, tags=[TICKET_TAG])
-
+    # Family Membership routes
     app.include_router(
         family_request_membership.router,
         prefix=MEMBERSHIP_PATH,
@@ -134,6 +115,15 @@ def get_all_routes(app: FastAPI) -> FastAPI:
     app.include_router(
         get_family_members.router, prefix=MEMBERSHIP_PATH, tags=[FAMILY_MEMBERSHIP_TAG]
     )
+
+    # Group routes
+    app.include_router(create_group.router, prefix=GROUP_PATH, tags=[GROUP_TAG])
+    app.include_router(get_all_groups.router, prefix=GROUP_PATH, tags=[GROUP_TAG])
+    app.include_router(get_my_groups.router, prefix=GROUP_PATH, tags=[GROUP_TAG])
+    app.include_router(update_group.router, prefix=GROUP_PATH, tags=[GROUP_TAG])
+    app.include_router(delete_group.router, prefix=GROUP_PATH, tags=[GROUP_TAG])
+
+    # Group Membership routes
     app.include_router(
         group_request_membership.router,
         prefix=MEMBERSHIP_PATH,
@@ -169,6 +159,7 @@ def get_all_routes(app: FastAPI) -> FastAPI:
         tags=[GROUP_MEMBERSHIP_TAG],
     )
 
+    # Notifications routes
     app.include_router(
         get_notifications.router, prefix=NOTIFICATIONS_PATH, tags=[NOTIFICATIONS_TAG]
     )
@@ -183,5 +174,43 @@ def get_all_routes(app: FastAPI) -> FastAPI:
     app.include_router(
         acknowledge_all.router, prefix=NOTIFICATIONS_PATH, tags=[NOTIFICATIONS_TAG]
     )
+    app.include_router(
+        get_settings_router, prefix=NOTIFICATIONS_PATH, tags=[NOTIFICATIONS_TAG]
+    )
+    app.include_router(
+        update_settings_router, prefix=NOTIFICATIONS_PATH, tags=[NOTIFICATIONS_TAG]
+    )
+
+    # Queue routes
+    app.include_router(create_queue.router, prefix=QUEUE_PATH, tags=[QUEUE_TAG])
+    app.include_router(get_queues.router, prefix=QUEUE_PATH, tags=[QUEUE_TAG])
+    app.include_router(get_queue.router, prefix=QUEUE_PATH, tags=[QUEUE_TAG])
+    app.include_router(update_queue.router, prefix=QUEUE_PATH, tags=[QUEUE_TAG])
+    app.include_router(delete_queue.router, prefix=QUEUE_PATH, tags=[QUEUE_TAG])
+
+    # Ticket routes
+    app.include_router(create_ticket_router, prefix=TICKET_PATH, tags=[TICKET_TAG])
+    app.include_router(update_ticket_router, prefix=TICKET_PATH, tags=[TICKET_TAG])
+    app.include_router(get_ticket_router, prefix=TICKET_PATH, tags=[TICKET_TAG])
+    app.include_router(get_tickets_router, prefix=TICKET_PATH, tags=[TICKET_TAG])
+
+    # Ticket Comments routes
+    app.include_router(
+        create_comment_router, prefix=TICKET_PATH, tags=[TICKET_COMMENTS_TAG]
+    )
+    app.include_router(
+        update_comment_router, prefix=TICKET_PATH, tags=[TICKET_COMMENTS_TAG]
+    )
+    app.include_router(
+        delete_comment_router, prefix=TICKET_PATH, tags=[TICKET_COMMENTS_TAG]
+    )
+    app.include_router(
+        get_comments_router, prefix=TICKET_PATH, tags=[TICKET_COMMENTS_TAG]
+    )
+
+    # User routes
+    app.include_router(get_requester.router, prefix=USER_PATH, tags=[USER_TAG])
+    app.include_router(get_user_profile.router, prefix=USER_PATH, tags=[USER_TAG])
+    app.include_router(update_user_profile.router, prefix=USER_PATH, tags=[USER_TAG])
 
     return app
