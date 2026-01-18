@@ -21,6 +21,10 @@ from api.endpoints.queue import (
     update_queue,
     delete_queue,
 )
+from api.endpoints.ticket.create_ticket import router as create_ticket_router
+from api.endpoints.ticket.update_ticket import router as update_ticket_router
+from api.endpoints.ticket.get_ticket import router as get_ticket_router
+from api.endpoints.ticket.get_tickets import router as get_tickets_router
 from api.endpoints.membership.family_membership import (
     family_request_membership,
     family_review_membership,
@@ -54,6 +58,8 @@ from constants.api import (
     GROUP_PATH,
     QUEUE_TAG,
     QUEUE_PATH,
+    TICKET_TAG,
+    TICKET_PATH,
     GROUP_MEMBERSHIP_TAG,
     FAMILY_MEMBERSHIP_TAG,
     MEMBERSHIP_PATH,
@@ -96,6 +102,11 @@ def get_all_routes(app: FastAPI) -> FastAPI:
     app.include_router(get_queue.router, prefix=QUEUE_PATH, tags=[QUEUE_TAG])
     app.include_router(update_queue.router, prefix=QUEUE_PATH, tags=[QUEUE_TAG])
     app.include_router(delete_queue.router, prefix=QUEUE_PATH, tags=[QUEUE_TAG])
+
+    app.include_router(create_ticket_router, prefix=TICKET_PATH, tags=[TICKET_TAG])
+    app.include_router(update_ticket_router, prefix=TICKET_PATH, tags=[TICKET_TAG])
+    app.include_router(get_ticket_router, prefix=TICKET_PATH, tags=[TICKET_TAG])
+    app.include_router(get_tickets_router, prefix=TICKET_PATH, tags=[TICKET_TAG])
 
     app.include_router(
         family_request_membership.router,

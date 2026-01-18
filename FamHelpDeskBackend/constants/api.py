@@ -13,6 +13,9 @@ GROUP_PATH = "/group"
 QUEUE_TAG = "Queue"
 QUEUE_PATH = "/queue"
 
+TICKET_TAG = "Ticket"
+TICKET_PATH = "/ticket"
+
 GROUP_MEMBERSHIP_TAG = "Group Membership"
 FAMILY_MEMBERSHIP_TAG = "Family Membership"
 MEMBERSHIP_PATH = "/membership"

@@ -41,6 +41,16 @@ from exceptions.queue_exceptions import (
     QueuePermissionDenied,
     QueueHasActiveTickets,
 )
+from exceptions.ticket_exceptions import (
+    TicketNotFoundException,
+    InvalidTicketStatusTransitionException,
+    TicketReopenWindowExpiredException,
+    InvalidTicketStatusException,
+    InvalidTicketSeverityException,
+    CommentNotFoundException,
+    CommentEditWindowExpiredException,
+    UnauthorizedCommentModificationException,
+)
 
 from fastapi.responses import JSONResponse
 from botocore.exceptions import ClientError
@@ -193,6 +203,74 @@ def exceptions_decorator(func):
                     "error": {"code": "INVALID_INPUT_LENGTH", "message": str(exc)}
                 },
                 status_code=400,
+            )
+
+        # Ticket exceptions
+        except TicketNotFoundException as exc:
+            return JSONResponse(
+                content={"error": {"code": "TICKET_NOT_FOUND", "message": str(exc)}},
+                status_code=404,
+            )
+        except InvalidTicketStatusTransitionException as exc:
+            return JSONResponse(
+                content={
+                    "error": {
+                        "code": "INVALID_TICKET_STATUS_TRANSITION",
+                        "message": str(exc),
+                    }
+                },
+                status_code=400,
+            )
+        except TicketReopenWindowExpiredException as exc:
+            return JSONResponse(
+                content={
+                    "error": {
+                        "code": "TICKET_REOPEN_WINDOW_EXPIRED",
+                        "message": str(exc),
+                    }
+                },
+                status_code=400,
+            )
+        except InvalidTicketStatusException as exc:
+            return JSONResponse(
+                content={
+                    "error": {"code": "INVALID_TICKET_STATUS", "message": str(exc)}
+                },
+                status_code=400,
+            )
+        except InvalidTicketSeverityException as exc:
+            return JSONResponse(
+                content={
+                    "error": {"code": "INVALID_TICKET_SEVERITY", "message": str(exc)}
+                },
+                status_code=400,
+            )
+
+        # Comment exceptions
+        except CommentNotFoundException as exc:
+            return JSONResponse(
+                content={"error": {"code": "COMMENT_NOT_FOUND", "message": str(exc)}},
+                status_code=404,
+            )
+        except CommentEditWindowExpiredException as exc:
+            return JSONResponse(
+                content={
+                    "error": {
+                        "code": "COMMENT_EDIT_WINDOW_EXPIRED",
+                        "message": str(exc),
+                    }
+                },
+                status_code=400,
+            )
+        except UnauthorizedCommentModificationException as exc:
+            return JSONResponse(
+                content={
+                    "error": {
+                        "code": "UNAUTHORIZED_COMMENT_MODIFICATION",
+                        "message": str(exc),
+                    }
+                },
+                status_code=403,
             )
 
         # Membership exceptions

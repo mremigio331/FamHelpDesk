@@ -525,7 +525,7 @@ class TicketHelper:
     def get_tickets_by_status(self, family_id: str, status: str) -> List[TicketModel]:
         """
         Query all tickets with a specific status across all queues in a family.
-        Uses DynamoDB filter condition for efficient server-side filtering.
+        Uses query-all approach with Python filtering to avoid audit records.
 
         Args:
             family_id: The family ID this ticket belongs to
@@ -536,14 +536,20 @@ class TicketHelper:
         """
         tickets: List[TicketModel] = []
 
-        # Query all tickets in the family with server-side filtering by status
-        for ticket in TicketModel.query(
-            hash_key=TicketModel.create_pk(family_id),
-            filter_condition=(
-                TicketModel.sk.contains("#TICKET#") & (TicketModel.status == status)
-            ),
-        ):
-            tickets.append(ticket)
+        # Query all items in the family and filter for tickets with specific status in Python
+        for item in TicketModel.query(hash_key=TicketModel.create_pk(family_id)):
+            # Check if this item is a ticket with the specified status
+            if (
+                hasattr(item, "sk")
+                and item.sk.startswith("QUEUE#")
+                and "#TICKET#" in item.sk
+                and not item.sk.startswith("AUDIT#")
+                and hasattr(item, "ticket_id")
+                and item.ticket_id is not None
+                and hasattr(item, "status")
+                and item.status == status
+            ):
+                tickets.append(item)
 
         self.logger.info(
             f"Retrieved {len(tickets)} tickets with status {status} for family {family_id}"
@@ -555,7 +561,7 @@ class TicketHelper:
     ) -> List[TicketModel]:
         """
         Query all tickets with a specific severity across all queues in a family.
-        Uses DynamoDB filter condition for efficient server-side filtering.
+        Uses query-all approach with Python filtering to avoid audit records.
 
         Args:
             family_id: The family ID this ticket belongs to
@@ -566,16 +572,70 @@ class TicketHelper:
         """
         tickets: List[TicketModel] = []
 
-        # Query all tickets in the family with server-side filtering by severity
-        for ticket in TicketModel.query(
-            hash_key=TicketModel.create_pk(family_id),
-            filter_condition=(
-                TicketModel.sk.contains("#TICKET#") & (TicketModel.severity == severity)
-            ),
-        ):
-            tickets.append(ticket)
+        # Query all items in the family and filter for tickets with specific severity in Python
+        for item in TicketModel.query(hash_key=TicketModel.create_pk(family_id)):
+            # Check if this item is a ticket with the specified severity
+            if (
+                hasattr(item, "sk")
+                and item.sk.startswith("QUEUE#")
+                and "#TICKET#" in item.sk
+                and not item.sk.startswith("AUDIT#")
+                and hasattr(item, "ticket_id")
+                and item.ticket_id is not None
+                and hasattr(item, "severity")
+                and item.severity == severity
+            ):
+                tickets.append(item)
 
         self.logger.info(
             f"Retrieved {len(tickets)} tickets with severity {severity} for family {family_id}"
         )
         return tickets
+
+    def get_all_tickets_by_family(self, family_id: str) -> List[TicketModel]:
+        """
+        Query all tickets across all queues in a family.
+        Uses scan approach since we can't filter on primary key attributes alone.
+
+        Args:
+            family_id: The family ID to retrieve all tickets from
+
+        Returns:
+            List[TicketModel]: List of all tickets in the family
+        """
+        self.logger.info(
+            f"Starting get_all_tickets_by_family for family_id={family_id}"
+        )
+        tickets: List[TicketModel] = []
+
+        try:
+            self.logger.info(
+                f"About to query all items for PK={TicketModel.create_pk(family_id)}"
+            )
+
+            # Query all items in the family and filter for tickets in Python
+            for item in TicketModel.query(hash_key=TicketModel.create_pk(family_id)):
+                # Check if this item is a ticket by examining the sort key pattern
+                # Tickets have sort keys like: QUEUE#{queue_id}#TICKET#{ticket_id}
+                # Exclude audit records and other entities
+                if (
+                    hasattr(item, "sk")
+                    and item.sk.startswith("QUEUE#")
+                    and "#TICKET#" in item.sk
+                    and not item.sk.startswith("AUDIT#")
+                    and hasattr(item, "ticket_id")
+                    and item.ticket_id is not None
+                ):
+                    tickets.append(item)
+                    self.logger.debug(f"Found ticket: {item.ticket_id}")
+
+            self.logger.info(
+                f"Query completed. Retrieved {len(tickets)} total tickets for family {family_id}"
+            )
+            return tickets
+
+        except Exception as e:
+            self.logger.error(
+                f"Error in get_all_tickets_by_family: {str(e)}", exc_info=True
+            )
+            raise
