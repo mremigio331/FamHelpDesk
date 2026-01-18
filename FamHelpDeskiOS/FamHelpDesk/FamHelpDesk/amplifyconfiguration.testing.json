@@ -9,8 +9,8 @@
         },
         "CognitoUserPool": {
           "Default": {
-            "PoolId": "us-west-2_4hHBH4CPn",
-            "AppClientId": "3okt3us6vkh4ueh1qpceqe879c",
+            "PoolId": "us-west-2_2NT8F4vmo",
+            "AppClientId": "4i2a4v9b8h6e1dmk31sp32916q",
             "Region": "us-west-2"
           }
         },
@@ -29,7 +29,7 @@
             "verificationMechanisms": ["EMAIL"],
             "OAuth": {
               "WebDomain": "famhelpdesk-testing.auth.us-west-2.amazoncognito.com",
-              "AppClientId": "3okt3us6vkh4ueh1qpceqe879c",
+              "AppClientId": "4i2a4v9b8h6e1dmk31sp32916q",
               "SignInRedirectURI": "famHelpDesk://auth/callback",
               "SignOutRedirectURI": "famHelpDesk://signout",
               "Scopes": ["openid", "email", "profile"]

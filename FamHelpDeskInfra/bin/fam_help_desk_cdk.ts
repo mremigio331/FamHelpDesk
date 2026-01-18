@@ -3,8 +3,10 @@ import * as cdk from "aws-cdk-lib";
 import { famHelpDesk } from "../lib/constants";
 import { DatabaseStack } from "../lib/stacks/database-stack";
 import { CognitoStack } from "../lib/stacks/cognito-stack";
+import { NotificationStack } from "../lib/stacks/notification-stack";
 import { ApiStack } from "../lib/stacks/api-stack";
 import { WebsiteStack } from "../lib/stacks/website-stack";
+import { DashboardStack } from "../lib/stacks/dashboard-stack";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -79,6 +81,18 @@ async function main() {
       },
     );
 
+    const notificationStack = new NotificationStack(
+      app,
+      `${famHelpDesk}-NotificationStack-${stage}`,
+      {
+        env: awsEnv,
+        stage,
+        userTable: databaseStack.table,
+        escalationEmail: escalationEmail,
+        escalationNumber: escalationNumber,
+      },
+    );
+
     const cognitoStack = new CognitoStack(
       app,
       `${famHelpDesk}-CognitoStack-${stage}`,
@@ -90,10 +104,11 @@ async function main() {
         escalationEmail,
         escalationNumber,
         googleOathKeys,
+        notificationTopicArn: notificationStack.notificationTopic.topicArn,
       },
     );
 
-    new ApiStack(app, `${famHelpDesk}-ApiStack-${stage}`, {
+    const apiStack = new ApiStack(app, `${famHelpDesk}-ApiStack-${stage}`, {
       env: awsEnv,
       apiDomainName: apiDomainName,
       rootDomainName: websiteDomainName,
@@ -106,7 +121,11 @@ async function main() {
       userTable: databaseStack.table,
       escalationEmail: escalationEmail,
       escalationNumber: escalationNumber,
+      notificationTopicArn: notificationStack.notificationTopic.topicArn,
     });
+
+    // Grant the API Lambda functions permission to publish to the notification topic
+    notificationStack.grantPublishToTopic(apiStack.lambdaFunction);
 
     new WebsiteStack(app, `${famHelpDesk}-WebsiteStack-${stage}`, {
       env: awsEnv,
@@ -115,6 +134,15 @@ async function main() {
       certificateArn: wildcardCertificateArn,
       hostedZoneId: hostedZoneId,
       stage,
+    });
+
+    // Dashboard Stack
+    new DashboardStack(app, `${famHelpDesk}-Dashboard-${stage}`, {
+      env: awsEnv,
+      stage,
+      apiMetrics: apiStack.apiMetrics,
+      cognitoMetrics: cognitoStack.cognitoMetrics,
+      notificationMetrics: notificationStack.notificationMetrics,
     });
   }
 }

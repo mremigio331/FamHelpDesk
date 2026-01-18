@@ -9,13 +9,22 @@ import {
 import * as cloudwatch_actions from "aws-cdk-lib/aws-cloudwatch-actions";
 import { famHelpDesk } from "../constants";
 
+export interface ApiMetrics {
+  api2xxMetric: cloudwatch.Metric;
+  api4xxMetric: cloudwatch.Metric;
+  api5xxMetric: cloudwatch.Metric;
+  alarm2xx: cloudwatch.Alarm;
+  alarm4xx: cloudwatch.Alarm;
+  alarm5xx: cloudwatch.Alarm;
+}
+
 export function addApiMonitoring(
   scope: Stack,
   api: apigw.LambdaRestApi,
   stage: string,
   escalationEmail: string,
   escalationNumber: string,
-) {
+): ApiMetrics {
   const apiGatewayName = `${famHelpDesk}-Api-${stage}`;
   const apiStageName = api.deploymentStage.stageName;
 
@@ -91,6 +100,40 @@ export function addApiMonitoring(
     period: Duration.minutes(5),
   });
 
+  // === Alarm for 2XX success rate (monitor for low success) ===
+  const alarm2xx = new cloudwatch.Alarm(
+    scope,
+    `${famHelpDesk}-Api-2XXAlarm-${stage}`,
+    {
+      alarmName: `${famHelpDesk}-Api-2XXAlarm-${stage}`,
+      metric: api2xxMetric,
+      threshold: 10, // Alert if less than 10 successful requests in 5 minutes (adjust as needed)
+      evaluationPeriods: 2,
+      datapointsToAlarm: 2,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+      alarmDescription: `${famHelpDesk}-Api-2XXAlarm-${stage}: Monitor for low 2XX success rate on API Gateway (${stage})`,
+      comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
+      actionsEnabled: false, // No actions, just for monitoring
+    },
+  );
+
+  // === Alarm for 4XX error rate ===
+  const alarm4xx = new cloudwatch.Alarm(
+    scope,
+    `${famHelpDesk}-Api-4XXAlarm-${stage}`,
+    {
+      alarmName: `${famHelpDesk}-Api-4XXAlarm-${stage}`,
+      metric: api4xxMetric,
+      threshold: 5, // Alert if more than 5 4XX errors in 5 minutes
+      evaluationPeriods: 1,
+      datapointsToAlarm: 1,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+      alarmDescription: `${famHelpDesk}-Api-4XXAlarm-${stage}: Monitor for high 4XX error rate on API Gateway (${stage})`,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      actionsEnabled: false, // No actions, just for monitoring
+    },
+  );
+
   // === Alarm for 5XX errors ===
   const alarm5xx = new cloudwatch.Alarm(
     scope,
@@ -110,4 +153,13 @@ export function addApiMonitoring(
   );
   alarm5xx.addAlarmAction(new cloudwatch_actions.SnsAction(alarmTopic));
   alarm5xx.addOkAction(new cloudwatch_actions.SnsAction(alarmTopic));
+
+  return {
+    api2xxMetric,
+    api4xxMetric,
+    api5xxMetric,
+    alarm2xx,
+    alarm4xx,
+    alarm5xx,
+  };
 }

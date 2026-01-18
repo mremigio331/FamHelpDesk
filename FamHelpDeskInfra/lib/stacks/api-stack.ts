@@ -14,7 +14,7 @@ import {
 import * as iam from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
 import * as path from "path";
-import { addApiMonitoring } from "../monitoring/api-monitoring";
+import { addApiMonitoring, ApiMetrics } from "../monitoring/api-monitoring";
 import { famHelpDesk } from "../constants";
 
 interface ApiStackProps extends StackProps {
@@ -29,11 +29,14 @@ interface ApiStackProps extends StackProps {
   userTable: dynamodb.ITable;
   escalationEmail: string;
   escalationNumber: string;
+  notificationTopicArn: string;
 }
 
 export class ApiStack extends Stack {
   public readonly api: apigw.LambdaRestApi;
   public readonly identityPool: cognito.CfnIdentityPool;
+  public readonly lambdaFunction: lambda.Function;
+  public readonly apiMetrics: ApiMetrics;
 
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
@@ -50,7 +53,13 @@ export class ApiStack extends Stack {
       stage,
       escalationEmail,
       escalationNumber,
+      notificationTopicArn,
     } = props;
+
+    // Validate that notification topic ARN is provided
+    if (!notificationTopicArn) {
+      throw new Error(`NotificationTopicArn is required for ApiStack in stage ${stage}`);
+    }
 
     const apiGwLogsRole = new iam.Role(
       this,
@@ -130,9 +139,13 @@ export class ApiStack extends Stack {
               : `https://famhelpdesk-${stage.toLowerCase()}.auth.us-west-2.amazoncognito.com`,
           STAGE: stage.toLowerCase(),
           API_DOMAIN_NAME: apiDomainName,
+          NOTIFICATION_TOPIC_ARN: notificationTopicArn,
         },
       },
     );
+
+    // Store reference to Lambda function for external access
+    this.lambdaFunction = famHelpDeskApi;
 
     famHelpDeskApi.addToRolePolicy(
       new iam.PolicyStatement({
@@ -275,7 +288,7 @@ export class ApiStack extends Stack {
     );
 
     // Add API monitoring
-    addApiMonitoring(this, this.api, stage, escalationEmail, escalationNumber);
+    this.apiMetrics = addApiMonitoring(this, this.api, stage, escalationEmail, escalationNumber);
 
     // DNS Configuration - Combined from ApiDnsStack
     const hostedZone = route53.HostedZone.fromHostedZoneAttributes(

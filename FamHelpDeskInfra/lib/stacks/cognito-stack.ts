@@ -13,7 +13,7 @@ import * as path from "path";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as sns from "aws-cdk-lib/aws-sns";
 import * as subs from "aws-cdk-lib/aws-sns-subscriptions";
-import { addCognitoMonitoring } from "../monitoring/cognito-monitoring";
+import { addCognitoMonitoring, CognitoMetrics } from "../monitoring/cognito-monitoring";
 import { famHelpDesk } from "../constants";
 
 interface CognitoStackProps extends StackProps {
@@ -26,6 +26,7 @@ interface CognitoStackProps extends StackProps {
     client_id: string;
     client_secret: string;
   };
+  notificationTopicArn: string;
 }
 
 export class CognitoStack extends Stack {
@@ -34,6 +35,8 @@ export class CognitoStack extends Stack {
   public readonly userPoolClient: cognito.UserPoolClient;
   public readonly userPoolDomain: cognito.UserPoolDomain;
   public readonly identityPool: cognito.CfnIdentityPool;
+  public readonly userEventLoggerFunction: lambda.Function;
+  public readonly cognitoMetrics: CognitoMetrics;
 
   constructor(scope: Construct, id: string, props: CognitoStackProps) {
     super(scope, id, props);
@@ -45,6 +48,7 @@ export class CognitoStack extends Stack {
       escalationEmail,
       escalationNumber,
       googleOathKeys,
+      notificationTopicArn,
     } = props;
 
     const layer = new lambda.LayerVersion(
@@ -88,10 +92,14 @@ export class CognitoStack extends Stack {
           TABLE_NAME: userTable.tableName,
           POWERTOOLS_LOG_LEVEL: "INFO",
           USER_ADDED_TOPIC_ARN: userAddedTopic.topicArn,
+          NOTIFICATION_TOPIC_ARN: notificationTopicArn,
           STAGE: stage
         },
       },
     );
+
+    // Store reference to the function for external access
+    this.userEventLoggerFunction = userEventLogger;
 
     const logGroup = new logs.LogGroup(
       this,
@@ -108,7 +116,15 @@ export class CognitoStack extends Stack {
 
     userAddedTopic.grantPublish(userEventLogger);
 
-    addCognitoMonitoring(this, logGroup, stage);
+    // Grant permission to publish to the notification topic
+    const notificationTopic = sns.Topic.fromTopicArn(
+      this,
+      `${famHelpDesk}-ImportedNotificationTopic-${stage}`,
+      notificationTopicArn
+    );
+    notificationTopic.grantPublish(userEventLogger);
+
+    this.cognitoMetrics = addCognitoMonitoring(this, logGroup, userEventLogger, stage);
 
     // =========================
     // USER POOL
