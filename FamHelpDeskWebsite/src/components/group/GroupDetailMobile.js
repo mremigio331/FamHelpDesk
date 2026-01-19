@@ -102,12 +102,8 @@ const GroupDetailMobile = () => {
     useUpdateGroupMemberRole();
 
   // Fetch queues for this group
-  const {
-    queues,
-    isQueuesFetching,
-    isQueuesError,
-    queuesRefetch,
-  } = useGetQueues(familyId, groupId, true);
+  const { queues, isQueuesFetching, isQueuesError, queuesRefetch } =
+    useGetQueues(familyId, groupId, true);
 
   // Find the current group
   const group = allGroups?.find((g) => g.group_id === groupId);

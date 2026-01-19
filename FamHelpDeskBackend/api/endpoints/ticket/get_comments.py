@@ -20,8 +20,13 @@ router = APIRouter()
 def get_comments(
     request: Request,
     family_id: str = Query(..., description="The family ID"),
-    queue_id: str = Query(..., description="The queue ID"),
     ticket_id: str = Query(..., description="The ticket ID"),
+    group_id: str = Query(
+        None, description="The group ID (optional for backward compatibility)"
+    ),
+    queue_id: str = Query(
+        None, description="The queue ID (optional for backward compatibility)"
+    ),
 ):
     logger.append_keys(request_id=request.state.request_id)
     logger.info("Retrieving comments for ticket.")
@@ -30,8 +35,9 @@ def get_comments(
     comment_helper = TicketCommentHelper(request_id=request.state.request_id)
     comments = comment_helper.get_comments_for_ticket(
         family_id=family_id,
-        queue_id=queue_id,
         ticket_id=ticket_id,
+        group_id=group_id,  # Optional for backward compatibility
+        queue_id=queue_id,  # Optional for backward compatibility
     )
 
     logger.info(

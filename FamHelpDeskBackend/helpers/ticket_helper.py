@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from pynamodb.exceptions import DoesNotExist
 from aws_lambda_powertools import Logger
 import uuid
@@ -31,6 +31,34 @@ class TicketHelper:
             request_id=request_id
         )
 
+    def update_last_update(self, family_id: str, ticket_id: str) -> bool:
+        """
+        Update the last_update_time timestamp for a specific ticket.
+
+        Args:
+            family_id: The family ID
+            ticket_id: The ticket ID
+
+        Returns:
+            bool: True if update was successful, False if ticket not found
+        """
+        try:
+            ticket = TicketModel.get(
+                hash_key=TicketModel.create_pk(family_id),
+                range_key=TicketModel.create_sk(ticket_id),
+            )
+            ticket.last_update_time = TicketModel.now_epoch()
+            ticket.save()
+
+            self.logger.debug(f"Updated last_update_time for ticket {ticket_id}")
+            return True
+
+        except DoesNotExist:
+            self.logger.warning(
+                f"Could not update last_update_time - ticket {ticket_id} not found"
+            )
+            return False
+
     def create_ticket(
         self,
         family_id: str,
@@ -61,13 +89,13 @@ class TicketHelper:
         # Generate ticket_id using UUID
         ticket_id = str(uuid.uuid4())
 
-        # Set creation_date to current epoch
-        creation_date = int(time.time())
+        # Set creation_date to current epoch - use the same timestamp for consistency
+        current_time = int(time.time())
 
         # Create ticket with status OPEN
         ticket = TicketModel(
             pk=TicketModel.create_pk(family_id),
-            sk=TicketModel.create_sk(queue_id, ticket_id),
+            sk=TicketModel.create_sk(ticket_id),
             family_id=family_id,
             group_id=group_id,
             queue_id=queue_id,
@@ -75,10 +103,10 @@ class TicketHelper:
             title=title,
             severity=severity,
             status=TicketStatus.OPEN.value,
-            creation_date=creation_date,
+            creation_date=current_time,
             created_by=created_by,
+            last_update_time=current_time,  # Set during initialization
             private=False,  # Default value as per model
-            # GSI attributes are automatically populated by the model
         )
 
         # Handle optional description field
@@ -92,8 +120,8 @@ class TicketHelper:
         # Save ticket to DynamoDB
         ticket.save()
 
-        # Create audit record with action CREATE
         ticket_data = TicketModel.clean_returned_ticket(ticket)
+        # Create audit record with action CREATE
         self.audit_helper.create_family_audit_record(
             family_id=family_id,
             entity_type=AuditEntityTypes.TICKET,
@@ -137,6 +165,12 @@ class TicketHelper:
                     notification_type=NotificationType.TICKET_ASSIGNED,
                     **notification_context,
                 )
+                self.notification_helper.create_notification_async(
+                    user_id=assigned_to,
+                    message=f"Ticket '{title}' has been assigned to you in queue {queue_id}",
+                    notification_type=NotificationType.TICKET_ASSIGNED,
+                    **notification_context,
+                )
 
         self.logger.info(
             f"Created ticket {ticket_id} in queue {queue_id} for family {family_id}"
@@ -147,7 +181,6 @@ class TicketHelper:
     def update_ticket(
         self,
         family_id: str,
-        queue_id: str,
         ticket_id: str,
         updated_by: str,
         title: Optional[str] = None,
@@ -155,13 +188,14 @@ class TicketHelper:
         severity: Optional[str] = None,
         status: Optional[str] = None,
         assigned_to: Optional[str] = None,
+        group_id: Optional[str] = None,
+        queue_id: Optional[str] = None,
     ) -> TicketModel:
         """
         Update an existing ticket with validation of status transitions and business rules.
 
         Args:
             family_id: The family ID this ticket belongs to
-            queue_id: The queue ID this ticket belongs to
             ticket_id: The ticket ID to update
             updated_by: The user ID who is updating the ticket
             title: Optional new title
@@ -169,6 +203,8 @@ class TicketHelper:
             severity: Optional new severity
             status: Optional new status
             assigned_to: Optional new assigned user
+            group_id: Optional new group (for moving tickets)
+            queue_id: Optional new queue (for moving tickets)
 
         Returns:
             TicketModel: The updated ticket
@@ -184,21 +220,20 @@ class TicketHelper:
         try:
             ticket = TicketModel.get(
                 hash_key=TicketModel.create_pk(family_id),
-                range_key=TicketModel.create_sk(queue_id, ticket_id),
+                range_key=TicketModel.create_sk(ticket_id),
             )
         except DoesNotExist:
-            raise TicketNotFoundException(
-                f"Ticket {ticket_id} not found in queue {queue_id}"
-            )
+            raise TicketNotFoundException(f"Ticket {ticket_id} not found")
 
         # Capture before state for audit
         before_state = TicketModel.clean_returned_ticket(ticket)
 
-        # Track changes for notifications
+        # Track changes for notifications and last_update
         assignment_changed = False
         old_assigned_to = ticket.assigned_to
         status_changed = False
         old_status = ticket.status
+        should_update_last_update = False
 
         # Validate severity if provided
         if severity is not None:
@@ -258,6 +293,9 @@ class TicketHelper:
                 # Can reassign OPEN or RESOLVED tickets
                 if ticket.assigned_to != assigned_to:
                     assignment_changed = True
+                    should_update_last_update = (
+                        True  # Assignment change triggers last_update
+                    )
                 ticket.assigned_to = assigned_to
 
         # Update other fields if provided
@@ -271,6 +309,13 @@ class TicketHelper:
             if ticket.status != status:
                 status_changed = True
             ticket.status = status
+        if group_id is not None:
+            ticket.group_id = group_id
+        if queue_id is not None:
+            ticket.queue_id = queue_id
+
+        # Update last_update timestamp if assignment changed or always for any update
+        ticket.last_update_time = TicketModel.now_epoch()
 
         # Save updated ticket
         ticket.save()
@@ -301,12 +346,12 @@ class TicketHelper:
                 notification_context = {
                     "family_id": family_id,
                     "ticket_id": ticket_id,
-                    "queue_id": queue_id,
+                    "queue_id": ticket.queue_id,
                     "group_id": ticket.group_id,
                 }
                 self.notification_helper.create_notification_async(
                     user_id=ticket.assigned_to,
-                    message=f"Ticket '{ticket.title}' has been assigned to you in queue {queue_id}",
+                    message=f"Ticket '{ticket.title}' has been assigned to you in queue {ticket.queue_id}",
                     notification_type=NotificationType.TICKET_ASSIGNED,
                     **notification_context,
                 )
@@ -316,7 +361,7 @@ class TicketHelper:
             notification_context = {
                 "family_id": family_id,
                 "ticket_id": ticket_id,
-                "queue_id": queue_id,
+                "queue_id": ticket.queue_id,
                 "group_id": ticket.group_id,
             }
 
@@ -344,9 +389,7 @@ class TicketHelper:
                         **notification_context,
                     )
 
-        self.logger.info(
-            f"Updated ticket {ticket_id} in queue {queue_id} for family {family_id}"
-        )
+        self.logger.info(f"Updated ticket {ticket_id} for family {family_id}")
 
         return ticket
 
@@ -412,15 +455,38 @@ class TicketHelper:
                 f"Invalid status transition from {current_status} to {new_status}"
             )
 
-    def get_ticket(
-        self, family_id: str, queue_id: str, ticket_id: str
-    ) -> Optional[TicketModel]:
+    def get_ticket_by_id(self, ticket_id: str) -> Optional[TicketModel]:
         """
-        Query ticket by family_id, queue_id, and ticket_id.
+        Query ticket by ticket_id only using GSI for simplified access.
+
+        Args:
+            ticket_id: The ticket ID to retrieve
+
+        Returns:
+            TicketModel: The ticket if found, None if not found
+        """
+        try:
+            # Query the ticket_id GSI
+            results = list(TicketModel.ticket_id_index.query(ticket_id, limit=1))
+
+            if results:
+                ticket = results[0]
+                self.logger.info(f"Retrieved ticket {ticket_id} via GSI")
+                return ticket
+            else:
+                self.logger.info(f"Ticket {ticket_id} not found via GSI")
+                return None
+
+        except Exception as e:
+            self.logger.error(f"Error querying ticket {ticket_id} via GSI: {str(e)}")
+            return None
+
+    def get_ticket(self, family_id: str, ticket_id: str) -> Optional[TicketModel]:
+        """
+        Query ticket by family_id and ticket_id.
 
         Args:
             family_id: The family ID this ticket belongs to
-            queue_id: The queue ID this ticket belongs to
             ticket_id: The ticket ID to retrieve
 
         Returns:
@@ -429,210 +495,323 @@ class TicketHelper:
         try:
             ticket = TicketModel.get(
                 hash_key=TicketModel.create_pk(family_id),
-                range_key=TicketModel.create_sk(queue_id, ticket_id),
+                range_key=TicketModel.create_sk(ticket_id),
             )
-            self.logger.info(
-                f"Retrieved ticket {ticket_id} from queue {queue_id} for family {family_id}"
-            )
+            self.logger.info(f"Retrieved ticket {ticket_id} for family {family_id}")
             return ticket
         except DoesNotExist:
-            self.logger.info(
-                f"Ticket {ticket_id} not found in queue {queue_id} for family {family_id}"
-            )
+            self.logger.info(f"Ticket {ticket_id} not found for family {family_id}")
             return None
 
-    def get_tickets_by_queue(self, family_id: str, queue_id: str) -> List[TicketModel]:
+    def _get_tickets_with_filter(
+        self,
+        family_id: str,
+        filter_func,
+        filter_description: str,
+        limit: int = 25,
+        last_evaluated_key: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         """
-        Query all tickets with SK prefix QUEUE#{queue_id}#TICKET#.
+        Common method to query tickets with a custom filter using TicketTimeIndex.
+        Uses batch-and-filter approach for time-ordered results.
+
+        Args:
+            family_id: The family ID this ticket belongs to
+            filter_func: Function that takes a ticket item and returns True if it matches the filter
+            filter_description: Description of the filter for logging
+            limit: Maximum number of tickets to return (default: 25)
+            last_evaluated_key: Pagination token from previous request
+
+        Returns:
+            Dict containing:
+                - tickets: List[TicketModel] - List of filtered tickets ordered by last_update_time (most recent first)
+                - next_token: Optional[Dict] - Pagination token for next page (None if no more results)
+        """
+        tickets: List[TicketModel] = []
+        current_last_evaluated_key = last_evaluated_key
+
+        # Keep fetching until we have enough tickets or no more data
+        while len(tickets) < limit:
+            query_kwargs = {
+                "hash_key": family_id,
+                "scan_index_forward": False,  # Descending order (most recent first)
+                "limit": 100,  # Fetch in batches of 100
+            }
+
+            if current_last_evaluated_key:
+                query_kwargs["last_evaluated_key"] = current_last_evaluated_key
+
+            # Use TicketTimeIndex GSI to get tickets ordered by last_update_time
+            result_page = TicketModel.time_index.query(**query_kwargs)
+
+            # Convert to list and get pagination info
+            batch_items = list(result_page)
+            batch_tickets = []
+
+            # Process this batch - apply custom filter
+            for item in batch_items:
+                # Check if this item is a ticket and passes the custom filter
+                if (
+                    hasattr(item, "sk")
+                    and item.sk.startswith("TICKET#")
+                    and hasattr(item, "ticket_id")
+                    and item.ticket_id is not None
+                    and filter_func(item)
+                ):
+                    batch_tickets.append(item)
+
+            tickets.extend(batch_tickets)
+
+            # Get the last evaluated key for next batch
+            current_last_evaluated_key = None
+            if (
+                hasattr(result_page, "last_evaluated_key")
+                and result_page.last_evaluated_key
+            ):
+                current_last_evaluated_key = result_page.last_evaluated_key
+
+            # If no more data available, break
+            if not current_last_evaluated_key or len(batch_items) == 0:
+                break
+
+        # Tickets are already sorted by last_update_time from GSI query (most recent first)
+
+        # Trim to exact limit and determine next_token
+        next_key = None
+        if len(tickets) > limit:
+            tickets = tickets[:limit]
+            next_key = current_last_evaluated_key
+        elif current_last_evaluated_key:
+            next_key = current_last_evaluated_key
+
+        self.logger.info(
+            f"Retrieved {len(tickets)} tickets {filter_description} for family {family_id}, "
+            f"limit: {limit}, has_next_key: {next_key is not None}"
+        )
+
+        return {
+            "tickets": tickets,
+            "next_token": next_key,
+        }
+
+    def get_tickets_by_queue(
+        self,
+        family_id: str,
+        queue_id: str,
+        limit: int = 25,
+        last_evaluated_key: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Query all tickets in a specific queue with pagination support.
+        Uses batch-and-filter approach with TicketTimeIndex for time-ordered results.
 
         Args:
             family_id: The family ID this ticket belongs to
             queue_id: The queue ID to retrieve tickets from
+            limit: Maximum number of tickets to return (default: 25)
+            last_evaluated_key: Pagination token from previous request
 
         Returns:
-            List[TicketModel]: List of tickets in the queue
+            Dict containing:
+                - tickets: List[TicketModel] - List of tickets in the queue ordered by last_update_time (most recent first)
+                - next_token: Optional[Dict] - Pagination token for next page (None if no more results)
         """
-        tickets: List[TicketModel] = []
-        sk_prefix = f"QUEUE#{queue_id}#TICKET#"
-
-        for ticket in TicketModel.query(
-            hash_key=TicketModel.create_pk(family_id),
-            range_key_condition=TicketModel.sk.startswith(sk_prefix),
-        ):
-            tickets.append(ticket)
-
-        self.logger.info(
-            f"Retrieved {len(tickets)} tickets from queue {queue_id} for family {family_id}"
+        return self._get_tickets_with_filter(
+            family_id=family_id,
+            filter_func=lambda item: hasattr(item, "queue_id")
+            and item.queue_id == queue_id,
+            filter_description=f"from queue {queue_id}",
+            limit=limit,
+            last_evaluated_key=last_evaluated_key,
         )
-        return tickets
 
-    def get_tickets_by_group(self, family_id: str, group_id: str) -> List[TicketModel]:
+    def get_tickets_by_group(
+        self,
+        family_id: str,
+        group_id: str,
+        limit: int = 25,
+        last_evaluated_key: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         """
-        Query all tickets across all queues in a group using GSI for optimal performance.
+        Query all tickets across all queues in a group with pagination support.
+        Uses batch-and-filter approach with TicketTimeIndex for time-ordered results.
 
         Args:
             family_id: The family ID this ticket belongs to
             group_id: The group ID to retrieve tickets from
+            limit: Maximum number of tickets to return (default: 25)
+            last_evaluated_key: Pagination token from previous request
 
         Returns:
-            List[TicketModel]: List of tickets in the group across all queues
+            Dict containing:
+                - tickets: List[TicketModel] - List of tickets in the group across all queues ordered by last_update_time (most recent first)
+                - next_token: Optional[Dict] - Pagination token for next page (None if no more results)
         """
-        tickets: List[TicketModel] = []
-
-        # Use GSI to efficiently query tickets by group
-        group_gsi_pk = TicketModel.create_group_gsi_pk(family_id, group_id)
-
-        for ticket in TicketModel.group_index.query(
-            hash_key=group_gsi_pk,
-            range_key_condition=TicketModel.TicketGroupSK.startswith("TICKET#"),
-        ):
-            tickets.append(ticket)
-
-        self.logger.info(
-            f"Retrieved {len(tickets)} tickets from group {group_id} for family {family_id} using GSI"
+        return self._get_tickets_with_filter(
+            family_id=family_id,
+            filter_func=lambda item: hasattr(item, "group_id")
+            and item.group_id == group_id,
+            filter_description=f"from group {group_id}",
+            limit=limit,
+            last_evaluated_key=last_evaluated_key,
         )
-        return tickets
 
     def get_tickets_by_assigned_user(
-        self, family_id: str, user_id: str
-    ) -> List[TicketModel]:
+        self,
+        family_id: str,
+        user_id: str,
+        limit: int = 25,
+        last_evaluated_key: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         """
-        Query all tickets assigned to a specific user using GSI for optimal performance.
+        Query all tickets assigned to a specific user with pagination support.
+        Uses batch-and-filter approach with TicketTimeIndex for time-ordered results.
 
         Args:
             family_id: The family ID this ticket belongs to
             user_id: The user ID to retrieve assigned tickets for
+            limit: Maximum number of tickets to return (default: 25)
+            last_evaluated_key: Pagination token from previous request
 
         Returns:
-            List[TicketModel]: List of tickets assigned to the user
+            Dict containing:
+                - tickets: List[TicketModel] - List of tickets assigned to the user ordered by last_update_time (most recent first)
+                - next_token: Optional[Dict] - Pagination token for next page (None if no more results)
         """
-        tickets: List[TicketModel] = []
-
-        # Use Assignment GSI to efficiently query tickets by assigned user
-        assignment_gsi_pk = TicketModel.create_assignment_gsi_pk(family_id, user_id)
-
-        for ticket in TicketModel.assignment_index.query(
-            hash_key=assignment_gsi_pk,
-            range_key_condition=TicketModel.TicketAssignmentSK.startswith("TICKET#"),
-        ):
-            tickets.append(ticket)
-
-        self.logger.info(
-            f"Retrieved {len(tickets)} tickets assigned to user {user_id} for family {family_id} using GSI"
+        return self._get_tickets_with_filter(
+            family_id=family_id,
+            filter_func=lambda item: hasattr(item, "assigned_to")
+            and item.assigned_to == user_id,
+            filter_description=f"assigned to user {user_id}",
+            limit=limit,
+            last_evaluated_key=last_evaluated_key,
         )
-        return tickets
 
-    def get_tickets_by_status(self, family_id: str, status: str) -> List[TicketModel]:
+    def get_tickets_by_status(
+        self,
+        family_id: str,
+        status: str,
+        limit: int = 25,
+        last_evaluated_key: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         """
-        Query all tickets with a specific status across all queues in a family.
-        Uses query-all approach with Python filtering to avoid audit records.
+        Query all tickets with a specific status across all queues in a family with pagination support.
+        Uses TicketTimeIndex GSI with batch-and-filter approach for time-ordered results.
 
         Args:
             family_id: The family ID this ticket belongs to
             status: The status to filter by (OPEN, RESOLVED, CLOSED)
+            limit: Maximum number of tickets to return (default: 25)
+            last_evaluated_key: Pagination token from previous request
 
         Returns:
-            List[TicketModel]: List of tickets with the specified status
+            Dict containing:
+                - tickets: List[TicketModel] - List of tickets with the specified status ordered by last_update_time (most recent first)
+                - next_token: Optional[Dict] - Pagination token for next page (None if no more results)
         """
-        tickets: List[TicketModel] = []
-
-        # Query all items in the family and filter for tickets with specific status in Python
-        for item in TicketModel.query(hash_key=TicketModel.create_pk(family_id)):
-            # Check if this item is a ticket with the specified status
-            if (
-                hasattr(item, "sk")
-                and item.sk.startswith("QUEUE#")
-                and "#TICKET#" in item.sk
-                and not item.sk.startswith("AUDIT#")
-                and hasattr(item, "ticket_id")
-                and item.ticket_id is not None
-                and hasattr(item, "status")
-                and item.status == status
-            ):
-                tickets.append(item)
-
-        self.logger.info(
-            f"Retrieved {len(tickets)} tickets with status {status} for family {family_id}"
+        return self._get_tickets_with_filter(
+            family_id=family_id,
+            filter_func=lambda item: hasattr(item, "status") and item.status == status,
+            filter_description=f"with status {status}",
+            limit=limit,
+            last_evaluated_key=last_evaluated_key,
         )
-        return tickets
 
     def get_tickets_by_severity(
-        self, family_id: str, severity: str
-    ) -> List[TicketModel]:
+        self,
+        family_id: str,
+        severity: str,
+        limit: int = 25,
+        last_evaluated_key: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         """
-        Query all tickets with a specific severity across all queues in a family.
-        Uses query-all approach with Python filtering to avoid audit records.
+        Query all tickets with a specific severity across all queues in a family with pagination support.
+        Uses TicketTimeIndex GSI with batch-and-filter approach for time-ordered results.
 
         Args:
             family_id: The family ID this ticket belongs to
             severity: The severity to filter by (SEV_1, SEV_2, SEV_2_5, SEV_3, SEV_4, SEV_5)
+            limit: Maximum number of tickets to return (default: 25)
+            last_evaluated_key: Pagination token from previous request
 
         Returns:
-            List[TicketModel]: List of tickets with the specified severity
+            Dict containing:
+                - tickets: List[TicketModel] - List of tickets with the specified severity ordered by last_update_time (most recent first)
+                - next_token: Optional[Dict] - Pagination token for next page (None if no more results)
         """
-        tickets: List[TicketModel] = []
-
-        # Query all items in the family and filter for tickets with specific severity in Python
-        for item in TicketModel.query(hash_key=TicketModel.create_pk(family_id)):
-            # Check if this item is a ticket with the specified severity
-            if (
-                hasattr(item, "sk")
-                and item.sk.startswith("QUEUE#")
-                and "#TICKET#" in item.sk
-                and not item.sk.startswith("AUDIT#")
-                and hasattr(item, "ticket_id")
-                and item.ticket_id is not None
-                and hasattr(item, "severity")
-                and item.severity == severity
-            ):
-                tickets.append(item)
-
-        self.logger.info(
-            f"Retrieved {len(tickets)} tickets with severity {severity} for family {family_id}"
+        return self._get_tickets_with_filter(
+            family_id=family_id,
+            filter_func=lambda item: hasattr(item, "severity")
+            and item.severity == severity,
+            filter_description=f"with severity {severity}",
+            limit=limit,
+            last_evaluated_key=last_evaluated_key,
         )
-        return tickets
 
-    def get_all_tickets_by_family(self, family_id: str) -> List[TicketModel]:
+    def get_all_tickets_by_family(
+        self,
+        family_id: str,
+        limit: int = 25,
+        last_evaluated_key: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         """
-        Query all tickets across all queues in a family.
-        Uses scan approach since we can't filter on primary key attributes alone.
+        Query all tickets across all queues in a family with pagination support.
+        Uses TicketTimeIndex GSI to get tickets ordered by last_update_time (most recent first).
 
         Args:
             family_id: The family ID to retrieve all tickets from
+            limit: Maximum number of tickets to return (default: 25)
+            last_evaluated_key: Pagination token from previous request
 
         Returns:
-            List[TicketModel]: List of all tickets in the family
+            Dict containing:
+                - tickets: List[TicketModel] - List of all tickets in the family ordered by last_update_time
+                - next_token: Optional[Dict] - Pagination token for next page (None if no more results)
         """
         self.logger.info(
             f"Starting get_all_tickets_by_family for family_id={family_id}"
         )
+
         tickets: List[TicketModel] = []
 
         try:
+            # Use TicketTimeIndex GSI to get tickets ordered by last_update_time descending
+            query_kwargs = {
+                "hash_key": family_id,
+                "scan_index_forward": False,  # Descending order (most recent first)
+                "limit": limit,
+            }
+
+            if last_evaluated_key:
+                query_kwargs["last_evaluated_key"] = last_evaluated_key
+
+            # Debug: Log the query parameters
             self.logger.info(
-                f"About to query all items for PK={TicketModel.create_pk(family_id)}"
+                f"DEBUG: get_all_tickets_by_family GSI query kwargs: {query_kwargs}"
             )
 
-            # Query all items in the family and filter for tickets in Python
-            for item in TicketModel.query(hash_key=TicketModel.create_pk(family_id)):
-                # Check if this item is a ticket by examining the sort key pattern
-                # Tickets have sort keys like: QUEUE#{queue_id}#TICKET#{ticket_id}
-                # Exclude audit records and other entities
-                if (
-                    hasattr(item, "sk")
-                    and item.sk.startswith("QUEUE#")
-                    and "#TICKET#" in item.sk
-                    and not item.sk.startswith("AUDIT#")
-                    and hasattr(item, "ticket_id")
-                    and item.ticket_id is not None
-                ):
-                    tickets.append(item)
-                    self.logger.debug(f"Found ticket: {item.ticket_id}")
+            # Execute the query using the time-based GSI - returns tickets in last_update_time order!
+            result_iterator = TicketModel.time_index.query(**query_kwargs)
 
+            # Consume the iterator - tickets are already sorted by DynamoDB!
+            for ticket in result_iterator:
+                tickets.append(ticket)
+
+            # Get the last evaluated key for pagination
+            next_key = None
+            if hasattr(result_iterator, "last_evaluated_key"):
+                next_key = result_iterator.last_evaluated_key
+                self.logger.info(f"DEBUG: Next last_evaluated_key: {next_key}")
+
+            # No need to sort - DynamoDB already returned them in last_update_time order!
             self.logger.info(
-                f"Query completed. Retrieved {len(tickets)} total tickets for family {family_id}"
+                f"Query completed. Retrieved {len(tickets)} total tickets for family {family_id} ordered by last_update_time"
             )
-            return tickets
+
+            return {
+                "tickets": tickets,
+                "next_token": next_key,
+            }
 
         except Exception as e:
             self.logger.error(

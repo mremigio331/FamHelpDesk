@@ -25,9 +25,14 @@ router = APIRouter()
 def delete_comment(
     request: Request,
     family_id: str = Query(..., description="The family ID"),
-    queue_id: str = Query(..., description="The queue ID"),
     ticket_id: str = Query(..., description="The ticket ID"),
     comment_id: str = Query(..., description="The comment ID to delete"),
+    group_id: str = Query(
+        None, description="The group ID (optional for backward compatibility)"
+    ),
+    queue_id: str = Query(
+        None, description="The queue ID (optional for backward compatibility)"
+    ),
 ):
     logger.append_keys(request_id=request.state.request_id)
     logger.info("Deleting comment on ticket.")
@@ -44,10 +49,11 @@ def delete_comment(
     try:
         success = comment_helper.delete_comment(
             family_id=family_id,
-            queue_id=queue_id,
             ticket_id=ticket_id,
             comment_id=comment_id,
             requesting_user=token_user_id,
+            group_id=group_id,  # Optional for backward compatibility
+            queue_id=queue_id,  # Optional for backward compatibility
         )
 
         logger.info(f"Successfully deleted comment {comment_id} on ticket {ticket_id}")

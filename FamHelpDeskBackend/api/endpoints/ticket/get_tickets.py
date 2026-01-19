@@ -2,6 +2,8 @@ from fastapi import APIRouter, Request, Query
 from fastapi.responses import JSONResponse
 from aws_lambda_powertools import Logger
 from typing import Optional, List
+import json
+import base64
 
 from constants.services import API_SERVICE
 from decorators.exceptions_decorator import exceptions_decorator
@@ -14,8 +16,8 @@ router = APIRouter()
 
 @router.get(
     "/{family_id}",
-    summary="Get tickets with multiple query modes",
-    response_description="List of tickets based on query parameters",
+    summary="Get tickets with multiple query modes and pagination",
+    response_description="Paginated list of tickets based on query parameters",
 )
 @exceptions_decorator
 def get_tickets(
@@ -26,9 +28,18 @@ def get_tickets(
     assigned_to: Optional[str] = Query(None, description="Filter by assigned user ID"),
     status: Optional[str] = Query(None, description="Filter by ticket status"),
     severity: Optional[str] = Query(None, description="Filter by ticket severity"),
+    limit: int = Query(
+        default=25,
+        ge=1,
+        le=100,
+        description="Number of tickets to return (default: 25, max: 100)",
+    ),
+    next_token: Optional[str] = Query(
+        default=None, description="Pagination token from previous response"
+    ),
 ):
     """
-    Get tickets with multiple query modes based on provided parameters.
+    Get tickets with multiple query modes based on provided parameters with pagination support.
 
     Query modes (in order of precedence):
     - queue_id: Returns all tickets in the specified queue
@@ -40,60 +51,111 @@ def get_tickets(
 
     Args:
         family_id: The family ID (required)
-        queue_id: Optional queue ID to filter by
+        queue_id: Optional queue ID to filter by (no longer requires group_id)
         group_id: Optional group ID to filter by
         assigned_to: Optional user ID to filter by assigned tickets
         status: Optional status to filter by (OPEN, RESOLVED, CLOSED)
         severity: Optional severity to filter by (SEV_1, SEV_2, SEV_2_5, SEV_3, SEV_4, SEV_5)
+        limit: Number of tickets to return (default: 25, max: 100)
+        next_token: Pagination token from previous response
 
     Returns:
-        JSONResponse: List of tickets matching the query parameters
+        JSONResponse: Paginated list of tickets matching the query parameters with next_token
     """
     logger.append_keys(request_id=request.state.request_id)
     logger.info(
-        f"Getting tickets for family {family_id} with filters: queue_id={queue_id}, group_id={group_id}, assigned_to={assigned_to}, status={status}, severity={severity}"
+        f"Getting tickets for family {family_id} with filters: queue_id={queue_id}, group_id={group_id}, assigned_to={assigned_to}, status={status}, severity={severity}, limit={limit}"
     )
 
+    # Decode next_token if provided
+    last_evaluated_key = None
+    if next_token:
+        try:
+            decoded = base64.b64decode(next_token).decode("utf-8")
+            last_evaluated_key = json.loads(decoded)
+        except Exception as e:
+            logger.warning(f"Invalid next_token provided: {str(e)}")
+            return JSONResponse(
+                content={"error": "Invalid pagination token"},
+                status_code=400,
+            )
+
     helper = TicketHelper(request_id=request.state.request_id)
-    tickets: List[TicketModel] = []
+    result: dict = {}
 
     # Implement logic to call appropriate TicketHelper method based on provided parameters
     # Priority order: queue_id > group_id > assigned_to > status > severity
 
     if queue_id is not None:
         # Requirements 3.2: Return all tickets in that queue
-        tickets = helper.get_tickets_by_queue(family_id, queue_id)
-        logger.info(f"Retrieved {len(tickets)} tickets by queue {queue_id}")
+        # Note: queue_id filtering no longer requires group_id due to simplified sort key structure
+        result = helper.get_tickets_by_queue(
+            family_id,
+            queue_id,
+            limit=limit,
+            last_evaluated_key=last_evaluated_key,
+        )
+        logger.info(f"Retrieved {len(result['tickets'])} tickets by queue {queue_id}")
 
     elif group_id is not None:
         # Requirements 3.3: Return all tickets across all queues in that group
-        tickets = helper.get_tickets_by_group(family_id, group_id)
-        logger.info(f"Retrieved {len(tickets)} tickets by group {group_id}")
+        result = helper.get_tickets_by_group(
+            family_id, group_id, limit=limit, last_evaluated_key=last_evaluated_key
+        )
+        logger.info(f"Retrieved {len(result['tickets'])} tickets by group {group_id}")
 
     elif assigned_to is not None:
         # Requirements 3.4: Return all tickets assigned to that user across all queues
-        tickets = helper.get_tickets_by_assigned_user(family_id, assigned_to)
-        logger.info(f"Retrieved {len(tickets)} tickets assigned to user {assigned_to}")
+        result = helper.get_tickets_by_assigned_user(
+            family_id, assigned_to, limit=limit, last_evaluated_key=last_evaluated_key
+        )
+        logger.info(
+            f"Retrieved {len(result['tickets'])} tickets assigned to user {assigned_to}"
+        )
 
     elif status is not None:
         # Requirements 3.5: Return all tickets with that status across all queues
-        tickets = helper.get_tickets_by_status(family_id, status)
-        logger.info(f"Retrieved {len(tickets)} tickets with status {status}")
+        result = helper.get_tickets_by_status(
+            family_id, status, limit=limit, last_evaluated_key=last_evaluated_key
+        )
+        logger.info(f"Retrieved {len(result['tickets'])} tickets with status {status}")
 
     elif severity is not None:
         # Requirements 3.6: Return all tickets with that severity across all queues
-        tickets = helper.get_tickets_by_severity(family_id, severity)
-        logger.info(f"Retrieved {len(tickets)} tickets with severity {severity}")
+        result = helper.get_tickets_by_severity(
+            family_id, severity, limit=limit, last_evaluated_key=last_evaluated_key
+        )
+        logger.info(
+            f"Retrieved {len(result['tickets'])} tickets with severity {severity}"
+        )
 
     else:
         # No specific filters provided - return all tickets in the family
-        tickets = helper.get_all_tickets_by_family(family_id)
-        logger.info(f"Retrieved {len(tickets)} total tickets for family {family_id}")
+        result = helper.get_all_tickets_by_family(
+            family_id, limit=limit, last_evaluated_key=last_evaluated_key
+        )
+        logger.info(
+            f"Retrieved {len(result['tickets'])} total tickets for family {family_id}"
+        )
 
     # Clean and return the tickets
-    cleaned_tickets = [TicketModel.clean_returned_ticket(ticket) for ticket in tickets]
+    cleaned_tickets = [
+        TicketModel.clean_returned_ticket(ticket) for ticket in result["tickets"]
+    ]
+
+    # Encode next_token if present
+    response_next_token = None
+    if result.get("next_token"):
+        encoded = base64.b64encode(
+            json.dumps(result["next_token"]).encode("utf-8")
+        ).decode("utf-8")
+        response_next_token = encoded
 
     return JSONResponse(
-        content={"tickets": cleaned_tickets, "count": len(cleaned_tickets)},
+        content={
+            "tickets": cleaned_tickets,
+            "count": len(cleaned_tickets),
+            "next_token": response_next_token,
+        },
         status_code=200,
     )

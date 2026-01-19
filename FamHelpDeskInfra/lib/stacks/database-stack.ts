@@ -29,27 +29,25 @@ export class DatabaseStack extends Stack {
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
+    // GSI for querying tickets by family ordered by last_update_time
     this.table.addGlobalSecondaryIndex({
-      indexName: "TicketGroupIndex",
+      indexName: "TicketTimeIndex",
       partitionKey: {
-        name: "TicketGroupPK",
+        name: "family_id",
         type: dynamodb.AttributeType.STRING,
       },
       sortKey: {
-        name: "TicketGroupSK",
-        type: dynamodb.AttributeType.STRING,
+        name: "last_update_time",
+        type: dynamodb.AttributeType.NUMBER,
       },
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
+    // GSI for direct ticket lookup by ticket_id only
     this.table.addGlobalSecondaryIndex({
-      indexName: "TicketAssignmentIndex",
+      indexName: "TicketIdIndex",
       partitionKey: {
-        name: "TicketAssignmentPK",
-        type: dynamodb.AttributeType.STRING,
-      },
-      sortKey: {
-        name: "TicketAssignmentSK",
+        name: "ticket_id",
         type: dynamodb.AttributeType.STRING,
       },
       projectionType: dynamodb.ProjectionType.ALL,

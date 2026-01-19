@@ -5,6 +5,7 @@ import uuid
 import time
 
 from models.ticket_comment import TicketCommentModel
+from helpers.ticket_helper import TicketHelper
 from helpers.audit_helper import AuditHelper
 from models.audit import AuditActions, AuditEntityTypes
 from exceptions.ticket_exceptions import (
@@ -27,24 +28,27 @@ class TicketCommentHelper:
             self.logger.append_keys(request_id=request_id)
         self.request_id = request_id
         self.audit_helper = AuditHelper(request_id=request_id)
+        self.ticket_helper = TicketHelper(request_id=request_id)
 
     def create_comment(
         self,
         family_id: str,
-        queue_id: str,
         ticket_id: str,
         comment_user: str,
         comment_body: str,
+        group_id: str = None,
+        queue_id: str = None,
     ) -> TicketCommentModel:
         """
         Create a new comment for a ticket.
 
         Args:
             family_id: The family ID
-            queue_id: The queue ID
             ticket_id: The ticket ID
             comment_user: The user creating the comment
             comment_body: The comment content
+            group_id: The group ID (optional, for backward compatibility)
+            queue_id: The queue ID (optional, for backward compatibility)
 
         Returns:
             TicketCommentModel: The created comment
@@ -53,7 +57,6 @@ class TicketCommentHelper:
             "Creating comment for ticket",
             extra={
                 "family_id": family_id,
-                "queue_id": queue_id,
                 "ticket_id": ticket_id,
                 "comment_user": comment_user,
             },
@@ -68,8 +71,9 @@ class TicketCommentHelper:
         # Create comment with all required fields
         comment = TicketCommentModel(
             pk=TicketCommentModel.create_pk(family_id),
-            sk=TicketCommentModel.create_sk(queue_id, ticket_id, comment_id),
+            sk=TicketCommentModel.create_sk(ticket_id, comment_id),
             family_id=family_id,
+            group_id=group_id,
             queue_id=queue_id,
             ticket_id=ticket_id,
             comment_id=comment_id,
@@ -81,6 +85,9 @@ class TicketCommentHelper:
 
         # Save comment to DynamoDB
         comment.save()
+
+        # Update the ticket's last_update timestamp when a comment is created
+        self.ticket_helper.update_last_update(family_id, ticket_id)
 
         # Create audit record with action CREATE
         self.audit_helper.create_family_audit_record(
@@ -97,7 +104,6 @@ class TicketCommentHelper:
             extra={
                 "comment_id": comment_id,
                 "family_id": family_id,
-                "queue_id": queue_id,
                 "ticket_id": ticket_id,
             },
         )
@@ -140,22 +146,24 @@ class TicketCommentHelper:
     def update_comment(
         self,
         family_id: str,
-        queue_id: str,
         ticket_id: str,
         comment_id: str,
         requesting_user: str,
         comment_body: str,
+        group_id: str = None,
+        queue_id: str = None,
     ) -> TicketCommentModel:
         """
         Update an existing comment's body.
 
         Args:
             family_id: The family ID
-            queue_id: The queue ID
             ticket_id: The ticket ID
             comment_id: The comment ID to update
             requesting_user: The user requesting the update
             comment_body: The new comment content
+            group_id: The group ID (optional, for backward compatibility)
+            queue_id: The queue ID (optional, for backward compatibility)
 
         Returns:
             TicketCommentModel: The updated comment
@@ -169,7 +177,6 @@ class TicketCommentHelper:
             "Updating comment",
             extra={
                 "family_id": family_id,
-                "queue_id": queue_id,
                 "ticket_id": ticket_id,
                 "comment_id": comment_id,
                 "requesting_user": requesting_user,
@@ -180,11 +187,11 @@ class TicketCommentHelper:
         try:
             comment = TicketCommentModel.get(
                 hash_key=TicketCommentModel.create_pk(family_id),
-                range_key=TicketCommentModel.create_sk(queue_id, ticket_id, comment_id),
+                range_key=TicketCommentModel.create_sk(ticket_id, comment_id),
             )
         except DoesNotExist:
             raise CommentNotFoundException(
-                f"Comment {comment_id} not found for ticket {ticket_id} in queue {queue_id}"
+                f"Comment {comment_id} not found for ticket {ticket_id}"
             )
 
         # Verify authorization using can_modify_comment
@@ -219,7 +226,6 @@ class TicketCommentHelper:
             extra={
                 "comment_id": comment_id,
                 "family_id": family_id,
-                "queue_id": queue_id,
                 "ticket_id": ticket_id,
             },
         )
@@ -229,20 +235,22 @@ class TicketCommentHelper:
     def delete_comment(
         self,
         family_id: str,
-        queue_id: str,
         ticket_id: str,
         comment_id: str,
         requesting_user: str,
+        group_id: str = None,
+        queue_id: str = None,
     ) -> bool:
         """
         Delete an existing comment.
 
         Args:
             family_id: The family ID
-            queue_id: The queue ID
             ticket_id: The ticket ID
             comment_id: The comment ID to delete
             requesting_user: The user requesting the deletion
+            group_id: The group ID (optional, for backward compatibility)
+            queue_id: The queue ID (optional, for backward compatibility)
 
         Returns:
             bool: True if deletion was successful
@@ -256,7 +264,6 @@ class TicketCommentHelper:
             "Deleting comment",
             extra={
                 "family_id": family_id,
-                "queue_id": queue_id,
                 "ticket_id": ticket_id,
                 "comment_id": comment_id,
                 "requesting_user": requesting_user,
@@ -267,11 +274,11 @@ class TicketCommentHelper:
         try:
             comment = TicketCommentModel.get(
                 hash_key=TicketCommentModel.create_pk(family_id),
-                range_key=TicketCommentModel.create_sk(queue_id, ticket_id, comment_id),
+                range_key=TicketCommentModel.create_sk(ticket_id, comment_id),
             )
         except DoesNotExist:
             raise CommentNotFoundException(
-                f"Comment {comment_id} not found for ticket {ticket_id} in queue {queue_id}"
+                f"Comment {comment_id} not found for ticket {ticket_id}"
             )
 
         # Verify authorization using can_modify_comment
@@ -298,7 +305,6 @@ class TicketCommentHelper:
             extra={
                 "comment_id": comment_id,
                 "family_id": family_id,
-                "queue_id": queue_id,
                 "ticket_id": ticket_id,
             },
         )
@@ -307,15 +313,16 @@ class TicketCommentHelper:
         return True
 
     def get_comments_for_ticket(
-        self, family_id: str, queue_id: str, ticket_id: str
+        self, family_id: str, ticket_id: str, group_id: str = None, queue_id: str = None
     ) -> List[TicketCommentModel]:
         """
         Query all comments for a specific ticket, ordered by comment_date ascending.
 
         Args:
             family_id: The family ID
-            queue_id: The queue ID
             ticket_id: The ticket ID to retrieve comments for
+            group_id: The group ID (optional, for backward compatibility)
+            queue_id: The queue ID (optional, for backward compatibility)
 
         Returns:
             List[TicketCommentModel]: List of comments ordered by comment_date ascending
@@ -324,15 +331,14 @@ class TicketCommentHelper:
             "Retrieving comments for ticket",
             extra={
                 "family_id": family_id,
-                "queue_id": queue_id,
                 "ticket_id": ticket_id,
             },
         )
 
         comments: List[TicketCommentModel] = []
-        sk_prefix = f"QUEUE#{queue_id}#TICKET#{ticket_id}#COMMENT#"
+        sk_prefix = f"TICKET#{ticket_id}#COMMENT#"
 
-        # Query all comments with SK prefix QUEUE#{queue_id}#TICKET#{ticket_id}#COMMENT#
+        # Query all comments with SK prefix TICKET#{ticket_id}#COMMENT#
         for comment in TicketCommentModel.query(
             hash_key=TicketCommentModel.create_pk(family_id),
             range_key_condition=TicketCommentModel.sk.startswith(sk_prefix),
@@ -346,7 +352,6 @@ class TicketCommentHelper:
             "Retrieved comments for ticket",
             extra={
                 "family_id": family_id,
-                "queue_id": queue_id,
                 "ticket_id": ticket_id,
                 "comment_count": len(comments),
             },

@@ -19,30 +19,29 @@ class TicketStatus(str, Enum):
     CLOSED = "CLOSED"
 
 
-class TicketGroupIndex(GlobalSecondaryIndex):
+class TicketTimeIndex(GlobalSecondaryIndex):
     """
-    GSI for querying tickets by group across all queues
-    """
-
-    class Meta:
-        index_name = "TicketGroupIndex"
-        projection = AllProjection()
-
-    TicketGroupPK = UnicodeAttribute(hash_key=True)
-    TicketGroupSK = UnicodeAttribute(range_key=True)
-
-
-class TicketAssignmentIndex(GlobalSecondaryIndex):
-    """
-    GSI for querying tickets by assigned user across all queues
+    GSI for querying tickets by family ordered by last_update_time
     """
 
     class Meta:
-        index_name = "TicketAssignmentIndex"
+        index_name = "TicketTimeIndex"
         projection = AllProjection()
 
-    TicketAssignmentPK = UnicodeAttribute(hash_key=True)
-    TicketAssignmentSK = UnicodeAttribute(range_key=True)
+    family_id = UnicodeAttribute(hash_key=True)
+    last_update_time = NumberAttribute(range_key=True)
+
+
+class TicketIdIndex(GlobalSecondaryIndex):
+    """
+    GSI for direct ticket lookup by ticket_id only
+    """
+
+    class Meta:
+        index_name = "TicketIdIndex"
+        projection = AllProjection()
+
+    ticket_id = UnicodeAttribute(hash_key=True)
 
 
 class TicketModel(FamHelpDeskBaseModel):
@@ -56,75 +55,24 @@ class TicketModel(FamHelpDeskBaseModel):
     status = UnicodeAttribute()
     creation_date = NumberAttribute()
     created_by = UnicodeAttribute()
+    last_update_time = NumberAttribute()
     resolved_date = NumberAttribute(null=True)
     closed_date = NumberAttribute(null=True)
     reopen_until = NumberAttribute(null=True)
+    # GSI attributes for assignment queries (only populated if assigned)
     assigned_to = UnicodeAttribute(null=True)
     private = BooleanAttribute(null=False)
 
-    # GSI attributes for group-level queries (auto-populated)
-    TicketGroupPK = UnicodeAttribute(null=True)
-    TicketGroupSK = UnicodeAttribute(null=True)
-
-    # GSI attributes for assignment queries (auto-populated)
-    TicketAssignmentPK = UnicodeAttribute(null=True)
-    TicketAssignmentSK = UnicodeAttribute(null=True)
-
     # GSI indexes
-    group_index = TicketGroupIndex()
-    assignment_index = TicketAssignmentIndex()
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        # Auto-populate GSI attributes when model is instantiated
-        self._populate_gsi_attributes()
-
-    def _populate_gsi_attributes(self):
-        """Automatically populate GSI attributes based on ticket data"""
-        # Group GSI (always populated for tickets)
-        if self.family_id and self.group_id and self.ticket_id:
-            self.TicketGroupPK = self.create_group_gsi_pk(self.family_id, self.group_id)
-            self.TicketGroupSK = self.create_group_gsi_sk(self.ticket_id)
-
-        # Assignment GSI (only if ticket is assigned)
-        if self.family_id and self.ticket_id:
-            if hasattr(self, "assigned_to") and self.assigned_to:
-                self.TicketAssignmentPK = self.create_assignment_gsi_pk(
-                    self.family_id, self.assigned_to
-                )
-                self.TicketAssignmentSK = self.create_assignment_gsi_sk(self.ticket_id)
-            else:
-                # Clear assignment GSI if ticket is unassigned
-                self.TicketAssignmentPK = None
-                self.TicketAssignmentSK = None
-
-    def save(self, **kwargs):
-        """Override save to ensure GSI attributes are populated before saving"""
-        self._populate_gsi_attributes()
-        return super().save(**kwargs)
+    time_index = TicketTimeIndex()
+    ticket_id_index = TicketIdIndex()
 
     @staticmethod
     def create_pk(family_id: str) -> str:
         return f"FAMILY#{family_id}"
 
     @staticmethod
-    def create_sk(queue_id: str, ticket_id: str) -> str:
-        return f"QUEUE#{queue_id}#TICKET#{ticket_id}"
-
-    @staticmethod
-    def create_group_gsi_pk(family_id: str, group_id: str) -> str:
-        return f"FAMILY#{family_id}#GROUP#{group_id}"
-
-    @staticmethod
-    def create_group_gsi_sk(ticket_id: str) -> str:
-        return f"TICKET#{ticket_id}"
-
-    @staticmethod
-    def create_assignment_gsi_pk(family_id: str, assigned_to: str) -> str:
-        return f"FAMILY#{family_id}#ASSIGNED#{assigned_to}"
-
-    @staticmethod
-    def create_assignment_gsi_sk(ticket_id: str) -> str:
+    def create_sk(ticket_id: str) -> str:
         return f"TICKET#{ticket_id}"
 
     @staticmethod
@@ -139,6 +87,7 @@ class TicketModel(FamHelpDeskBaseModel):
             "status": ticket.status,
             "creation_date": ticket.creation_date,
             "created_by": ticket.created_by,
+            "last_update_time": ticket.last_update_time,
             "private": ticket.private,
         }
         if getattr(ticket, "description", None) is not None:

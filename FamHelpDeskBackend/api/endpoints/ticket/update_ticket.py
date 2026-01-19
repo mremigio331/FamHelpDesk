@@ -24,7 +24,31 @@ router = APIRouter()
 
 class UpdateTicketRequest(BaseModel):
     family_id: str
-    queue_id: str
+    ticket_id: str
+    title: Optional[str] = None
+    description: Optional[str] = None
+    severity: Optional[str] = None
+    status: Optional[str] = None
+    assigned_to: Optional[str] = None
+    group_id: Optional[str] = None  # Optional for ticket moves
+    queue_id: Optional[str] = None  # Optional for ticket moves
+
+    @validator("family_id", "ticket_id")
+    def validate_required_fields_not_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError("Field cannot be empty")
+        return v.strip()
+
+    @validator("group_id", "queue_id")
+    def validate_optional_ids_not_empty(cls, v):
+        if v is not None:
+            v = v.strip()
+            if not v:  # If empty string after strip, set to None
+                return None
+        return v
+
+
+class UpdateTicketByIdRequest(BaseModel):
     ticket_id: str
     title: Optional[str] = None
     description: Optional[str] = None
@@ -32,7 +56,7 @@ class UpdateTicketRequest(BaseModel):
     status: Optional[str] = None
     assigned_to: Optional[str] = None
 
-    @validator("family_id", "queue_id", "ticket_id")
+    @validator("ticket_id")
     def validate_required_fields_not_empty(cls, v):
         if not v or not v.strip():
             raise ValueError("Field cannot be empty")
@@ -104,7 +128,7 @@ class UpdateTicketRequest(BaseModel):
 
 @router.put(
     "/update",
-    summary="Update a ticket",
+    summary="Update a ticket with simplified path",
     response_description="The updated ticket",
 )
 @exceptions_decorator
@@ -118,35 +142,95 @@ def update_ticket(request: Request, body: UpdateTicketRequest):
         logger.warning("Token User ID could not be extracted from JWT.")
         raise InvalidUserIdException("Token User ID is required.")
 
-    # Validate that family, group, and queue exist (only if we have at least one field to update)
-    if any(
-        [body.title, body.description, body.severity, body.status, body.assigned_to]
-    ):
+    # Validate queue if group_id and queue_id are provided for ticket moves
+    if body.group_id and body.queue_id:
         validation_helper = QueueValidationHelper(request_id=request.state.request_id)
-
-        # We need to get the ticket first to get the group_id for validation
-        helper = TicketHelper(request_id=request.state.request_id)
-        existing_ticket = helper.get_ticket(
+        validation_helper.validate_queue_exists(
             family_id=body.family_id,
+            group_id=body.group_id,
             queue_id=body.queue_id,
+        )
+
+    # Update ticket using TicketHelper with simplified signature
+    if any(
+        [
+            body.title,
+            body.description,
+            body.severity,
+            body.status,
+            body.assigned_to,
+            body.group_id,
+            body.queue_id,
+        ]
+    ):
+        helper = TicketHelper(request_id=request.state.request_id)
+        updated_ticket = helper.update_ticket(
+            family_id=body.family_id,
+            ticket_id=body.ticket_id,
+            updated_by=token_user_id,
+            title=body.title,
+            description=body.description,
+            severity=body.severity,
+            status=body.status,
+            assigned_to=body.assigned_to,
+            group_id=body.group_id,
+            queue_id=body.queue_id,
+        )
+    else:
+        # No fields to update, just return the existing ticket
+        helper = TicketHelper(request_id=request.state.request_id)
+        updated_ticket = helper.get_ticket(
+            family_id=body.family_id,
             ticket_id=body.ticket_id,
         )
 
-        if not existing_ticket:
+        if not updated_ticket:
             raise TicketNotFoundException(
-                f"Ticket {body.ticket_id} not found in queue {body.queue_id}"
+                f"Ticket {body.ticket_id} not found in family {body.family_id}"
             )
 
-        validation_helper.validate_queue_exists(
-            family_id=body.family_id,
-            group_id=existing_ticket.group_id,
-            queue_id=body.queue_id,
-        )
+    logger.info(
+        f"Successfully updated ticket {body.ticket_id} in family {body.family_id}"
+    )
 
-        # Update ticket using TicketHelper
+    return JSONResponse(
+        content={"ticket": TicketModel.clean_returned_ticket(updated_ticket)},
+        status_code=200,
+    )
+
+
+@router.put(
+    "/update-by-id",
+    summary="Update a ticket by ID only (simplified access)",
+    response_description="The updated ticket",
+)
+@exceptions_decorator
+def update_ticket_by_id(request: Request, body: UpdateTicketByIdRequest):
+    logger.append_keys(request_id=request.state.request_id)
+    logger.info("Updating ticket by ID.")
+
+    # Extract user_token from request.state
+    token_user_id = getattr(request.state, "user_token", None)
+    if not token_user_id:
+        logger.warning("Token User ID could not be extracted from JWT.")
+        raise InvalidUserIdException("Token User ID is required.")
+
+    # First, get the existing ticket to get family info
+    helper = TicketHelper(request_id=request.state.request_id)
+    existing_ticket = helper.get_ticket_by_id(body.ticket_id)
+
+    if not existing_ticket:
+        raise TicketNotFoundException(f"Ticket {body.ticket_id} not found")
+
+    # TODO: Add family membership validation here
+    # Validate that token_user_id has access to existing_ticket.family_id
+
+    # Update ticket using TicketHelper with simplified signature
+    if any(
+        [body.title, body.description, body.severity, body.status, body.assigned_to]
+    ):
         updated_ticket = helper.update_ticket(
-            family_id=body.family_id,
-            queue_id=body.queue_id,
+            family_id=existing_ticket.family_id,
             ticket_id=body.ticket_id,
             updated_by=token_user_id,
             title=body.title,
@@ -157,21 +241,9 @@ def update_ticket(request: Request, body: UpdateTicketRequest):
         )
     else:
         # No fields to update, just return the existing ticket
-        helper = TicketHelper(request_id=request.state.request_id)
-        updated_ticket = helper.get_ticket(
-            family_id=body.family_id,
-            queue_id=body.queue_id,
-            ticket_id=body.ticket_id,
-        )
+        updated_ticket = existing_ticket
 
-        if not updated_ticket:
-            raise TicketNotFoundException(
-                f"Ticket {body.ticket_id} not found in queue {body.queue_id}"
-            )
-
-    logger.info(
-        f"Successfully updated ticket {body.ticket_id} in queue {body.queue_id}"
-    )
+    logger.info(f"Successfully updated ticket {body.ticket_id}")
 
     return JSONResponse(
         content={"ticket": TicketModel.clean_returned_ticket(updated_ticket)},
