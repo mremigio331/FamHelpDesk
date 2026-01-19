@@ -8,6 +8,7 @@ import base64
 from constants.services import API_SERVICE
 from decorators.exceptions_decorator import exceptions_decorator
 from helpers.ticket_helper import TicketHelper
+from helpers.entity_ref import EntityRefHelper
 from models.ticket import TicketModel
 
 logger = Logger(service=API_SERVICE)
@@ -143,6 +144,9 @@ def get_tickets(
         TicketModel.clean_returned_ticket(ticket) for ticket in result["tickets"]
     ]
 
+    # Enrich all tickets with entity names in one batch operation
+    enriched_tickets = EntityRefHelper.enrich_entity_refs(cleaned_tickets)
+
     # Encode next_token if present
     response_next_token = None
     if result.get("next_token"):
@@ -153,8 +157,8 @@ def get_tickets(
 
     return JSONResponse(
         content={
-            "tickets": cleaned_tickets,
-            "count": len(cleaned_tickets),
+            "tickets": enriched_tickets,
+            "count": len(enriched_tickets),
             "next_token": response_next_token,
         },
         status_code=200,

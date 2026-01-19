@@ -1,6 +1,7 @@
 from pynamodb.attributes import UnicodeAttribute, BooleanAttribute, MapAttribute
 from enum import Enum
 from models.base import FamHelpDeskBaseModel
+from models.entity_lookup import EntityLookupIndex
 
 
 class ProviderOptions(str, Enum):
@@ -31,6 +32,13 @@ class UserProfile(FamHelpDeskBaseModel):
     profile_color = UnicodeAttribute(default=ProfileColorOptions.BLACK.value)
     dark_mode = BooleanAttribute(default=False)
 
+    # GSI attributes (need to be populated when creating/updating)
+    entity_uuid = UnicodeAttribute(null=True)
+    entity_name = UnicodeAttribute(null=True)
+
+    # GSI index
+    entity_lookup_index = EntityLookupIndex()
+
     @staticmethod
     def create_pk(user_id: str) -> str:
         return f"USER_PROFILE#{user_id}"
@@ -48,3 +56,14 @@ class UserProfile(FamHelpDeskBaseModel):
             "profile_color": profile.profile_color,
             "dark_mode": profile.dark_mode,
         }
+
+    @property
+    def entity_display_name(self) -> str:
+        """Return the display name for this entity"""
+        return self.display_name
+
+    def save(self, **kwargs):
+        """Override save to automatically populate GSI attributes"""
+        self.entity_uuid = self.user_id
+        self.entity_name = self.entity_display_name
+        super().save(**kwargs)

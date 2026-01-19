@@ -8,6 +8,7 @@ from models.ticket import TicketModel, TicketStatus, TicketSeverity
 from helpers.audit_helper import AuditHelper
 from helpers.notification_helper import NotificationHelper
 from helpers.notification_settings_helper import NotificationSettingsHelper
+from helpers.entity_ref import EntityRefHelper
 from models.audit import AuditActions, AuditEntityTypes
 from models.notification import NotificationType
 from exceptions.ticket_exceptions import (
@@ -121,6 +122,9 @@ class TicketHelper:
         ticket.save()
 
         ticket_data = TicketModel.clean_returned_ticket(ticket)
+        # Convert EntityRef objects to dictionaries for audit storage
+        audit_data = EntityRefHelper._convert_entity_refs_to_dicts(ticket_data)
+
         # Create audit record with action CREATE
         self.audit_helper.create_family_audit_record(
             family_id=family_id,
@@ -128,7 +132,7 @@ class TicketHelper:
             entity_id=ticket_id,
             action=AuditActions.CREATE,
             actor_user_id=created_by,
-            after=ticket_data,
+            after=audit_data,
         )
 
         # Create ticket creation notification for the creator (async)

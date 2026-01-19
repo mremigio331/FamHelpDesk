@@ -7,6 +7,7 @@ import { NotificationStack } from "../lib/stacks/notification-stack";
 import { ApiStack } from "../lib/stacks/api-stack";
 import { WebsiteStack } from "../lib/stacks/website-stack";
 import { DashboardStack } from "../lib/stacks/dashboard-stack";
+import { RumStack } from "../lib/stacks/rum-stack";
 import * as fs from "fs";
 import * as path from "path";
 

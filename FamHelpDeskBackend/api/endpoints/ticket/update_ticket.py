@@ -15,6 +15,7 @@ from exceptions.ticket_exceptions import (
     InvalidTicketSeverityException,
 )
 from helpers.ticket_helper import TicketHelper
+from helpers.entity_ref import EntityRefHelper
 from helpers.queue_validation_helper import QueueValidationHelper
 from models.ticket import TicketModel, TicketSeverity, TicketStatus
 
@@ -193,8 +194,11 @@ def update_ticket(request: Request, body: UpdateTicketRequest):
         f"Successfully updated ticket {body.ticket_id} in family {body.family_id}"
     )
 
+    clean_ticket = TicketModel.clean_returned_ticket(updated_ticket)
+    enriched_ticket = EntityRefHelper.enrich_entity_refs(clean_ticket)
+
     return JSONResponse(
-        content={"ticket": TicketModel.clean_returned_ticket(updated_ticket)},
+        content={"ticket": enriched_ticket},
         status_code=200,
     )
 
@@ -245,7 +249,10 @@ def update_ticket_by_id(request: Request, body: UpdateTicketByIdRequest):
 
     logger.info(f"Successfully updated ticket {body.ticket_id}")
 
+    clean_ticket = TicketModel.clean_returned_ticket(updated_ticket)
+    enriched_ticket = EntityRefHelper.enrich_entity_refs(clean_ticket)
+
     return JSONResponse(
-        content={"ticket": TicketModel.clean_returned_ticket(updated_ticket)},
+        content={"ticket": enriched_ticket},
         status_code=200,
     )

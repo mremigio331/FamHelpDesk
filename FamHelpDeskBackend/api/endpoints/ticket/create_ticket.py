@@ -8,6 +8,7 @@ from constants.services import API_SERVICE
 from decorators.exceptions_decorator import exceptions_decorator
 from exceptions.user_exceptions import InvalidUserIdException
 from helpers.ticket_helper import TicketHelper
+from helpers.entity_ref import EntityRefHelper
 from helpers.queue_validation_helper import QueueValidationHelper
 from models.ticket import TicketModel, TicketSeverity
 
@@ -108,7 +109,10 @@ def create_ticket(request: Request, body: CreateTicketRequest):
         f"Successfully created ticket {ticket.ticket_id} in queue {body.queue_id}"
     )
 
+    clean_ticket = TicketModel.clean_returned_ticket(ticket)
+    enriched_ticket = EntityRefHelper.enrich_entity_refs(clean_ticket)
+
     return JSONResponse(
-        content={"ticket": TicketModel.clean_returned_ticket(ticket)},
+        content={"ticket": enriched_ticket},
         status_code=201,
     )

@@ -2,6 +2,7 @@ from enum import Enum
 from models.base import FamHelpDeskBaseModel
 from pynamodb.attributes import UnicodeAttribute, NumberAttribute, BooleanAttribute
 from pynamodb.indexes import GlobalSecondaryIndex, AllProjection
+from helpers.entity_ref import EntityRef
 
 
 class TicketSeverity(str, Enum):
@@ -78,9 +79,9 @@ class TicketModel(FamHelpDeskBaseModel):
     @staticmethod
     def clean_returned_ticket(ticket: "TicketModel") -> dict:
         data = {
-            "family_id": ticket.family_id,
-            "group_id": ticket.group_id,
-            "queue_id": ticket.queue_id,
+            "family_id": EntityRef(id=ticket.family_id),
+            "group_id": EntityRef(id=ticket.group_id),
+            "queue_id": EntityRef(id=ticket.queue_id),
             "ticket_id": ticket.ticket_id,
             "title": ticket.title,
             "severity": ticket.severity,
@@ -99,5 +100,5 @@ class TicketModel(FamHelpDeskBaseModel):
         if getattr(ticket, "reopen_until", None) is not None:
             data["reopen_until"] = ticket.reopen_until
         if getattr(ticket, "assigned_to", None) is not None:
-            data["assigned_to"] = ticket.assigned_to
+            data["assigned_to"] = EntityRef(id=ticket.assigned_to)
         return data

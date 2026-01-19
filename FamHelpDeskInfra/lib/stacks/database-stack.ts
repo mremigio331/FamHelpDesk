@@ -52,5 +52,19 @@ export class DatabaseStack extends Stack {
       },
       projectionType: dynamodb.ProjectionType.ALL,
     });
+
+    // GSI for entity name lookup by UUID
+    this.table.addGlobalSecondaryIndex({
+      indexName: "entity-name-lookup-index",  // Different name
+      partitionKey: {
+        name: "entity_uuid",
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: "entity_name",
+        type: dynamodb.AttributeType.STRING,
+      },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
   }
 }

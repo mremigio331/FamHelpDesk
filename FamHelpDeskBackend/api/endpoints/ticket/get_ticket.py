@@ -5,6 +5,7 @@ from aws_lambda_powertools import Logger
 from constants.services import API_SERVICE
 from decorators.exceptions_decorator import exceptions_decorator
 from helpers.ticket_helper import TicketHelper
+from helpers.entity_ref import EntityRefHelper
 from models.ticket import TicketModel
 
 logger = Logger(service=API_SERVICE)
@@ -32,8 +33,11 @@ def get_ticket(request: Request, family_id: str, ticket_id: str):
             status_code=404,
         )
 
+    clean_ticket = TicketModel.clean_returned_ticket(ticket)
+    enriched_ticket = EntityRefHelper.enrich_entity_refs(clean_ticket)
+
     return JSONResponse(
-        content={"ticket": TicketModel.clean_returned_ticket(ticket)},
+        content={"ticket": enriched_ticket},
         status_code=200,
     )
 
@@ -73,7 +77,10 @@ def get_ticket_by_id(request: Request, ticket_id: str):
     # In production, you might want to validate that token_user_id
     # has access to ticket.family_id
 
+    clean_ticket = TicketModel.clean_returned_ticket(ticket)
+    enriched_ticket = EntityRefHelper.enrich_entity_refs(clean_ticket)
+
     return JSONResponse(
-        content={"ticket": TicketModel.clean_returned_ticket(ticket)},
+        content={"ticket": enriched_ticket},
         status_code=200,
     )
