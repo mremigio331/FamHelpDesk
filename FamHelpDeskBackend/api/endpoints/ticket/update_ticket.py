@@ -16,7 +16,7 @@ from exceptions.ticket_exceptions import (
 )
 from helpers.ticket_helper import TicketHelper
 from helpers.entity_ref import EntityRefHelper
-from models.ticket import TicketModel, TicketSeverity, TicketStatus
+from models.ticket import TicketModel, TicketStatus
 
 logger = Logger(service=API_SERVICE)
 router = APIRouter()
@@ -26,7 +26,7 @@ class UpdateTicketRequest(BaseModel):
     ticket_id: str
     title: Optional[str] = None
     description: Optional[str] = None
-    severity: Optional[str] = None
+    severity: Optional[float] = None
     status: Optional[str] = None
     assigned_to: Optional[str] = None
 
@@ -36,7 +36,7 @@ class UpdateTicketRequest(BaseModel):
             raise ValueError("Ticket ID cannot be empty")
         return v.strip()
 
-    @validator("title", "description", "severity", "status", "assigned_to")
+    @validator("title", "description", "status", "assigned_to")
     def validate_optional_fields_not_empty_string(cls, v):
         if v is not None:
             v = v.strip()

@@ -4,7 +4,7 @@ from aws_lambda_powertools import Logger
 import uuid
 import time
 
-from models.ticket import TicketModel, TicketStatus, TicketSeverity
+from models.ticket import TicketModel, TicketStatus
 from helpers.audit_helper import AuditHelper
 from helpers.notification_helper import NotificationHelper
 from helpers.notification_settings_helper import NotificationSettingsHelper
@@ -285,12 +285,6 @@ class TicketHelper:
         status_changed = False
         old_status = ticket.status
         should_update_last_update = False
-
-        # Validate severity if provided
-        if severity is not None:
-            valid_severities = [s.value for s in TicketSeverity]
-            if severity not in valid_severities:
-                raise InvalidTicketSeverityException(f"Invalid severity: {severity}")
 
         # Validate status if provided and handle status transitions
         current_time = int(time.time())

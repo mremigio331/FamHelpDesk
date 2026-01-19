@@ -10,7 +10,7 @@ from exceptions.user_exceptions import InvalidUserIdException
 from helpers.ticket_helper import TicketHelper
 from helpers.entity_ref import EntityRefHelper
 from helpers.queue_validation_helper import QueueValidationHelper
-from models.ticket import TicketModel, TicketSeverity
+from models.ticket import TicketModel
 
 logger = Logger(service=API_SERVICE)
 router = APIRouter()
@@ -21,7 +21,7 @@ class CreateTicketRequest(BaseModel):
     group_id: str
     queue_id: str
     title: str
-    severity: str
+    severity: float
     description: Optional[str] = None
     assigned_to: Optional[str] = None
 
@@ -30,34 +30,6 @@ class CreateTicketRequest(BaseModel):
         if not v or not v.strip():
             raise ValueError("Field cannot be empty")
         return v.strip()
-
-    @validator("severity")
-    def validate_severity(cls, v):
-        if not v or not v.strip():
-            raise ValueError("Severity cannot be empty")
-
-        # Map string values to enum values for validation
-        severity_mapping = {
-            "SEV_1": TicketSeverity.SEV_1.value,
-            "SEV_2": TicketSeverity.SEV_2.value,
-            "SEV_2_5": TicketSeverity.SEV_2_5.value,
-            "SEV_3": TicketSeverity.SEV_3.value,
-            "SEV_4": TicketSeverity.SEV_4.value,
-            "SEV_5": TicketSeverity.SEV_5.value,
-            "1.0": TicketSeverity.SEV_1.value,
-            "2.0": TicketSeverity.SEV_2.value,
-            "2.5": TicketSeverity.SEV_2_5.value,
-            "3.0": TicketSeverity.SEV_3.value,
-            "4.0": TicketSeverity.SEV_4.value,
-            "5.0": TicketSeverity.SEV_5.value,
-        }
-
-        severity_value = v.strip()
-        if severity_value not in severity_mapping:
-            valid_severities = list(severity_mapping.keys())
-            raise ValueError(f"Invalid severity. Must be one of: {valid_severities}")
-
-        return severity_mapping[severity_value]
 
     @validator("description", "assigned_to")
     def validate_optional_fields(cls, v):

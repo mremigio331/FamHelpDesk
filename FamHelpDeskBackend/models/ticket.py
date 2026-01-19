@@ -5,13 +5,8 @@ from pynamodb.indexes import GlobalSecondaryIndex, AllProjection
 from helpers.entity_ref import EntityRef
 
 
-class TicketSeverity(str, Enum):
-    SEV_1 = "1.0"
-    SEV_2 = "2.0"
-    SEV_2_5 = "2.5"
-    SEV_3 = "3.0"
-    SEV_4 = "4.0"
-    SEV_5 = "5.0"
+# Valid severity values
+VALID_SEVERITY_VALUES = [1.0, 2.0, 2.5, 3.0, 4.0, 5.0]
 
 
 class TicketStatus(str, Enum):
@@ -52,7 +47,7 @@ class TicketModel(FamHelpDeskBaseModel):
     ticket_id = UnicodeAttribute()
     title = UnicodeAttribute()
     description = UnicodeAttribute(null=True)
-    severity = UnicodeAttribute()
+    severity = NumberAttribute()
     status = UnicodeAttribute()
     creation_date = NumberAttribute()
     created_by = UnicodeAttribute()
@@ -67,6 +62,17 @@ class TicketModel(FamHelpDeskBaseModel):
     # GSI indexes
     time_index = TicketTimeIndex()
     ticket_id_index = TicketIdIndex()
+
+    def __setattr__(self, name, value):
+        # Validate severity when it's being set
+        if name == "severity" and value is not None:
+            if value not in VALID_SEVERITY_VALUES:
+                from exceptions.ticket_exceptions import InvalidTicketSeverityException
+
+                raise InvalidTicketSeverityException(
+                    f"Invalid severity: {value}. Must be one of: {VALID_SEVERITY_VALUES}"
+                )
+        super().__setattr__(name, value)
 
     @staticmethod
     def create_pk(family_id: str) -> str:
