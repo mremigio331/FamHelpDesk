@@ -14,6 +14,7 @@ struct FamilyDetailView: View {
         case overview = "Overview"
         case members = "Members"
         case groups = "Groups"
+        case tickets = "Tickets"
 
         var systemImage: String {
             switch self {
@@ -23,6 +24,8 @@ struct FamilyDetailView: View {
                 "person.2"
             case .groups:
                 "rectangle.3.group"
+            case .tickets:
+                "ticket"
             }
         }
     }
@@ -83,6 +86,8 @@ struct FamilyDetailView: View {
                                     FamilyMembersView(family: family)
                                 case .groups:
                                     FamilyGroupsView(family: family)
+                                case .tickets:
+                                    TicketListView(familyId: family.familyId)
                                 }
                             }
                             .tag(tab)
@@ -123,10 +128,11 @@ struct FamilyDetailView: View {
     private var availableTabs: [Tab] {
         var tabs: [Tab] = [.overview]
 
-        // Only show members and groups tabs if user is a member
+        // Only show members, groups, and tickets tabs if user is a member
         if let familyItem, familyItem.membership.status == "MEMBER" {
             tabs.append(.members)
             tabs.append(.groups)
+            tabs.append(.tickets)
         }
 
         return tabs

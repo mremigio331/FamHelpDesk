@@ -15,6 +15,14 @@ struct Family: Codable, Identifiable, Hashable {
         return formatter.string(from: date)
     }
 
+    enum CodingKeys: String, CodingKey {
+        case familyId = "family_id"
+        case familyName = "family_name"
+        case familyDescription = "family_description"
+        case createdBy = "created_by"
+        case creationDate = "creation_date"
+    }
+
     func hash(into hasher: inout Hasher) {
         hasher.combine(familyId)
     }
@@ -36,6 +44,14 @@ struct FamilyMembership: Codable {
         let formatter = ISO8601DateFormatter()
         return formatter.string(from: date)
     }
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case familyId = "family_id"
+        case status
+        case isAdmin = "is_admin"
+        case requestDate = "request_date"
+    }
 }
 
 struct MyFamilyItem: Codable {
@@ -54,6 +70,11 @@ struct GetMyFamiliesResponse: Codable {
 struct CreateFamilyRequest: Codable {
     let familyName: String
     let familyDescription: String?
+
+    enum CodingKeys: String, CodingKey {
+        case familyName = "family_name"
+        case familyDescription = "family_description"
+    }
 }
 
 struct CreateFamilyResponse: Codable {

@@ -1,5 +1,17 @@
 import Foundation
 
+// MARK: - Entity Reference Model
+
+struct EntityRef: Codable, Hashable {
+    let id: String
+    let name: String?
+
+    init(id: String, name: String? = nil) {
+        self.id = id
+        self.name = name
+    }
+}
+
 // MARK: - Ticket Enums
 
 enum TicketStatus: String, CaseIterable, Codable {
@@ -9,12 +21,12 @@ enum TicketStatus: String, CaseIterable, Codable {
 }
 
 enum TicketSeverity: String, CaseIterable, Codable {
-    case sev1 = "1.0"
-    case sev2 = "2.0"
+    case sev1 = "1"
+    case sev2 = "2"
     case sev2_5 = "2.5"
-    case sev3 = "3.0"
-    case sev4 = "4.0"
-    case sev5 = "5.0"
+    case sev3 = "3"
+    case sev4 = "4"
+    case sev5 = "5"
 
     var displayName: String {
         switch self {
@@ -29,25 +41,31 @@ enum TicketSeverity: String, CaseIterable, Codable {
 
     var colorCategory: TicketSeverityColor {
         switch self {
-        case .sev1, .sev2, .sev2_5:
+        case .sev1:
+            .critical
+        case .sev2, .sev2_5:
             .high
-        case .sev3, .sev4, .sev5:
+        case .sev3:
+            .medium
+        case .sev4, .sev5:
             .low
         }
     }
 }
 
 enum TicketSeverityColor {
-    case high // Red for SEV_1, SEV_2, SEV_2_5
-    case low // Green for SEV_3, SEV_4, SEV_5
+    case critical // Red for SEV_1
+    case high // Orange for SEV_2, SEV_2_5
+    case medium // Yellow for SEV_3
+    case low // Green for SEV_4, SEV_5
 }
 
 // MARK: - Ticket Model
 
 struct Ticket: Codable, Identifiable, Hashable {
-    let familyId: String
-    let groupId: String
-    let queueId: String
+    let familyId: EntityRef
+    let groupId: EntityRef
+    let queueId: EntityRef
     let ticketId: String
     let title: String
     let description: String?
@@ -59,7 +77,7 @@ struct Ticket: Codable, Identifiable, Hashable {
     let resolvedDate: TimeInterval?
     let closedDate: TimeInterval?
     let reopenUntil: TimeInterval?
-    let assignedTo: String?
+    let assignedTo: EntityRef?
     let isPrivate: Bool
 
     var id: String { ticketId }
@@ -194,10 +212,12 @@ struct UpdateTicketRequest: Codable {
 
 struct GetTicketsResponse: Codable {
     let tickets: [Ticket]
+    let count: Int
     let nextToken: String?
 
     enum CodingKeys: String, CodingKey {
         case tickets
+        case count
         case nextToken = "next_token"
     }
 }

@@ -378,6 +378,35 @@ struct GroupOverviewView: View {
                 }
                 .padding(.vertical, 8)
             }
+
+            // Quick Actions Section
+            Section("Quick Actions") {
+                NavigationLink(destination: TicketListView(familyId: group.familyId, filters: TicketFilters(groupId: group.groupId))) {
+                    HStack {
+                        Image(systemName: "ticket")
+                            .font(.title2)
+                            .foregroundColor(.blue)
+                            .frame(width: 30)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("View Group Tickets")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+
+                            Text("See all tickets for this group")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 8)
+                }
+            }
         }
         .refreshable {
             await refreshMembershipData()

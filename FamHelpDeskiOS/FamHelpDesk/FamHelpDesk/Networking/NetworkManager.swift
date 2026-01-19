@@ -367,10 +367,42 @@ final class NetworkManager {
             // Decode successful response
             do {
                 let decoder = JSONDecoder()
-                decoder.keyDecodingStrategy = .convertFromSnakeCase
+                // Don't use keyDecodingStrategy since we have explicit CodingKeys
+                // decoder.keyDecodingStrategy = .convertFromSnakeCase
                 return try decoder.decode(T.self, from: data)
             } catch {
+                // Enhanced decoding error logging
                 logger.logNetworkOperation(.requestFailure(method: method, endpoint: url.absoluteString, error: NetworkError.decodingError))
+
+                // Log raw response data for debugging
+                if let responseString = String(data: data, encoding: .utf8) {
+                    print("🔍 DECODING ERROR - Raw response data:")
+                    print("📄 Response: \(responseString)")
+                    print("🎯 Expected type: \(T.self)")
+                    print("❌ Decoding error: \(error)")
+
+                    // Try to identify specific decoding issues
+                    if let decodingError = error as? DecodingError {
+                        switch decodingError {
+                        case let .keyNotFound(key, context):
+                            print("🔑 Missing key: \(key.stringValue) at path: \(context.codingPath.map(\.stringValue).joined(separator: "."))")
+                        case let .typeMismatch(type, context):
+                            print("🔄 Type mismatch: Expected \(type) at path: \(context.codingPath.map(\.stringValue).joined(separator: "."))")
+                        case let .valueNotFound(type, context):
+                            print("❓ Value not found: \(type) at path: \(context.codingPath.map(\.stringValue).joined(separator: "."))")
+                        case let .dataCorrupted(context):
+                            print("💥 Data corrupted at path: \(context.codingPath.map(\.stringValue).joined(separator: "."))")
+                            print("💥 Debug description: \(context.debugDescription)")
+                        @unknown default:
+                            print("❓ Unknown decoding error: \(error)")
+                        }
+                    }
+                } else {
+                    print("🔍 DECODING ERROR - Unable to convert response data to string")
+                    print("📊 Data size: \(data.count) bytes")
+                    print("❌ Decoding error: \(error)")
+                }
+
                 throw NetworkError.decodingError
             }
 

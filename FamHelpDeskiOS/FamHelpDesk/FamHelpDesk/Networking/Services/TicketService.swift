@@ -46,10 +46,15 @@ final class TicketService {
         }
 
         do {
-            let response: GetTicketsResponse = try await networkManager.get(
+            // First, let's get the raw data to see what we're receiving
+            let rawData = try await networkManager.getRawData(
                 endpoint: APIEndpoint.getTickets(familyId: familyId).path,
                 queryItems: queryItems
             )
+
+            // Now try to decode it
+            let decoder = JSONDecoder()
+            let response = try decoder.decode(GetTicketsResponse.self, from: rawData)
 
             return PaginatedTickets(
                 tickets: response.tickets,

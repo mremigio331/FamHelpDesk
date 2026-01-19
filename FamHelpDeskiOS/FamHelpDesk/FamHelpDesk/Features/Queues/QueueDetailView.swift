@@ -301,23 +301,7 @@ struct QueueTicketsView: View {
     let queue: Queue
 
     var body: some View {
-        List {
-            Section {
-                VStack(spacing: 12) {
-                    Image(systemName: "doc.text")
-                        .font(.largeTitle)
-                        .foregroundColor(.blue)
-                    Text("Tickets Coming Soon")
-                        .font(.headline)
-                    Text("Ticket management functionality will be available in a future update.")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 40)
-            }
-        }
+        TicketListView(familyId: queue.familyId, filters: TicketFilters(queueId: queue.queueId))
     }
 }
 

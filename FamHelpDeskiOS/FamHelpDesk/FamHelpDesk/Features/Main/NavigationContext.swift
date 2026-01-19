@@ -73,6 +73,16 @@ final class NavigationContext {
         saveNavigationState()
     }
 
+    /// Navigate to tickets for a specific family
+    func navigateToTickets(_ family: Family) {
+        selectedFamily = family
+        selectedFamilyTab = .tickets
+        navigationPath.append(family)
+        addToHistory(.family(family))
+        updateBreadcrumbs(with: "Family: \(family.familyName) - Tickets")
+        saveNavigationState()
+    }
+
     /// Navigate to a specific group
     func navigateToGroup(_ group: FamilyGroup) {
         selectedGroup = group
@@ -220,6 +230,9 @@ final class NavigationContext {
         case let .group(familyId, groupId):
             await navigateToGroupById(familyId: familyId, groupId: groupId)
 
+        case let .tickets(familyId):
+            await navigateToTicketsByFamilyId(familyId)
+
         case .profile:
             navigateToProfile()
 
@@ -250,6 +263,12 @@ final class NavigationContext {
         } else {
             print("❌ Family not found for deep link: \(familyId)")
         }
+    }
+
+    /// Navigate to tickets by family ID (for deep linking)
+    @MainActor
+    private func navigateToTicketsByFamilyId(_ familyId: String) async {
+        await navigateToFamilyById(familyId, tab: .tickets)
     }
 
     /// Navigate to group by ID (for deep linking)
@@ -533,6 +552,7 @@ enum NavigationItem: Codable, Identifiable {
 enum DeepLink {
     case family(String, FamilyDetailView.Tab)
     case group(familyId: String, groupId: String)
+    case tickets(String) // familyId
     case profile
     case notifications
     case search
@@ -553,6 +573,11 @@ enum DeepLink {
             components.queryItems = [
                 URLQueryItem(name: "familyId", value: familyId),
                 URLQueryItem(name: "groupId", value: groupId),
+            ]
+        case let .tickets(familyId):
+            components.path = "/tickets"
+            components.queryItems = [
+                URLQueryItem(name: "familyId", value: familyId),
             ]
         case .profile:
             components.path = "/profile"
@@ -591,6 +616,13 @@ enum DeepLink {
             }
 
             return .group(familyId: familyId, groupId: groupId)
+
+        case "/tickets":
+            guard let familyId = queryItems.first(where: { $0.name == "familyId" })?.value else {
+                return nil
+            }
+
+            return .tickets(familyId)
 
         case "/profile":
             return .profile
