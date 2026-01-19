@@ -9,6 +9,7 @@ from exceptions.ticket_exceptions import (
     UnauthorizedCommentModificationException,
     CommentEditWindowExpiredException,
     CommentNotFoundException,
+    TicketNotFoundException,
 )
 from helpers.ticket_comment_helper import TicketCommentHelper
 
@@ -24,15 +25,8 @@ router = APIRouter()
 @exceptions_decorator
 def delete_comment(
     request: Request,
-    family_id: str = Query(..., description="The family ID"),
     ticket_id: str = Query(..., description="The ticket ID"),
     comment_id: str = Query(..., description="The comment ID to delete"),
-    group_id: str = Query(
-        None, description="The group ID (optional for backward compatibility)"
-    ),
-    queue_id: str = Query(
-        None, description="The queue ID (optional for backward compatibility)"
-    ),
 ):
     logger.append_keys(request_id=request.state.request_id)
     logger.info("Deleting comment on ticket.")
@@ -48,12 +42,9 @@ def delete_comment(
 
     try:
         success = comment_helper.delete_comment(
-            family_id=family_id,
             ticket_id=ticket_id,
             comment_id=comment_id,
             requesting_user=token_user_id,
-            group_id=group_id,  # Optional for backward compatibility
-            queue_id=queue_id,  # Optional for backward compatibility
         )
 
         logger.info(f"Successfully deleted comment {comment_id} on ticket {ticket_id}")
@@ -68,6 +59,9 @@ def delete_comment(
             status_code=200,
         )
 
+    except TicketNotFoundException as e:
+        logger.warning(f"Ticket not found for comment deletion: {str(e)}")
+        raise e
     except UnauthorizedCommentModificationException as e:
         logger.warning(f"Unauthorized comment deletion attempt: {str(e)}")
         raise e

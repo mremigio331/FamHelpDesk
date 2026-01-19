@@ -182,6 +182,53 @@ class TicketHelper:
 
         return ticket
 
+    def update_ticket_by_id(
+        self,
+        ticket_id: str,
+        updated_by: str,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
+        severity: Optional[str] = None,
+        status: Optional[str] = None,
+        assigned_to: Optional[str] = None,
+    ) -> TicketModel:
+        """
+        Update an existing ticket by ticket_id only with validation of status transitions and business rules.
+
+        Args:
+            ticket_id: The ticket ID to update
+            updated_by: The user ID who is updating the ticket
+            title: Optional new title
+            description: Optional new description
+            severity: Optional new severity
+            status: Optional new status
+            assigned_to: Optional new assigned user
+
+        Returns:
+            TicketModel: The updated ticket
+
+        Raises:
+            TicketNotFoundException: If the ticket doesn't exist
+            InvalidTicketStatusTransitionException: If status transition is invalid
+            TicketReopenWindowExpiredException: If trying to reopen outside window
+            InvalidTicketStatusException: If status value is invalid
+            InvalidTicketSeverityException: If severity value is invalid
+        """
+        # Get existing ticket using GSI
+        ticket = self.get_ticket_by_id(ticket_id)
+
+        # Use the existing update_ticket method with the ticket's family_id
+        return self.update_ticket(
+            family_id=ticket.family_id,
+            ticket_id=ticket_id,
+            updated_by=updated_by,
+            title=title,
+            description=description,
+            severity=severity,
+            status=status,
+            assigned_to=assigned_to,
+        )
+
     def update_ticket(
         self,
         family_id: str,
@@ -459,16 +506,20 @@ class TicketHelper:
                 f"Invalid status transition from {current_status} to {new_status}"
             )
 
-    def get_ticket_by_id(self, ticket_id: str) -> Optional[TicketModel]:
+    def get_ticket_by_id(self, ticket_id: str) -> TicketModel:
         """
-        Query ticket by ticket_id only using GSI for simplified access.
+        Query ticket by ticket_id only using GSI.
 
         Args:
             ticket_id: The ticket ID to retrieve
 
         Returns:
-            TicketModel: The ticket if found, None if not found
+            TicketModel: The ticket if found
+
+        Raises:
+            TicketNotFoundException: If the ticket doesn't exist
         """
+
         try:
             # Query the ticket_id GSI
             results = list(TicketModel.ticket_id_index.query(ticket_id, limit=1))
@@ -479,11 +530,14 @@ class TicketHelper:
                 return ticket
             else:
                 self.logger.info(f"Ticket {ticket_id} not found via GSI")
-                return None
+                raise TicketNotFoundException(f"Ticket {ticket_id} not found")
 
+        except TicketNotFoundException:
+            # Re-raise TicketNotFoundException as-is
+            raise
         except Exception as e:
             self.logger.error(f"Error querying ticket {ticket_id} via GSI: {str(e)}")
-            return None
+            raise TicketNotFoundException(f"Ticket {ticket_id} not found")
 
     def get_ticket(self, family_id: str, ticket_id: str) -> Optional[TicketModel]:
         """

@@ -16,7 +16,7 @@ router = APIRouter()
 
 
 @router.get(
-    "/{family_id}",
+    "/tickets/{family_id}",
     summary="Get tickets with multiple query modes and pagination",
     response_description="Paginated list of tickets based on query parameters",
 )

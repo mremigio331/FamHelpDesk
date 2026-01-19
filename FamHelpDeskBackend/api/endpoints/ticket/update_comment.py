@@ -11,6 +11,7 @@ from exceptions.ticket_exceptions import (
     UnauthorizedCommentModificationException,
     CommentEditWindowExpiredException,
     CommentNotFoundException,
+    TicketNotFoundException,
 )
 from helpers.ticket_comment_helper import TicketCommentHelper
 from models.ticket_comment import TicketCommentModel
@@ -20,21 +21,18 @@ router = APIRouter()
 
 
 class UpdateCommentRequest(BaseModel):
-    family_id: str
     ticket_id: str
     comment_id: str
-    comment_body: str
-    group_id: Optional[str] = None  # Optional for backward compatibility
-    queue_id: Optional[str] = None  # Optional for backward compatibility
+    body: str
 
-    @validator("family_id", "ticket_id", "comment_id")
+    @validator("ticket_id", "comment_id")
     def validate_required_fields_not_empty(cls, v):
         if not v or not v.strip():
             raise ValueError("Field cannot be empty")
         return v.strip()
 
-    @validator("comment_body")
-    def validate_comment_body_not_empty(cls, v):
+    @validator("body")
+    def validate_body_not_empty(cls, v):
         if not v or not v.strip():
             raise ValueError("Comment body cannot be empty")
         return v.strip()
@@ -61,13 +59,10 @@ def update_comment(request: Request, body: UpdateCommentRequest):
 
     try:
         updated_comment = comment_helper.update_comment(
-            family_id=body.family_id,
             ticket_id=body.ticket_id,
             comment_id=body.comment_id,
             requesting_user=token_user_id,
-            comment_body=body.comment_body,
-            group_id=body.group_id,  # Optional for backward compatibility
-            queue_id=body.queue_id,  # Optional for backward compatibility
+            comment_body=body.body,
         )
 
         logger.info(
@@ -81,6 +76,9 @@ def update_comment(request: Request, body: UpdateCommentRequest):
             status_code=200,
         )
 
+    except TicketNotFoundException as e:
+        logger.warning(f"Ticket not found for comment update: {str(e)}")
+        raise e
     except UnauthorizedCommentModificationException as e:
         logger.warning(f"Unauthorized comment modification attempt: {str(e)}")
         raise e

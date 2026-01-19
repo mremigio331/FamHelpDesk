@@ -7,6 +7,7 @@ from typing import Optional
 from constants.services import API_SERVICE
 from decorators.exceptions_decorator import exceptions_decorator
 from exceptions.user_exceptions import InvalidUserIdException
+from exceptions.ticket_exceptions import TicketNotFoundException
 from helpers.ticket_comment_helper import TicketCommentHelper
 from models.ticket_comment import TicketCommentModel
 
@@ -15,20 +16,17 @@ router = APIRouter()
 
 
 class CreateCommentRequest(BaseModel):
-    family_id: str
     ticket_id: str
-    comment_body: str
-    group_id: Optional[str] = None  # Optional for backward compatibility
-    queue_id: Optional[str] = None  # Optional for backward compatibility
+    body: str
 
-    @validator("family_id", "ticket_id")
-    def validate_required_fields_not_empty(cls, v):
+    @validator("ticket_id")
+    def validate_ticket_id_not_empty(cls, v):
         if not v or not v.strip():
-            raise ValueError("Field cannot be empty")
+            raise ValueError("Ticket ID cannot be empty")
         return v.strip()
 
-    @validator("comment_body")
-    def validate_comment_body_not_empty(cls, v):
+    @validator("body")
+    def validate_body_not_empty(cls, v):
         if not v or not v.strip():
             raise ValueError("Comment body cannot be empty")
         return v.strip()
@@ -50,22 +48,24 @@ def create_comment(request: Request, body: CreateCommentRequest):
         logger.warning("Token User ID could not be extracted from JWT.")
         raise InvalidUserIdException("Token User ID is required.")
 
-    # Create comment using TicketCommentHelper
-    comment_helper = TicketCommentHelper(request_id=request.state.request_id)
-    comment = comment_helper.create_comment(
-        family_id=body.family_id,
-        ticket_id=body.ticket_id,
-        comment_user=token_user_id,
-        comment_body=body.comment_body,
-        group_id=body.group_id,  # Optional for backward compatibility
-        queue_id=body.queue_id,  # Optional for backward compatibility
-    )
+    try:
+        # Create comment using TicketCommentHelper
+        comment_helper = TicketCommentHelper(request_id=request.state.request_id)
+        comment = comment_helper.create_comment(
+            ticket_id=body.ticket_id,
+            comment_user=token_user_id,
+            comment_body=body.body,
+        )
 
-    logger.info(
-        f"Successfully created comment {comment.comment_id} on ticket {body.ticket_id}"
-    )
+        logger.info(
+            f"Successfully created comment {comment.comment_id} on ticket {body.ticket_id}"
+        )
 
-    return JSONResponse(
-        content={"comment": TicketCommentModel.clean_returned_comment(comment)},
-        status_code=201,
-    )
+        return JSONResponse(
+            content={"comment": TicketCommentModel.clean_returned_comment(comment)},
+            status_code=201,
+        )
+
+    except TicketNotFoundException as e:
+        logger.warning(f"Ticket not found for comment creation: {str(e)}")
+        raise e

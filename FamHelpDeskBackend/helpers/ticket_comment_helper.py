@@ -32,33 +32,45 @@ class TicketCommentHelper:
 
     def create_comment(
         self,
-        family_id: str,
         ticket_id: str,
         comment_user: str,
         comment_body: str,
-        group_id: str = None,
-        queue_id: str = None,
     ) -> TicketCommentModel:
         """
         Create a new comment for a ticket.
 
         Args:
-            family_id: The family ID
             ticket_id: The ticket ID
             comment_user: The user creating the comment
             comment_body: The comment content
-            group_id: The group ID (optional, for backward compatibility)
-            queue_id: The queue ID (optional, for backward compatibility)
 
         Returns:
             TicketCommentModel: The created comment
+
+        Raises:
+            TicketNotFoundException: If the ticket doesn't exist
         """
         self.logger.info(
             "Creating comment for ticket",
             extra={
-                "family_id": family_id,
                 "ticket_id": ticket_id,
                 "comment_user": comment_user,
+            },
+        )
+
+        # Get ticket details
+        ticket = self.ticket_helper.get_ticket_by_id(ticket_id)
+        family_id = ticket.family_id
+        group_id = ticket.group_id
+        queue_id = ticket.queue_id
+
+        self.logger.info(
+            "Retrieved ticket details for comment creation",
+            extra={
+                "ticket_id": ticket_id,
+                "family_id": family_id,
+                "group_id": group_id,
+                "queue_id": queue_id,
             },
         )
 
@@ -84,20 +96,48 @@ class TicketCommentHelper:
         )
 
         # Save comment to DynamoDB
-        comment.save()
+        try:
+            comment.save()
+            self.logger.info(f"Successfully saved comment {comment_id} to DynamoDB")
+        except Exception as e:
+            self.logger.error(
+                f"Failed to save comment {comment_id} to DynamoDB: {str(e)}",
+                exc_info=True,
+            )
+            raise
 
         # Update the ticket's last_update timestamp when a comment is created
-        self.ticket_helper.update_last_update(family_id, ticket_id)
+        try:
+            self.ticket_helper.update_last_update(family_id, ticket_id)
+            self.logger.info(
+                f"Successfully updated ticket {ticket_id} last_update timestamp"
+            )
+        except Exception as e:
+            self.logger.error(
+                f"Failed to update ticket {ticket_id} last_update timestamp: {str(e)}",
+                exc_info=True,
+            )
+            raise
 
         # Create audit record with action CREATE
-        self.audit_helper.create_family_audit_record(
-            family_id=family_id,
-            entity_type=AuditEntityTypes.TICKET_COMMENT,
-            entity_id=comment_id,
-            action=AuditActions.CREATE,
-            actor_user_id=comment_user,
-            after=TicketCommentModel.clean_returned_comment(comment),
-        )
+        try:
+            self.audit_helper.create_family_audit_record(
+                family_id=family_id,
+                entity_type=AuditEntityTypes.COMMENT,
+                entity_id=comment_id,
+                action=AuditActions.CREATE,
+                actor_user_id=comment_user,
+                after=TicketCommentModel.clean_returned_comment(comment),
+            )
+            self.logger.info(
+                f"Successfully created audit record for comment {comment_id}"
+            )
+        except Exception as e:
+            self.logger.error(
+                f"Failed to create audit record for comment {comment_id}: {str(e)}",
+                exc_info=True,
+            )
+            raise
 
         self.logger.info(
             "Comment created successfully",
@@ -145,30 +185,25 @@ class TicketCommentHelper:
 
     def update_comment(
         self,
-        family_id: str,
         ticket_id: str,
         comment_id: str,
         requesting_user: str,
         comment_body: str,
-        group_id: str = None,
-        queue_id: str = None,
     ) -> TicketCommentModel:
         """
         Update an existing comment's body.
 
         Args:
-            family_id: The family ID
             ticket_id: The ticket ID
             comment_id: The comment ID to update
             requesting_user: The user requesting the update
             comment_body: The new comment content
-            group_id: The group ID (optional, for backward compatibility)
-            queue_id: The queue ID (optional, for backward compatibility)
 
         Returns:
             TicketCommentModel: The updated comment
 
         Raises:
+            TicketNotFoundException: If the ticket doesn't exist
             CommentNotFoundException: If the comment doesn't exist
             UnauthorizedCommentModificationException: If user is not the comment author
             CommentEditWindowExpiredException: If the 4-hour edit window has expired
@@ -176,12 +211,15 @@ class TicketCommentHelper:
         self.logger.info(
             "Updating comment",
             extra={
-                "family_id": family_id,
                 "ticket_id": ticket_id,
                 "comment_id": comment_id,
                 "requesting_user": requesting_user,
             },
         )
+
+        # Get ticket details
+        ticket = self.ticket_helper.get_ticket_by_id(ticket_id)
+        family_id = ticket.family_id
 
         # Retrieve existing comment
         try:
@@ -213,7 +251,7 @@ class TicketCommentHelper:
         after_state = TicketCommentModel.clean_returned_comment(comment)
         self.audit_helper.create_family_audit_record(
             family_id=family_id,
-            entity_type=AuditEntityTypes.TICKET_COMMENT,
+            entity_type=AuditEntityTypes.COMMENT,
             entity_id=comment_id,
             action=AuditActions.UPDATE,
             actor_user_id=requesting_user,
@@ -234,28 +272,23 @@ class TicketCommentHelper:
 
     def delete_comment(
         self,
-        family_id: str,
         ticket_id: str,
         comment_id: str,
         requesting_user: str,
-        group_id: str = None,
-        queue_id: str = None,
     ) -> bool:
         """
         Delete an existing comment.
 
         Args:
-            family_id: The family ID
             ticket_id: The ticket ID
             comment_id: The comment ID to delete
             requesting_user: The user requesting the deletion
-            group_id: The group ID (optional, for backward compatibility)
-            queue_id: The queue ID (optional, for backward compatibility)
 
         Returns:
             bool: True if deletion was successful
 
         Raises:
+            TicketNotFoundException: If the ticket doesn't exist
             CommentNotFoundException: If the comment doesn't exist
             UnauthorizedCommentModificationException: If user is not the comment author
             CommentEditWindowExpiredException: If the 4-hour edit window has expired
@@ -263,12 +296,15 @@ class TicketCommentHelper:
         self.logger.info(
             "Deleting comment",
             extra={
-                "family_id": family_id,
                 "ticket_id": ticket_id,
                 "comment_id": comment_id,
                 "requesting_user": requesting_user,
             },
         )
+
+        # Get ticket details
+        ticket = self.ticket_helper.get_ticket_by_id(ticket_id)
+        family_id = ticket.family_id
 
         # Retrieve existing comment
         try:
@@ -293,7 +329,7 @@ class TicketCommentHelper:
         # Create audit record with action DELETE
         self.audit_helper.create_family_audit_record(
             family_id=family_id,
-            entity_type=AuditEntityTypes.TICKET_COMMENT,
+            entity_type=AuditEntityTypes.COMMENT,
             entity_id=comment_id,
             action=AuditActions.DELETE,
             actor_user_id=requesting_user,
@@ -312,28 +348,29 @@ class TicketCommentHelper:
         # Return success boolean
         return True
 
-    def get_comments_for_ticket(
-        self, family_id: str, ticket_id: str, group_id: str = None, queue_id: str = None
-    ) -> List[TicketCommentModel]:
+    def get_comments_for_ticket(self, ticket_id: str) -> List[TicketCommentModel]:
         """
         Query all comments for a specific ticket, ordered by comment_date ascending.
 
         Args:
-            family_id: The family ID
             ticket_id: The ticket ID to retrieve comments for
-            group_id: The group ID (optional, for backward compatibility)
-            queue_id: The queue ID (optional, for backward compatibility)
 
         Returns:
             List[TicketCommentModel]: List of comments ordered by comment_date ascending
+
+        Raises:
+            TicketNotFoundException: If the ticket doesn't exist
         """
         self.logger.info(
             "Retrieving comments for ticket",
             extra={
-                "family_id": family_id,
                 "ticket_id": ticket_id,
             },
         )
+
+        # Get ticket details
+        ticket = self.ticket_helper.get_ticket_by_id(ticket_id)
+        family_id = ticket.family_id
 
         comments: List[TicketCommentModel] = []
         sk_prefix = f"TICKET#{ticket_id}#COMMENT#"
@@ -351,7 +388,6 @@ class TicketCommentHelper:
         self.logger.info(
             "Retrieved comments for ticket",
             extra={
-                "family_id": family_id,
                 "ticket_id": ticket_id,
                 "comment_count": len(comments),
             },
