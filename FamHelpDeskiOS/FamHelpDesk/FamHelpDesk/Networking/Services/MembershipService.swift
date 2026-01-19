@@ -32,6 +32,30 @@ final class MembershipService {
         }
     }
 
+    /// Fetches active family members for ticket assignment with enhanced error handling
+    /// - Parameter familyId: The ID of the family
+    /// - Returns: Array of ActiveFamilyMember objects optimized for ticket assignment
+    /// - Throws: ServiceError with structured error information
+    func getActiveFamilyMembers(familyId: String) async throws -> [ActiveFamilyMember] {
+        do {
+            // Get the raw data
+            let rawData = try await networkManager.getRawData(
+                endpoint: APIEndpoint.getActiveFamilyMembers(familyId: familyId).path
+            )
+
+            // Decode the response
+            let decoder = JSONDecoder()
+            let response = try decoder.decode(GetActiveFamilyMembersResponse.self, from: rawData)
+
+            print("📱 Active Family Members Response: \(response.members.count) members")
+            return response.members
+        } catch {
+            let serviceError = mapToServiceError(error)
+            print("❌ Error fetching active family members: \(serviceError)")
+            throw serviceError
+        }
+    }
+
     /// Fetches pending membership requests for a family with enhanced error handling
     /// - Parameter familyId: The ID of the family
     /// - Returns: Array of MembershipRequest objects

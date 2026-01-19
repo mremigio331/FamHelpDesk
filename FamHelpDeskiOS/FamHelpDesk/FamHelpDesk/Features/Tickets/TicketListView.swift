@@ -5,6 +5,7 @@ struct TicketListView: View {
     let filters: TicketFilters
 
     @State private var viewModel: TicketListViewModel
+    @State private var showCreateTicket = false
 
     init(familyId: String, filters: TicketFilters = TicketFilters()) {
         self.familyId = familyId
@@ -14,8 +15,26 @@ struct TicketListView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Navigation toolbar
-            NavigationToolbar(title: "Tickets")
+            // Navigation toolbar with create button
+            HStack {
+                HStack {
+                    NavigationToolbar(title: "Tickets")
+                }
+
+                Spacer()
+
+                // Create ticket button with plus icon
+                Button(action: {
+                    showCreateTicket = true
+                }) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .medium))
+                }
+                .buttonStyle(.borderedProminent)
+                .clipShape(Circle())
+                .padding(.trailing)
+            }
+            .frame(height: 44) // Standard navigation bar height
 
             // Main content
             if viewModel.showLoadingState {
@@ -37,6 +56,17 @@ struct TicketListView: View {
             if viewModel.tickets.isEmpty, !viewModel.isLoading {
                 await viewModel.loadTickets()
             }
+        }
+        .sheet(isPresented: $showCreateTicket) {
+            TicketFormView(
+                mode: .create(familyId: familyId),
+                onSuccess: { _ in
+                    // Add the new ticket to the list and refresh
+                    Task {
+                        await viewModel.refresh()
+                    }
+                }
+            )
         }
     }
 
@@ -113,20 +143,27 @@ struct TicketListView: View {
                     .font(.title2)
                     .fontWeight(.semibold)
 
-                Text("There are no tickets to display.")
+                Text("There are no tickets to display. Create your first ticket to get started.")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }
 
-            // Refresh button
-            Button("Refresh") {
-                Task {
-                    await viewModel.refresh()
+            // Action buttons
+            HStack(spacing: 16) {
+                Button("Create Ticket") {
+                    showCreateTicket = true
                 }
+                .buttonStyle(.borderedProminent)
+
+                Button("Refresh") {
+                    Task {
+                        await viewModel.refresh()
+                    }
+                }
+                .buttonStyle(.bordered)
+                .disabled(!viewModel.canRefresh)
             }
-            .buttonStyle(.bordered)
-            .disabled(!viewModel.canRefresh)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(uiColor: .systemBackground))
@@ -155,6 +192,15 @@ struct TicketListView: View {
             } header: {
                 HStack {
                     Text("Tickets (\(viewModel.tickets.count))")
+
+                    // Plus button next to Tickets title
+                    Button(action: {
+                        showCreateTicket = true
+                    }) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.blue)
+                    }
 
                     Spacer()
 
@@ -213,72 +259,6 @@ struct TicketListView: View {
     }
 }
 
-// MARK: - Ticket Detail View Placeholder
-
-struct TicketDetailView: View {
-    let ticket: Ticket
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                Text(ticket.title)
-                    .font(.title2)
-                    .fontWeight(.semibold)
-
-                if let description = ticket.description {
-                    Text(description)
-                        .font(.body)
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Details")
-                        .font(.headline)
-
-                    DetailRow(label: "Status", value: ticket.status.rawValue)
-                    DetailRow(label: "Severity", value: ticket.severity.displayName)
-                    DetailRow(label: "Created", value: formatDate(ticket.creationDate))
-
-                    if let assignedTo = ticket.assignedTo {
-                        DetailRow(label: "Assigned To", value: assignedTo.name ?? assignedTo.id)
-                    }
-                }
-
-                Spacer()
-            }
-            .padding()
-        }
-        .navigationTitle("Ticket Detail")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-
-    private func formatDate(_ timestamp: TimeInterval) -> String {
-        let date = Date(timeIntervalSince1970: timestamp)
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
-    }
-}
-
-struct DetailRow: View {
-    let label: String
-    let value: String
-
-    var body: some View {
-        HStack {
-            Text(label)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-
-            Spacer()
-
-            Text(value)
-                .font(.subheadline)
-                .fontWeight(.medium)
-        }
-    }
-}
-
 // MARK: - Preview
 
 #Preview {
@@ -306,7 +286,7 @@ struct DetailRow: View {
                 severity: .sev2,
                 status: .open,
                 creationDate: Date().timeIntervalSince1970 - 3600,
-                createdBy: "user123",
+                createdBy: EntityRef(id: "user123", name: "Test User"),
                 lastUpdateTime: Date().timeIntervalSince1970,
                 resolvedDate: nil,
                 closedDate: nil,

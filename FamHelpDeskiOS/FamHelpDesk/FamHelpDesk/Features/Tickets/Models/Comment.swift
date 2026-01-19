@@ -3,12 +3,12 @@ import Foundation
 // MARK: - Comment Model
 
 struct Comment: Codable, Identifiable, Hashable {
-    let familyId: String
-    let groupId: String
-    let queueId: String
+    let familyId: EntityRef
+    let groupId: EntityRef
+    let queueId: EntityRef
     let ticketId: String
     let commentId: String
-    let commentUser: String
+    let commentUser: EntityRef
     let commentBody: String
     let commentDate: TimeInterval
     let lastUpdate: TimeInterval
@@ -46,7 +46,7 @@ struct Comment: Codable, Identifiable, Hashable {
 
     private func canModify(currentUserId: String) -> Bool {
         // User must be the comment author
-        guard currentUserId == commentUser else { return false }
+        guard currentUserId == commentUser.id else { return false }
 
         // Must be within 4-hour edit window (14400 seconds)
         let currentTime = Date().timeIntervalSince1970
@@ -71,6 +71,12 @@ struct Comment: Codable, Identifiable, Hashable {
 
     var editWindowExpiresAt: Date {
         Date(timeIntervalSince1970: commentDate + 14400)
+    }
+
+    // MARK: - Display Properties
+
+    var authorDisplayName: String {
+        commentUser.name ?? "Unknown User"
     }
 
     // MARK: - CodingKeys
@@ -101,22 +107,24 @@ struct Comment: Codable, Identifiable, Hashable {
 // MARK: - API Request/Response Models
 
 struct CreateCommentRequest: Codable {
-    let familyId: String
     let ticketId: String
-    let commentBody: String
+    let body: String
 
     enum CodingKeys: String, CodingKey {
-        case familyId = "family_id"
         case ticketId = "ticket_id"
-        case commentBody = "comment_body"
+        case body
     }
 }
 
 struct UpdateCommentRequest: Codable {
-    let commentBody: String
+    let ticketId: String
+    let commentId: String
+    let body: String
 
     enum CodingKeys: String, CodingKey {
-        case commentBody = "comment_body"
+        case ticketId = "ticket_id"
+        case commentId = "comment_id"
+        case body
     }
 }
 

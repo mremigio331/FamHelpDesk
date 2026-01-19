@@ -86,7 +86,8 @@ struct GroupDetailView: View {
                 showSearch: $showSearch,
                 unreadCount: notificationSession.unreadCount,
                 isVisible: $navigationBarVisible,
-                isInFamilyContext: true
+                isInFamilyContext: true,
+                onCreateTicket: nil
             )
 
             // Group Content

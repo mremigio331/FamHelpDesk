@@ -105,6 +105,13 @@ enum ValidationError: Error, LocalizedError {
     case emptySearchQuery
     case searchQueryTooShort
 
+    // Ticket validation
+    case emptyTicketTitle
+    case ticketTitleTooLong
+    case ticketDescriptionTooLong
+    case missingRequiredFields
+    case invalidOperation
+
     var errorDescription: String? {
         switch self {
         // Group validation
@@ -150,6 +157,17 @@ enum ValidationError: Error, LocalizedError {
             "Search query cannot be empty"
         case .searchQueryTooShort:
             "Search query must be at least 2 characters long"
+        // Ticket validation
+        case .emptyTicketTitle:
+            "Ticket title cannot be empty"
+        case .ticketTitleTooLong:
+            "Ticket title cannot exceed 200 characters"
+        case .ticketDescriptionTooLong:
+            "Ticket description cannot exceed 2000 characters"
+        case .missingRequiredFields:
+            "Please fill in all required fields"
+        case .invalidOperation:
+            "Invalid operation"
         }
     }
 }

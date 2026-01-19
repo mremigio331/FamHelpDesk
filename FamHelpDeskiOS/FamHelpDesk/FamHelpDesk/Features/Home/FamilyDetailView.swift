@@ -8,6 +8,7 @@ struct FamilyDetailView: View {
     @State private var showProfile = false
     @State private var showNotifications = false
     @State private var showSearch = false
+    @State private var showCreateTicket = false
     @State private var navigationBarVisible = true
 
     enum Tab: String, CaseIterable {
@@ -38,6 +39,10 @@ struct FamilyDetailView: View {
         familyItem?.membership.isAdmin ?? false
     }
 
+    private var canCreateTickets: Bool {
+        familyItem?.membership.status == "MEMBER"
+    }
+
     private var selectedTab: Tab {
         get { navigationContext.selectedFamilyTab }
         set { navigationContext.selectedFamilyTab = newValue }
@@ -52,7 +57,10 @@ struct FamilyDetailView: View {
                 showSearch: $showSearch,
                 unreadCount: notificationSession.unreadCount,
                 isVisible: $navigationBarVisible,
-                isInFamilyContext: true
+                isInFamilyContext: true,
+                onCreateTicket: canCreateTickets ? {
+                    showCreateTicket = true
+                } : nil
             )
 
             // Family Content
@@ -116,6 +124,15 @@ struct FamilyDetailView: View {
                 .onAppear {
                     navigationContext.navigateToSearch()
                 }
+        }
+        .sheet(isPresented: $showCreateTicket) {
+            TicketFormView(
+                mode: .create(familyId: family.familyId),
+                onSuccess: { newTicket in
+                    // Ticket created successfully - could refresh ticket list if needed
+                    print("✅ Created ticket: \(newTicket.ticketId)")
+                }
+            )
         }
         .onAppear {
             // Load notifications to get unread count

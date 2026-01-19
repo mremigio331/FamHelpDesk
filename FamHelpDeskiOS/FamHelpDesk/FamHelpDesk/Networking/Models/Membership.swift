@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Membership Models
 
-struct FamilyMember: Codable, Identifiable {
+struct FamilyMember: Codable, Identifiable, Hashable {
     let userId: String
     let displayName: String
     let email: String
@@ -11,6 +11,16 @@ struct FamilyMember: Codable, Identifiable {
     let joinedAt: String
 
     var id: String { userId }
+
+    // MARK: - Hashable Conformance
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(userId)
+    }
+
+    static func == (lhs: FamilyMember, rhs: FamilyMember) -> Bool {
+        lhs.userId == rhs.userId
+    }
 
     enum CodingKeys: String, CodingKey {
         case userId = "user_id"
@@ -98,6 +108,33 @@ enum MembershipAction: String, Codable {
 struct GetFamilyMembersResponse: Codable {
     let members: [FamilyMember]
     let count: Int
+}
+
+struct GetActiveFamilyMembersResponse: Codable {
+    let members: [ActiveFamilyMember]
+    let count: Int
+}
+
+struct ActiveFamilyMember: Codable, Identifiable, Hashable {
+    let userId: String
+    let displayName: String
+
+    var id: String { userId }
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case displayName = "display_name"
+    }
+
+    // MARK: - Hashable Conformance
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(userId)
+    }
+
+    static func == (lhs: ActiveFamilyMember, rhs: ActiveFamilyMember) -> Bool {
+        lhs.userId == rhs.userId
+    }
 }
 
 struct GetMembershipRequestsResponse: Codable {

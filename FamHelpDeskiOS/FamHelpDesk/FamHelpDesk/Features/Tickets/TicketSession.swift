@@ -33,7 +33,7 @@ final class TicketSession {
 
         print("🎯 TicketSession.loadTickets called with:")
         print("   - familyId: \(familyId)")
-        print("   - filters: queueId=\(filters.queueId ?? "nil"), groupId=\(filters.groupId ?? "nil"), assignedTo=\(filters.assignedTo ?? "nil"), status=\(filters.status?.rawValue ?? "nil"), severity=\(filters.severity?.rawValue ?? "nil")")
+        print("   - filters: queueId=\(filters.queueId ?? "nil"), groupId=\(filters.groupId ?? "nil"), assignedTo=\(filters.assignedTo ?? "nil"), status=\(filters.status?.rawValue ?? "nil"), severity=\(filters.severity?.rawValue.description ?? "nil")")
         print("   - refresh: \(refresh)")
         print("   - current tickets count: \(tickets.count)")
         print("   - current nextToken: \(nextToken ?? "nil")")
@@ -60,7 +60,7 @@ final class TicketSession {
                 groupId: filters.groupId,
                 assignedTo: filters.assignedTo,
                 status: filters.status?.rawValue,
-                severity: filters.severity?.rawValue,
+                severity: filters.severity?.rawValue.description,
                 limit: 25,
                 nextToken: refresh ? nil : nextToken
             )
@@ -114,7 +114,7 @@ final class TicketSession {
                 groupId: currentFilters.groupId,
                 assignedTo: currentFilters.assignedTo,
                 status: currentFilters.status?.rawValue,
-                severity: currentFilters.severity?.rawValue,
+                severity: currentFilters.severity?.rawValue.description,
                 limit: 25,
                 nextToken: nextToken
             )
@@ -163,13 +163,9 @@ final class TicketSession {
 
     /// Updates a ticket and refreshes the list
     @MainActor
-    func updateTicket(familyId: String, ticketId: String, request: UpdateTicketRequest) async -> Bool {
+    func updateTicket(ticketId: String, request: UpdateTicketRequest) async -> Bool {
         do {
-            let updatedTicket = try await ticketService.updateTicket(
-                familyId: familyId,
-                ticketId: ticketId,
-                request: request
-            )
+            let updatedTicket = try await ticketService.updateTicket(request: request)
 
             // Update the ticket in the list
             if let index = tickets.firstIndex(where: { $0.ticketId == ticketId }) {

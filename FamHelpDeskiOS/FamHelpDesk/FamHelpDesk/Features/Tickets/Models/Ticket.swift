@@ -20,13 +20,13 @@ enum TicketStatus: String, CaseIterable, Codable {
     case closed = "CLOSED"
 }
 
-enum TicketSeverity: String, CaseIterable, Codable {
-    case sev1 = "1"
-    case sev2 = "2"
-    case sev2_5 = "2.5"
-    case sev3 = "3"
-    case sev4 = "4"
-    case sev5 = "5"
+enum TicketSeverity: Double, CaseIterable, Codable {
+    case sev1 = 1.0
+    case sev2 = 2.0
+    case sev2_5 = 2.5
+    case sev3 = 3.0
+    case sev4 = 4.0
+    case sev5 = 5.0
 
     var displayName: String {
         switch self {
@@ -36,6 +36,28 @@ enum TicketSeverity: String, CaseIterable, Codable {
         case .sev3: "SEV 3"
         case .sev4: "SEV 4"
         case .sev5: "SEV 5"
+        }
+    }
+
+    var apiValue: String {
+        switch self {
+        case .sev1: "SEV_1"
+        case .sev2: "SEV_2"
+        case .sev2_5: "SEV_2_5"
+        case .sev3: "SEV_3"
+        case .sev4: "SEV_4"
+        case .sev5: "SEV_5"
+        }
+    }
+
+    var displayNumber: String {
+        switch self {
+        case .sev1: "1"
+        case .sev2: "2"
+        case .sev2_5: "2.5"
+        case .sev3: "3"
+        case .sev4: "4"
+        case .sev5: "5"
         }
     }
 
@@ -72,7 +94,7 @@ struct Ticket: Codable, Identifiable, Hashable {
     let severity: TicketSeverity
     let status: TicketStatus
     let creationDate: TimeInterval
-    let createdBy: String
+    let createdBy: EntityRef
     let lastUpdateTime: TimeInterval
     let resolvedDate: TimeInterval?
     let closedDate: TimeInterval?
@@ -136,6 +158,16 @@ struct Ticket: Codable, Identifiable, Hashable {
         return severity.colorCategory
     }
 
+    // MARK: - Display Properties
+
+    var createdByDisplayName: String {
+        createdBy.name ?? "Unknown User"
+    }
+
+    var assignedToDisplayName: String? {
+        assignedTo?.name
+    }
+
     // MARK: - CodingKeys
 
     enum CodingKeys: String, CodingKey {
@@ -188,25 +220,46 @@ struct CreateTicketRequest: Codable {
         case description
         case assignedTo = "assigned_to"
     }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(familyId, forKey: .familyId)
+        try container.encode(groupId, forKey: .groupId)
+        try container.encode(queueId, forKey: .queueId)
+        try container.encode(title, forKey: .title)
+        try container.encode(severity.rawValue, forKey: .severity)
+        try container.encodeIfPresent(description, forKey: .description)
+        try container.encodeIfPresent(assignedTo, forKey: .assignedTo)
+    }
 }
 
 struct UpdateTicketRequest: Codable {
+    let ticketId: String
     let title: String?
     let description: String?
     let severity: TicketSeverity?
     let status: TicketStatus?
     let assignedTo: String?
-    let groupId: String?
-    let queueId: String?
 
     enum CodingKeys: String, CodingKey {
+        case ticketId = "ticket_id"
         case title
         case description
         case severity
         case status
         case assignedTo = "assigned_to"
-        case groupId = "group_id"
-        case queueId = "queue_id"
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(ticketId, forKey: .ticketId)
+        try container.encodeIfPresent(title, forKey: .title)
+        try container.encodeIfPresent(description, forKey: .description)
+        if let severity {
+            try container.encode(severity.rawValue, forKey: .severity)
+        }
+        try container.encodeIfPresent(status, forKey: .status)
+        try container.encodeIfPresent(assignedTo, forKey: .assignedTo)
     }
 }
 

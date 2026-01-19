@@ -103,10 +103,10 @@ final class TicketService {
     }
 
     /// Update an existing ticket
-    func updateTicket(familyId: String, ticketId: String, request: UpdateTicketRequest) async throws -> Ticket {
+    func updateTicket(request: UpdateTicketRequest) async throws -> Ticket {
         do {
             let response: UpdateTicketResponse = try await networkManager.put(
-                endpoint: APIEndpoint.updateTicket(familyId: familyId, ticketId: ticketId).path,
+                endpoint: APIEndpoint.updateTicket.path,
                 body: request
             )
             return response.ticket
@@ -118,9 +118,8 @@ final class TicketService {
     // MARK: - Comment CRUD Operations
 
     /// Get all comments for a ticket
-    func getComments(familyId: String, ticketId: String) async throws -> [Comment] {
+    func getComments(ticketId: String) async throws -> [Comment] {
         let queryItems = [
-            URLQueryItem(name: "family_id", value: familyId),
             URLQueryItem(name: "ticket_id", value: ticketId),
         ]
 
@@ -149,10 +148,10 @@ final class TicketService {
     }
 
     /// Update an existing comment
-    func updateComment(commentId: String, request: UpdateCommentRequest) async throws -> Comment {
+    func updateComment(request: UpdateCommentRequest) async throws -> Comment {
         do {
             let response: UpdateCommentResponse = try await networkManager.put(
-                endpoint: APIEndpoint.updateComment(commentId: commentId).path,
+                endpoint: APIEndpoint.updateComment.path,
                 body: request
             )
             return response.comment
@@ -162,10 +161,13 @@ final class TicketService {
     }
 
     /// Delete a comment
-    func deleteComment(commentId: String) async throws -> DeleteCommentResponse {
+    func deleteComment(ticketId: String, commentId: String) async throws -> DeleteCommentResponse {
+        // Build endpoint with query parameters
+        let endpoint = "\(APIEndpoint.deleteComment.path)?ticket_id=\(ticketId)&comment_id=\(commentId)"
+
         do {
             let response: DeleteCommentResponse = try await networkManager.delete(
-                endpoint: APIEndpoint.deleteComment(commentId: commentId).path
+                endpoint: endpoint
             )
             return response
         } catch {

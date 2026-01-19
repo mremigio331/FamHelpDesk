@@ -60,7 +60,8 @@ struct QueueDetailView: View {
                 showSearch: $showSearch,
                 unreadCount: notificationSession.unreadCount,
                 isVisible: $navigationBarVisible,
-                isInFamilyContext: true
+                isInFamilyContext: true,
+                onCreateTicket: nil
             )
 
             // Queue Content

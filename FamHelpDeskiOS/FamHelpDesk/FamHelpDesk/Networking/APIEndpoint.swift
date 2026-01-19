@@ -11,6 +11,7 @@ enum APIEndpoint {
     case getMyFamilies
     case createFamily
     case getFamilyMembers(familyId: String)
+    case getActiveFamilyMembers(familyId: String)
     case getFamilyMembershipRequests(familyId: String)
     case requestFamilyMembership(familyId: String)
 
@@ -54,13 +55,13 @@ enum APIEndpoint {
     case getTicket(familyId: String, ticketId: String)
     case getTicketById(ticketId: String)
     case createTicket
-    case updateTicket(familyId: String, ticketId: String)
+    case updateTicket
 
     // Comment endpoints
     case getComments
     case createComment
-    case updateComment(commentId: String)
-    case deleteComment(commentId: String)
+    case updateComment
+    case deleteComment
 
     var path: String {
         switch self {
@@ -78,6 +79,8 @@ enum APIEndpoint {
             "/family"
         case let .getFamilyMembers(familyId):
             "/membership/\(familyId)/members"
+        case let .getActiveFamilyMembers(familyId):
+            "/membership/\(familyId)/active-members"
         case let .getFamilyMembershipRequests(familyId):
             "/membership/\(familyId)/requests"
         case let .requestFamilyMembership(familyId):
@@ -137,23 +140,23 @@ enum APIEndpoint {
         case .searchFamilies:
             "/family/search"
         case let .getTickets(familyId):
-            "/ticket/\(familyId)"
+            "/ticket/tickets/\(familyId)"
         case let .getTicket(familyId, ticketId):
-            "/ticket/\(familyId)/\(ticketId)"
-        case let .getTicketById(ticketId):
-            "/ticket/by-id/\(ticketId)"
+            "/ticket/\(ticketId)"
         case .createTicket:
             "/ticket/create"
-        case let .updateTicket(familyId, ticketId):
-            "/ticket/\(familyId)/\(ticketId)"
+        case .updateTicket:
+            "/ticket/update"
         case .getComments:
             "/ticket/comment/get"
         case .createComment:
             "/ticket/comment/create"
-        case let .updateComment(commentId):
-            "/ticket/comment/\(commentId)"
-        case let .deleteComment(commentId):
-            "/ticket/comment/\(commentId)"
+        case .updateComment:
+            "/ticket/comment/update"
+        case .deleteComment:
+            "/ticket/comment/delete"
+        case let .getTicketById(ticketId: ticketId):
+            "/ticket/\(ticketId)"
         }
     }
 }

@@ -13,8 +13,11 @@ struct CollapsibleNavigationBar: View {
     /// Whether the navigation bar should be visible
     @Binding var isVisible: Bool
 
-    /// Whether we're in a family context (hides search button)
+    /// Whether we're in a family context (hides search button, shows ticket creation)
     let isInFamilyContext: Bool
+
+    /// Optional callback for ticket creation when in family context
+    let onCreateTicket: (() -> Void)?
 
     /// Animation duration for show/hide
     private let animationDuration: Double = 0.2
@@ -68,6 +71,23 @@ struct CollapsibleNavigationBar: View {
 
                     // Action buttons
                     HStack(spacing: 12) {
+                        // Create ticket button - only show when in family context
+                        if isInFamilyContext, let createTicketAction = onCreateTicket {
+                            Button {
+                                createTicketAction()
+                            } label: {
+                                Circle()
+                                    .fill(Color.blue.opacity(0.2))
+                                    .frame(width: 36, height: 36)
+                                    .overlay {
+                                        Image(systemName: "plus")
+                                            .font(.system(size: 16, weight: .medium))
+                                            .foregroundColor(.blue)
+                                    }
+                            }
+                            .transition(.scale.combined(with: .opacity))
+                        }
+
                         // Search button - only show when not in family context
                         if !isInFamilyContext {
                             Button {
@@ -216,7 +236,8 @@ struct ScrollOffsetPreferenceKey: PreferenceKey {
             showSearch: $showSearch,
             unreadCount: 3,
             isVisible: $isVisible,
-            isInFamilyContext: false
+            isInFamilyContext: false,
+            onCreateTicket: nil
         )
 
         Spacer()

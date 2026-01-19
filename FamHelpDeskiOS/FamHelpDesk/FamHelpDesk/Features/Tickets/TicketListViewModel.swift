@@ -205,7 +205,7 @@ final class TicketListViewModel {
     /// Updates an existing ticket with enhanced state management
     @MainActor
     func updateTicket(ticketId: String, request: UpdateTicketRequest) async -> Bool {
-        let success = await ticketSession.updateTicket(familyId: familyId, ticketId: ticketId, request: request)
+        let success = await ticketSession.updateTicket(ticketId: ticketId, request: request)
 
         if !success {
             handleLoadingResult()

@@ -12,7 +12,7 @@ struct TicketRowView: View {
     var body: some View {
         HStack(spacing: 12) {
             // Severity number on the left
-            Text(ticket.severity.rawValue)
+            Text(ticket.severity.displayNumber)
                 .font(.title2)
                 .fontWeight(.bold)
                 .foregroundColor(severityColor)
@@ -171,7 +171,7 @@ struct TicketRowView: View {
                 severity: .sev1,
                 status: .open,
                 creationDate: Date().timeIntervalSince1970 - 3600, // 1 hour ago
-                createdBy: "user123",
+                createdBy: EntityRef(id: "user123", name: "Test User"),
                 lastUpdateTime: Date().timeIntervalSince1970,
                 resolvedDate: nil,
                 closedDate: nil,
@@ -192,7 +192,7 @@ struct TicketRowView: View {
                 severity: .sev2_5,
                 status: .open,
                 creationDate: Date().timeIntervalSince1970 - 7200, // 2 hours ago
-                createdBy: "user123",
+                createdBy: EntityRef(id: "user123", name: "Test User"),
                 lastUpdateTime: Date().timeIntervalSince1970,
                 resolvedDate: nil,
                 closedDate: nil,
@@ -213,7 +213,7 @@ struct TicketRowView: View {
                 severity: .sev3,
                 status: .open,
                 creationDate: Date().timeIntervalSince1970 - 10800, // 3 hours ago
-                createdBy: "user123",
+                createdBy: EntityRef(id: "user123", name: "Test User"),
                 lastUpdateTime: Date().timeIntervalSince1970,
                 resolvedDate: nil,
                 closedDate: nil,
@@ -234,7 +234,7 @@ struct TicketRowView: View {
                 severity: .sev5,
                 status: .open,
                 creationDate: Date().timeIntervalSince1970 - 14400, // 4 hours ago
-                createdBy: "user123",
+                createdBy: EntityRef(id: "user123", name: "Test User"),
                 lastUpdateTime: Date().timeIntervalSince1970,
                 resolvedDate: nil,
                 closedDate: nil,
@@ -255,7 +255,7 @@ struct TicketRowView: View {
                 severity: .sev1, // High severity but resolved, should show grey
                 status: .resolved,
                 creationDate: Date().timeIntervalSince1970 - 86400, // 1 day ago
-                createdBy: "user123",
+                createdBy: EntityRef(id: "user123", name: "Test User"),
                 lastUpdateTime: Date().timeIntervalSince1970,
                 resolvedDate: Date().timeIntervalSince1970 - 3600,
                 closedDate: nil,

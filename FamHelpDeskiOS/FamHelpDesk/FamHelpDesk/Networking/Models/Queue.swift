@@ -52,7 +52,7 @@ enum QueueRole: String, Codable, CaseIterable {
     }
 }
 
-struct QueueMember: Codable, Identifiable {
+struct QueueMember: Codable, Identifiable, Hashable {
     let userId: String
     let displayName: String
     let email: String
@@ -67,6 +67,16 @@ struct QueueMember: Codable, Identifiable {
         case email
         case role
         case assignedAt = "assigned_at"
+    }
+
+    // MARK: - Hashable
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(userId)
+    }
+
+    static func == (lhs: QueueMember, rhs: QueueMember) -> Bool {
+        lhs.userId == rhs.userId
     }
 }
 
