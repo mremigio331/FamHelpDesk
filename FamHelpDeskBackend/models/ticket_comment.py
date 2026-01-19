@@ -35,3 +35,18 @@ class TicketCommentModel(FamHelpDeskBaseModel):
             "comment_date": comment.comment_date,
             "last_update": comment.last_update,
         }
+
+    @staticmethod
+    def clean_returned_comment_for_audit(comment: "TicketCommentModel") -> dict:
+        """Return a serializable version of the comment for audit records"""
+        return {
+            "family_id": comment.family_id,
+            "group_id": comment.group_id,
+            "queue_id": comment.queue_id,
+            "ticket_id": comment.ticket_id,
+            "comment_id": comment.comment_id,
+            "comment_user": comment.comment_user,
+            "comment_body": comment.comment_body,
+            "comment_date": comment.comment_date,
+            "last_update": comment.last_update,
+        }

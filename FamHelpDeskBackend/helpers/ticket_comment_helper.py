@@ -128,7 +128,7 @@ class TicketCommentHelper:
                 entity_id=comment_id,
                 action=AuditActions.CREATE,
                 actor_user_id=comment_user,
-                after=TicketCommentModel.clean_returned_comment(comment),
+                after=TicketCommentModel.clean_returned_comment_for_audit(comment),
             )
             self.logger.info(
                 f"Successfully created audit record for comment {comment_id}"
@@ -239,7 +239,7 @@ class TicketCommentHelper:
         self.can_modify_comment(comment, requesting_user)
 
         # Capture before state for audit
-        before_state = TicketCommentModel.clean_returned_comment(comment)
+        before_state = TicketCommentModel.clean_returned_comment_for_audit(comment)
 
         # Update comment_body
         comment.comment_body = comment_body
@@ -251,7 +251,7 @@ class TicketCommentHelper:
         comment.save()
 
         # Create audit record with before and after states
-        after_state = TicketCommentModel.clean_returned_comment(comment)
+        after_state = TicketCommentModel.clean_returned_comment_for_audit(comment)
         self.audit_helper.create_family_audit_record(
             family_id=family_id,
             entity_type=AuditEntityTypes.COMMENT,
@@ -326,7 +326,7 @@ class TicketCommentHelper:
         self.can_modify_comment(comment, requesting_user)
 
         # Capture comment data for audit
-        before_state = TicketCommentModel.clean_returned_comment(comment)
+        before_state = TicketCommentModel.clean_returned_comment_for_audit(comment)
 
         # Delete comment from DynamoDB
         comment.delete()
