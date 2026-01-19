@@ -22,13 +22,25 @@ struct MainTabView: View {
 
                 // Main Content
                 HomeView()
+                    .onAppear {
+                        // Clear navigation context when back at home
+                        navigationContext.selectedFamily = nil
+                        navigationContext.selectedGroup = nil
+                    }
             }
             .navigationBarHidden(true)
             .navigationDestination(for: Family.self) { family in
                 FamilyDetailView(family: family)
+                    .onAppear {
+                        // Just update the selected family - the back button should work with SwiftUI's navigation
+                        navigationContext.selectedFamily = family
+                    }
             }
             .navigationDestination(for: FamilyGroup.self) { group in
                 GroupDetailView(group: group)
+                    .onAppear {
+                        navigationContext.selectedGroup = group
+                    }
             }
             .sheet(isPresented: $showProfile) {
                 UserProfileDetailView()
@@ -76,6 +88,7 @@ struct MainTabView: View {
 
 struct CustomNavigationBar: View {
     @State private var userSession = UserSession.shared
+    @State private var navigationContext = NavigationContext.shared
     @Binding var showProfile: Bool
     @Binding var showNotifications: Bool
     @Binding var showSearch: Bool
@@ -92,13 +105,24 @@ struct CustomNavigationBar: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Logo placeholder (you can replace with actual logo image)
-            Image(systemName: "ticket.fill")
-                .font(.title2)
-                .foregroundColor(.blue)
+            // Logo placeholder (you can replace with actual logo image) - Tappable to go home
+            Button {
+                // Navigate back to home (families list)
+                navigationContext.popToRoot()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "ticket.fill")
+                        .font(.title2)
+                        .foregroundColor(.blue)
 
-            Text("Fam Help Desk")
-                .font(.headline)
+                    Text("Fam Help Desk")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                }
+            }
+            .buttonStyle(.plain) // Removes default button styling
+            .scaleEffect(navigationContext.canNavigateBack ? 1.0 : 0.98) // Subtle visual feedback when navigable
+            .opacity(navigationContext.canNavigateBack ? 1.0 : 0.8) // Slight opacity change when at root
 
             Spacer()
 

@@ -49,6 +49,19 @@ enum APIEndpoint {
     // Search endpoints
     case searchFamilies
 
+    // Ticket endpoints
+    case getTickets(familyId: String)
+    case getTicket(familyId: String, ticketId: String)
+    case getTicketById(ticketId: String)
+    case createTicket
+    case updateTicket(familyId: String, ticketId: String)
+
+    // Comment endpoints
+    case getComments
+    case createComment
+    case updateComment(commentId: String)
+    case deleteComment(commentId: String)
+
     var path: String {
         switch self {
         case .getProfile:
@@ -123,6 +136,24 @@ enum APIEndpoint {
             "/queue/\(queueId)/members/\(userId)"
         case .searchFamilies:
             "/family/search"
+        case let .getTickets(familyId):
+            "/ticket/\(familyId)"
+        case let .getTicket(familyId, ticketId):
+            "/ticket/\(familyId)/\(ticketId)"
+        case let .getTicketById(ticketId):
+            "/ticket/by-id/\(ticketId)"
+        case .createTicket:
+            "/ticket/create"
+        case let .updateTicket(familyId, ticketId):
+            "/ticket/\(familyId)/\(ticketId)"
+        case .getComments:
+            "/ticket/comment/get"
+        case .createComment:
+            "/ticket/comment/create"
+        case let .updateComment(commentId):
+            "/ticket/comment/\(commentId)"
+        case let .deleteComment(commentId):
+            "/ticket/comment/\(commentId)"
         }
     }
 }

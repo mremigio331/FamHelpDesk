@@ -113,9 +113,6 @@ struct FamilyDetailView: View {
                 }
         }
         .onAppear {
-            // Update navigation context when this view appears
-            navigationContext.selectedFamily = family
-
             // Load notifications to get unread count
             Task {
                 await notificationSession.fetchNotifications(refresh: false)

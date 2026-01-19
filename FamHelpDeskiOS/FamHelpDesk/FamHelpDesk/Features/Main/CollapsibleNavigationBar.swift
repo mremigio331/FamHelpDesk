@@ -4,6 +4,7 @@ import SwiftUI
 struct CollapsibleNavigationBar: View {
     @State private var userSession = UserSession.shared
     @State private var navigationContext = NavigationContext.shared
+    @Environment(\.dismiss) private var dismiss
     @Binding var showProfile: Bool
     @Binding var showNotifications: Bool
     @Binding var showSearch: Bool
@@ -16,7 +17,7 @@ struct CollapsibleNavigationBar: View {
     let isInFamilyContext: Bool
 
     /// Animation duration for show/hide
-    private let animationDuration: Double = 0.3
+    private let animationDuration: Double = 0.2
 
     private var profileColor: Color {
         guard let user = userSession.currentUser else { return .blue }
@@ -31,15 +32,37 @@ struct CollapsibleNavigationBar: View {
         VStack(spacing: 0) {
             if isVisible {
                 HStack(spacing: 12) {
-                    // Logo and title
-                    HStack(spacing: 8) {
-                        Image(systemName: "ticket.fill")
-                            .font(.title2)
+                    // Back button - show when we're not at root
+                    if navigationContext.selectedFamily != nil || navigationContext.selectedGroup != nil {
+                        Button {
+                            dismiss()
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "chevron.left")
+                                    .font(.system(size: 16, weight: .medium))
+                                Text("Back")
+                                    .font(.system(size: 16, weight: .medium))
+                            }
                             .foregroundColor(.blue)
-
-                        Text("Fam Help Desk")
-                            .font(.headline)
+                        }
+                        .transition(.move(edge: .leading).combined(with: .opacity))
                     }
+
+                    // Logo and title - tappable to go home
+                    Button {
+                        navigationContext.popToRoot()
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "ticket.fill")
+                                .font(.title2)
+                                .foregroundColor(.blue)
+
+                            Text("Fam Help Desk")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                        }
+                    }
+                    .buttonStyle(.plain)
 
                     Spacer()
 
@@ -128,7 +151,7 @@ struct CollapsibleScrollView<Content: View>: View {
     @State private var scrollOffset: CGFloat = 0
 
     /// Threshold for hiding/showing the navigation bar
-    private let scrollThreshold: CGFloat = 50
+    private let scrollThreshold: CGFloat = 80
 
     init(navigationBarVisible: Binding<Bool>, @ViewBuilder content: () -> Content) {
         _navigationBarVisible = navigationBarVisible
@@ -154,8 +177,8 @@ struct CollapsibleScrollView<Content: View>: View {
             scrollOffset = currentOffset
 
             // Determine if we should show or hide the navigation bar
-            if abs(offsetDifference) > 5 { // Minimum scroll distance to trigger change
-                withAnimation(.easeInOut(duration: 0.3)) {
+            if abs(offsetDifference) > 10 { // Minimum scroll distance to trigger change
+                withAnimation(.easeInOut(duration: 0.2)) {
                     if offsetDifference > scrollThreshold {
                         // Scrolling up - show navigation bar
                         navigationBarVisible = true

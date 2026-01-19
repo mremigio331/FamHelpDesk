@@ -8,7 +8,12 @@ struct UserProfileDetailView: View {
     @State private var showEditProfile = false
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            // Navigation toolbar with back button
+            NavigationToolbar(title: "Profile", customBackAction: {
+                dismiss()
+            })
+
             List {
                 if userSession.isFetching {
                     Section {
@@ -145,13 +150,6 @@ struct UserProfileDetailView: View {
             }
             .refreshable {
                 await userSession.refreshProfile()
-            }
-            .navigationTitle("Profile")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { dismiss() }
-                }
             }
             .sheet(isPresented: $showEditProfile) {
                 if let currentUser = userSession.currentUser {

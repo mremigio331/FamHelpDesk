@@ -172,7 +172,12 @@ struct CreateGroupView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            // Navigation toolbar with back button
+            NavigationToolbar(title: "Create Group", customBackAction: {
+                dismiss()
+            })
+
             Form {
                 Section {
                     TextField("Group Name", text: $groupName)
@@ -197,25 +202,6 @@ struct CreateGroupView: View {
                 Section {
                     Text("Family: \(family.familyName)")
                         .foregroundColor(.secondary)
-                }
-            }
-            .navigationTitle("Create Group")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                    .disabled(isCreating)
-                }
-
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Create") {
-                        Task {
-                            await createGroup()
-                        }
-                    }
-                    .disabled(!isFormValid || isCreating)
                 }
             }
             .alert("Error", isPresented: $showingAlert) {

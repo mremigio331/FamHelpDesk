@@ -29,93 +29,96 @@ struct QueueListView: View {
     }
 
     var body: some View {
-        List {
-            if queueSession.isFetching, queues.isEmpty {
-                // Loading state
-                Section {
-                    HStack {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                        Text("Loading queues...")
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 20)
-                }
-            } else if queues.isEmpty {
-                // Empty state - no queues exist for this group
-                Section {
-                    VStack(spacing: 12) {
-                        Image(systemName: "tray.2")
-                            .font(.largeTitle)
-                            .foregroundColor(.blue)
-                        Text("No Queues Yet")
-                            .font(.headline)
-                        Text("Create the first queue for this group to organize tickets.")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 20)
-                }
-            } else {
-                // Queues list
-                Section("Queues (\(queues.count))") {
-                    ForEach(queues) { queue in
-                        NavigationLink(destination: QueueDetailView(initialQueue: queue)) {
-                            QueueRowView(queue: queue)
-                        }
-                    }
-                }
-            }
+        VStack(spacing: 0) {
+            // Navigation toolbar with back button
+            NavigationToolbar(title: "Queues")
 
-            // Create queue section - only show if user can create queues
-            if canCreateQueues {
-                Section {
-                    Button(action: {
-                        showingCreateQueue = true
-                    }) {
+            List {
+                if queueSession.isFetching, queues.isEmpty {
+                    // Loading state
+                    Section {
                         HStack {
-                            Image(systemName: "plus.circle.fill")
+                            ProgressView()
+                                .scaleEffect(0.8)
+                            Text("Loading queues...")
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, 20)
+                    }
+                } else if queues.isEmpty {
+                    // Empty state - no queues exist for this group
+                    Section {
+                        VStack(spacing: 12) {
+                            Image(systemName: "tray.2")
+                                .font(.largeTitle)
                                 .foregroundColor(.blue)
-                            Text("Create New Queue")
-                                .foregroundColor(.blue)
+                            Text("No Queues Yet")
+                                .font(.headline)
+                            Text("Create the first queue for this group to organize tickets.")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 20)
+                    }
+                } else {
+                    // Queues list
+                    Section("Queues (\(queues.count))") {
+                        ForEach(queues) { queue in
+                            NavigationLink(destination: QueueDetailView(initialQueue: queue)) {
+                                QueueRowView(queue: queue)
+                            }
                         }
                     }
-                    .disabled(queueSession.isFetching)
+                }
+
+                // Create queue section - only show if user can create queues
+                if canCreateQueues {
+                    Section {
+                        Button(action: {
+                            showingCreateQueue = true
+                        }) {
+                            HStack {
+                                Image(systemName: "plus.circle.fill")
+                                    .foregroundColor(.blue)
+                                Text("Create New Queue")
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                        .disabled(queueSession.isFetching)
+                    }
                 }
             }
-        }
-        .navigationTitle("Queues")
-        .navigationBarTitleDisplayMode(.inline)
-        .refreshable {
-            await queueSession.refreshGroupQueues(familyId: group.familyId, groupId: group.groupId)
-        }
-        .task {
-            // Queues are already loaded by GroupDetailView, but load if empty
-            if queues.isEmpty {
-                await queueSession.fetchGroupQueues(familyId: group.familyId, groupId: group.groupId)
+            .refreshable {
+                await queueSession.refreshGroupQueues(familyId: group.familyId, groupId: group.groupId)
             }
-        }
-        .sheet(isPresented: $showingCreateQueue) {
-            CreateQueueView(group: group)
-        }
-        .alert(item: $alertType) { alertType in
-            switch alertType {
-            case let .error(message):
-                Alert(
-                    title: Text("Error"),
-                    message: Text(message),
-                    dismissButton: .default(Text("OK")) {
-                        queueSession.clearError()
-                    }
-                )
+            .task {
+                // Queues are already loaded by GroupDetailView, but load if empty
+                if queues.isEmpty {
+                    await queueSession.fetchGroupQueues(familyId: group.familyId, groupId: group.groupId)
+                }
             }
-        }
-        .onChange(of: queueSession.errorMessage) { _, newValue in
-            if let errorMessage = newValue {
-                alertType = .error(errorMessage)
+            .sheet(isPresented: $showingCreateQueue) {
+                CreateQueueView(group: group)
+            }
+            .alert(item: $alertType) { alertType in
+                switch alertType {
+                case let .error(message):
+                    Alert(
+                        title: Text("Error"),
+                        message: Text(message),
+                        dismissButton: .default(Text("OK")) {
+                            queueSession.clearError()
+                        }
+                    )
+                }
+            }
+            .onChange(of: queueSession.errorMessage) { _, newValue in
+                if let errorMessage = newValue {
+                    alertType = .error(errorMessage)
+                }
             }
         }
     }
@@ -200,7 +203,12 @@ struct CreateQueueView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            // Navigation toolbar with back button
+            NavigationToolbar(title: "Create Queue", customBackAction: {
+                dismiss()
+            })
+
             Form {
                 Section {
                     TextField("Queue Name", text: $queueName)
@@ -228,25 +236,6 @@ struct CreateQueueView: View {
                     Text("Family: \(group.familyId)")
                         .foregroundColor(.secondary)
                         .font(.caption)
-                }
-            }
-            .navigationTitle("Create Queue")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                    .disabled(isCreating)
-                }
-
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Create") {
-                        Task {
-                            await createQueue()
-                        }
-                    }
-                    .disabled(!isFormValid || isCreating)
                 }
             }
             .alert(item: $alertType) { alertType in

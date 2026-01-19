@@ -13,7 +13,12 @@ struct AddGroupMemberView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            // Navigation toolbar with back button
+            NavigationToolbar(title: "Add Member", customBackAction: {
+                dismiss()
+            })
+
             Form {
                 Section {
                     VStack(alignment: .leading, spacing: 16) {
@@ -57,22 +62,6 @@ struct AddGroupMemberView: View {
                     Text("Member Details")
                 } footer: {
                     Text("Enter the User ID of the person you want to add to this group.")
-                }
-            }
-            .navigationTitle("Add Member")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Add") {
-                        addMember()
-                    }
-                    .disabled(userId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isAdding)
                 }
             }
         }

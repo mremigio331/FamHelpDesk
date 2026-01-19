@@ -12,7 +12,12 @@ struct CreateFamilyView: View {
     private let familySession = FamilySession.shared
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            // Navigation toolbar with back button
+            NavigationToolbar(title: "Create Family", customBackAction: {
+                dismiss()
+            })
+
             Form {
                 Section {
                     TextField("Family Name", text: $familyName)
@@ -42,24 +47,7 @@ struct CreateFamilyView: View {
                     }
                 }
             }
-            .navigationTitle("Create Family")
-            .navigationBarTitleDisplayMode(.inline)
             .interactiveDismissDisabled(isCreating)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                    .disabled(isCreating)
-                }
-
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") {
-                        createFamily()
-                    }
-                    .disabled(familyName.isEmpty || isCreating)
-                }
-            }
             .overlay {
                 if isCreating {
                     ZStack {

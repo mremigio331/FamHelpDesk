@@ -17,7 +17,12 @@ struct GroupMembershipRequestView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            // Navigation toolbar with back button
+            NavigationToolbar(title: "Join Group", customBackAction: {
+                dismiss()
+            })
+
             VStack(spacing: 24) {
                 // Group Info Header
                 VStack(spacing: 16) {
@@ -85,16 +90,6 @@ struct GroupMembershipRequestView: View {
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 32)
-            }
-            .navigationTitle("Join Group")
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationBarBackButtonHidden(true)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
             }
         }
         .alert(requestSuccess ? "Request Sent" : "Error", isPresented: $showingAlert) {

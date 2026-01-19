@@ -17,7 +17,12 @@ struct EditProfileView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            // Navigation toolbar with back button
+            NavigationToolbar(title: "Edit Profile", customBackAction: {
+                dismiss()
+            })
+
             Form {
                 Section("Profile Information") {
                     VStack(alignment: .leading, spacing: 4) {
@@ -61,25 +66,6 @@ struct EditProfileView: View {
                             .foregroundColor(.red)
                             .font(.caption)
                     }
-                }
-            }
-            .navigationTitle("Edit Profile")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                    .disabled(isUpdating)
-                }
-
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        Task {
-                            await updateProfile()
-                        }
-                    }
-                    .disabled(isUpdating || !isFormValid)
                 }
             }
             .overlay {
@@ -177,7 +163,12 @@ struct ColorPickerView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            // Navigation toolbar with back button
+            NavigationToolbar(title: "Profile Color", customBackAction: {
+                dismiss()
+            })
+
             List {
                 ForEach(ProfileColor.allCases) { color in
                     Button(action: {
@@ -196,15 +187,6 @@ struct ColorPickerView: View {
                                     .foregroundColor(.blue)
                             }
                         }
-                    }
-                }
-            }
-            .navigationTitle("Profile Color")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
                     }
                 }
             }
