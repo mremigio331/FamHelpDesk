@@ -9,7 +9,6 @@ from decorators.exceptions_decorator import exceptions_decorator
 from exceptions.user_exceptions import InvalidUserIdException
 from exceptions.ticket_exceptions import TicketNotFoundException
 from helpers.ticket_comment_helper import TicketCommentHelper
-from models.ticket_comment import TicketCommentModel
 
 logger = Logger(service=API_SERVICE)
 router = APIRouter()
@@ -58,11 +57,11 @@ def create_comment(request: Request, body: CreateCommentRequest):
         )
 
         logger.info(
-            f"Successfully created comment {comment.comment_id} on ticket {body.ticket_id}"
+            f"Successfully created comment {comment['comment_id']} on ticket {body.ticket_id}"
         )
 
         return JSONResponse(
-            content={"comment": TicketCommentModel.clean_returned_comment(comment)},
+            content={"comment": comment},
             status_code=201,
         )
 

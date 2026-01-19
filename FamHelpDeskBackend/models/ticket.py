@@ -87,7 +87,7 @@ class TicketModel(FamHelpDeskBaseModel):
             "severity": ticket.severity,
             "status": ticket.status,
             "creation_date": ticket.creation_date,
-            "created_by": ticket.created_by,
+            "created_by": EntityRef(id=ticket.created_by),
             "last_update_time": ticket.last_update_time,
             "private": ticket.private,
         }

@@ -7,6 +7,7 @@ import time
 from models.ticket_comment import TicketCommentModel
 from helpers.ticket_helper import TicketHelper
 from helpers.audit_helper import AuditHelper
+from helpers.entity_ref import EntityRefHelper
 from models.audit import AuditActions, AuditEntityTypes
 from exceptions.ticket_exceptions import (
     CommentNotFoundException,
@@ -35,7 +36,7 @@ class TicketCommentHelper:
         ticket_id: str,
         comment_user: str,
         comment_body: str,
-    ) -> TicketCommentModel:
+    ) -> dict:
         """
         Create a new comment for a ticket.
 
@@ -45,7 +46,7 @@ class TicketCommentHelper:
             comment_body: The comment content
 
         Returns:
-            TicketCommentModel: The created comment
+            dict: The created comment with enriched EntityRef data
 
         Raises:
             TicketNotFoundException: If the ticket doesn't exist
@@ -148,7 +149,9 @@ class TicketCommentHelper:
             },
         )
 
-        return comment
+        # Return enriched comment data
+        comment_dict = TicketCommentModel.clean_returned_comment(comment)
+        return EntityRefHelper.enrich_entity_refs(comment_dict)
 
     def can_modify_comment(
         self, comment: TicketCommentModel, requesting_user: str
@@ -189,7 +192,7 @@ class TicketCommentHelper:
         comment_id: str,
         requesting_user: str,
         comment_body: str,
-    ) -> TicketCommentModel:
+    ) -> dict:
         """
         Update an existing comment's body.
 
@@ -200,7 +203,7 @@ class TicketCommentHelper:
             comment_body: The new comment content
 
         Returns:
-            TicketCommentModel: The updated comment
+            dict: The updated comment with enriched EntityRef data
 
         Raises:
             TicketNotFoundException: If the ticket doesn't exist
@@ -268,7 +271,9 @@ class TicketCommentHelper:
             },
         )
 
-        return comment
+        # Return enriched comment data
+        comment_dict = TicketCommentModel.clean_returned_comment(comment)
+        return EntityRefHelper.enrich_entity_refs(comment_dict)
 
     def delete_comment(
         self,
@@ -348,7 +353,7 @@ class TicketCommentHelper:
         # Return success boolean
         return True
 
-    def get_comments_for_ticket(self, ticket_id: str) -> List[TicketCommentModel]:
+    def get_comments_for_ticket(self, ticket_id: str) -> List[dict]:
         """
         Query all comments for a specific ticket, ordered by comment_date ascending.
 
@@ -356,7 +361,7 @@ class TicketCommentHelper:
             ticket_id: The ticket ID to retrieve comments for
 
         Returns:
-            List[TicketCommentModel]: List of comments ordered by comment_date ascending
+            List[dict]: List of enriched comment dictionaries ordered by comment_date ascending
 
         Raises:
             TicketNotFoundException: If the ticket doesn't exist
@@ -385,12 +390,20 @@ class TicketCommentHelper:
         # Sort results by comment_date ascending
         comments.sort(key=lambda c: c.comment_date)
 
+        # Convert to clean dictionaries
+        comment_dicts = [
+            TicketCommentModel.clean_returned_comment(comment) for comment in comments
+        ]
+
+        # Enrich with EntityRef names
+        enriched_comments = EntityRefHelper.enrich_entity_refs(comment_dicts)
+
         self.logger.info(
             "Retrieved comments for ticket",
             extra={
                 "ticket_id": ticket_id,
-                "comment_count": len(comments),
+                "comment_count": len(enriched_comments),
             },
         )
 
-        return comments
+        return enriched_comments

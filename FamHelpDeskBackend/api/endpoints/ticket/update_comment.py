@@ -14,7 +14,6 @@ from exceptions.ticket_exceptions import (
     TicketNotFoundException,
 )
 from helpers.ticket_comment_helper import TicketCommentHelper
-from models.ticket_comment import TicketCommentModel
 
 logger = Logger(service=API_SERVICE)
 router = APIRouter()
@@ -70,9 +69,7 @@ def update_comment(request: Request, body: UpdateCommentRequest):
         )
 
         return JSONResponse(
-            content={
-                "comment": TicketCommentModel.clean_returned_comment(updated_comment)
-            },
+            content={"comment": updated_comment},
             status_code=200,
         )
 

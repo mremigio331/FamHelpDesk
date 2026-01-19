@@ -6,7 +6,6 @@ from constants.services import API_SERVICE
 from decorators.exceptions_decorator import exceptions_decorator
 from helpers.ticket_comment_helper import TicketCommentHelper
 from exceptions.ticket_exceptions import TicketNotFoundException
-from models.ticket_comment import TicketCommentModel
 
 logger = Logger(service=API_SERVICE)
 router = APIRouter()
@@ -36,12 +35,7 @@ def get_comments(
 
         # Return list of comments with status 200
         return JSONResponse(
-            content={
-                "comments": [
-                    TicketCommentModel.clean_returned_comment(comment)
-                    for comment in comments
-                ]
-            },
+            content={"comments": comments},
             status_code=200,
         )
 
