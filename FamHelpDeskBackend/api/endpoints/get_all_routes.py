@@ -34,6 +34,7 @@ from api.endpoints.membership.family_membership import (
     family_review_membership,
     get_family_membership_requests,
     get_family_members,
+    get_active_members,
 )
 from api.endpoints.membership.group_membership import (
     group_request_membership,
@@ -114,6 +115,9 @@ def get_all_routes(app: FastAPI) -> FastAPI:
     )
     app.include_router(
         get_family_members.router, prefix=MEMBERSHIP_PATH, tags=[FAMILY_MEMBERSHIP_TAG]
+    )
+    app.include_router(
+        get_active_members.router, prefix=MEMBERSHIP_PATH, tags=[FAMILY_MEMBERSHIP_TAG]
     )
 
     # Group routes
