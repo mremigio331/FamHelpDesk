@@ -59,8 +59,12 @@ class UserProfile(FamHelpDeskBaseModel):
 
     @property
     def entity_display_name(self) -> str:
-        """Return the display name for this entity"""
-        return self.display_name
+        """Return the display name for this entity, ensuring it's never empty"""
+        return (
+            self.display_name.strip()
+            if self.display_name and self.display_name.strip()
+            else "Unknown User"
+        )
 
     def save(self, **kwargs):
         """Override save to automatically populate GSI attributes"""

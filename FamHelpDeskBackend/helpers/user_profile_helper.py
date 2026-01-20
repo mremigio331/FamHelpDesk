@@ -27,6 +27,12 @@ class UserProfileHelper:
         provider: str,
         email: str,
     ) -> UserProfile:
+        # Validate display_name is not empty
+        if not display_name or not display_name.strip():
+            raise ValueError("Display name cannot be empty")
+
+        display_name = display_name.strip()
+
         # Check if profile already exists (idempotency check)
         existing_profile = self.get_profile(user_id)
         if existing_profile:
@@ -107,6 +113,14 @@ class UserProfileHelper:
         profile = self.get_profile(user_id)
         if not profile:
             raise ValueError("Profile does not exist")
+
+        # Validate display_name if being updated
+        if "display_name" in kwargs:
+            display_name = kwargs["display_name"]
+            if display_name is not None:
+                if not display_name or not display_name.strip():
+                    raise ValueError("Display name cannot be empty")
+                kwargs["display_name"] = display_name.strip()
 
         # Capture old state for auditing
         old_profile_data = UserProfile.clean_returned_profile(profile)

@@ -5,6 +5,7 @@ struct EditProfileView: View {
     @State private var userSession = UserSession.shared
     @State private var displayName: String
     @State private var selectedProfileColor: ProfileColor
+    @State private var darkMode: Bool
     @State private var isUpdating = false
     @State private var errorMessage: String?
     @State private var showingColorPicker = false
@@ -14,6 +15,7 @@ struct EditProfileView: View {
     init(currentProfile: UserProfile) {
         _displayName = State(initialValue: currentProfile.displayName)
         _selectedProfileColor = State(initialValue: ProfileColor(rawValue: currentProfile.profileColor) ?? .black)
+        _darkMode = State(initialValue: currentProfile.darkMode)
     }
 
     var body: some View {
@@ -60,6 +62,32 @@ struct EditProfileView: View {
                     }
                 }
 
+                Section {
+                    Button(action: {
+                        Task {
+                            await updateProfile()
+                        }
+                    }) {
+                        HStack {
+                            Spacer()
+                            if isUpdating {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                    .padding(.trailing, 8)
+                            }
+                            Text("Save Changes")
+                                .fontWeight(.medium)
+                            Spacer()
+                        }
+                        .foregroundColor(isFormValid ? .white : .gray)
+                    }
+                    .disabled(!isFormValid || isUpdating)
+                    .listRowBackground(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(isFormValid ? Color.blue : Color.gray.opacity(0.3))
+                    )
+                }
+
                 if let errorMessage {
                     Section {
                         Text(errorMessage)
@@ -100,7 +128,13 @@ struct EditProfileView: View {
 
         let trimmedDisplayName = displayName.trimmingCharacters(in: .whitespaces)
 
-        // Validate input lengths
+        // Validate input lengths and non-empty
+        if trimmedDisplayName.isEmpty {
+            errorMessage = "Display name cannot be empty"
+            isUpdating = false
+            return
+        }
+
         if trimmedDisplayName.count > 100 {
             errorMessage = "Display name must be less than 100 characters"
             isUpdating = false
@@ -111,7 +145,7 @@ struct EditProfileView: View {
             let updatedProfile = try await userService.updateUserProfile(
                 displayName: trimmedDisplayName,
                 profileColor: selectedProfileColor.rawValue,
-                darkMode: nil
+                darkMode: darkMode
             )
 
             // Update the user session with the new profile
@@ -200,6 +234,6 @@ struct ColorPickerView: View {
         displayName: "John Doe",
         email: "john@example.com",
         profileColor: "Blue",
-        darkMode: DarkModeSettings(web: false, mobile: true, ios: false)
+        darkMode: false
     ))
 }

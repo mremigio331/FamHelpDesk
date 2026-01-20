@@ -32,9 +32,7 @@ final class UserService {
             print("  - Display Name: \(response.userProfile.displayName)")
             print("  - Email: \(response.userProfile.email)")
             print("  - Profile Color: \(response.userProfile.profileColor)")
-            if let darkMode = response.userProfile.darkMode {
-                print("  - Dark Mode: Web=\(darkMode.web), Mobile=\(darkMode.mobile), iOS=\(darkMode.ios)")
-            }
+            print("  - Dark Mode: \(response.userProfile.darkMode)")
 
             return response.userProfile
         } catch {
@@ -47,19 +45,21 @@ final class UserService {
     /// - Parameters:
     ///   - displayName: Optional new display name
     ///   - profileColor: Optional new profile color
-    ///   - darkMode: Optional new dark mode settings
+    ///   - darkMode: Optional new dark mode setting
     /// - Returns: Updated UserProfile object
     /// - Throws: NetworkError if the request fails
     func updateUserProfile(
         displayName: String? = nil,
         profileColor: String? = nil,
-        darkMode: DarkModeSettings? = nil
+        darkMode: Bool? = nil
     ) async throws -> UserProfile {
         let request = UpdateUserProfileRequest(
             displayName: displayName,
             profileColor: profileColor,
             darkMode: darkMode
         )
+
+        print("📱 Sending update request: \(request)")
 
         let response: UserProfileResponse = try await networkManager.put(
             endpoint: APIEndpoint.updateProfile.path,
@@ -71,22 +71,52 @@ final class UserService {
         print("  - Display Name: \(response.userProfile.displayName)")
         print("  - Email: \(response.userProfile.email)")
         print("  - Profile Color: \(response.userProfile.profileColor)")
-        if let darkMode = response.userProfile.darkMode {
-            print("  - Dark Mode: Web=\(darkMode.web), Mobile=\(darkMode.mobile), iOS=\(darkMode.ios)")
-        }
+        print("  - Dark Mode: \(response.userProfile.darkMode)")
 
         return response.userProfile
+    }
+
+    /// Updates only the display name
+    func updateDisplayName(_ displayName: String) async throws -> UserProfile {
+        try await updateUserProfile(displayName: displayName)
+    }
+
+    /// Updates only the profile color
+    func updateProfileColor(_ profileColor: String) async throws -> UserProfile {
+        try await updateUserProfile(profileColor: profileColor)
+    }
+
+    /// Updates only the dark mode setting
+    func updateDarkMode(_ darkMode: Bool) async throws -> UserProfile {
+        try await updateUserProfile(darkMode: darkMode)
     }
 }
 
 struct UpdateUserProfileRequest: Codable {
     let displayName: String?
     let profileColor: String?
-    let darkMode: DarkModeSettings?
+    let darkMode: Bool?
 
     enum CodingKeys: String, CodingKey {
         case displayName = "display_name"
         case profileColor = "profile_color"
         case darkMode = "dark_mode"
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        // Only encode non-nil values
+        if let displayName {
+            try container.encode(displayName, forKey: .displayName)
+        }
+
+        if let profileColor {
+            try container.encode(profileColor, forKey: .profileColor)
+        }
+
+        if let darkMode {
+            try container.encode(darkMode, forKey: .darkMode)
+        }
     }
 }

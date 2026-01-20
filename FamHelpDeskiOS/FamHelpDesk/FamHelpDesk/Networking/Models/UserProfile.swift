@@ -42,23 +42,17 @@ extension Color {
     static let cyan = Color.cyan
 }
 
-struct DarkModeSettings: Codable {
-    let web: Bool
-    let mobile: Bool
-    let ios: Bool
-}
-
 struct UserProfile: Codable, Identifiable {
     let userId: String
     let displayName: String
     let email: String
     let profileColor: String
-    let darkMode: DarkModeSettings?
+    let darkMode: Bool
 
     var id: String { userId }
 
     // Memberwise initializer for creating instances in code
-    init(userId: String, displayName: String, email: String, profileColor: String, darkMode: DarkModeSettings? = nil) {
+    init(userId: String, displayName: String, email: String, profileColor: String, darkMode: Bool = false) {
         self.userId = userId
         self.displayName = displayName
         self.email = email
@@ -72,26 +66,6 @@ struct UserProfile: Codable, Identifiable {
         case email
         case profileColor = "profile_color"
         case darkMode = "dark_mode"
-    }
-
-    // Custom decoder to handle both boolean and object dark_mode
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-
-        userId = try container.decode(String.self, forKey: .userId)
-        displayName = try container.decode(String.self, forKey: .displayName)
-        email = try container.decode(String.self, forKey: .email)
-        profileColor = try container.decode(String.self, forKey: .profileColor)
-
-        // Handle dark_mode as either boolean or DarkModeSettings object
-        if let darkModeObject = try? container.decode(DarkModeSettings.self, forKey: .darkMode) {
-            darkMode = darkModeObject
-        } else if let darkModeBool = try? container.decode(Bool.self, forKey: .darkMode) {
-            // Convert boolean to DarkModeSettings
-            darkMode = DarkModeSettings(web: darkModeBool, mobile: darkModeBool, ios: darkModeBool)
-        } else {
-            darkMode = nil
-        }
     }
 }
 

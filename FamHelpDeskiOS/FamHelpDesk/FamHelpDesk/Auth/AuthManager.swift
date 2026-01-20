@@ -6,7 +6,7 @@ import UIKit // Import UIKit for UIWindow and UIApplication
 
 // MARK: - Authentication Error Types
 
-enum AuthError: Error, LocalizedError {
+enum AuthError: Error, LocalizedError, Equatable {
     case configurationError(String)
     case networkError(Error)
     case tokenExpired
@@ -30,24 +30,66 @@ enum AuthError: Error, LocalizedError {
             "Unknown authentication error: \(error.localizedDescription)"
         }
     }
+
+    static func == (lhs: AuthError, rhs: AuthError) -> Bool {
+        switch (lhs, rhs) {
+        case let (.configurationError(lhsMessage), .configurationError(rhsMessage)):
+            lhsMessage == rhsMessage
+        case let (.networkError(lhsError), .networkError(rhsError)):
+            lhsError.localizedDescription == rhsError.localizedDescription
+        case (.tokenExpired, .tokenExpired):
+            true
+        case (.invalidCredentials, .invalidCredentials):
+            true
+        case (.userCancelled, .userCancelled):
+            true
+        case let (.unknownError(lhsError), .unknownError(rhsError)):
+            lhsError.localizedDescription == rhsError.localizedDescription
+        default:
+            false
+        }
+    }
 }
 
 // MARK: - Authentication State
 
-enum AuthenticationState {
+enum AuthenticationState: Equatable {
     case unknown
     case authenticated(user: AuthUser)
     case unauthenticated
     case error(AuthError)
+
+    static func == (lhs: AuthenticationState, rhs: AuthenticationState) -> Bool {
+        switch (lhs, rhs) {
+        case (.unknown, .unknown):
+            true
+        case let (.authenticated(lhsUser), .authenticated(rhsUser)):
+            lhsUser.userId == rhsUser.userId
+        case (.unauthenticated, .unauthenticated):
+            true
+        case let (.error(lhsError), .error(rhsError)):
+            lhsError.localizedDescription == rhsError.localizedDescription
+        default:
+            false
+        }
+    }
 }
 
 // MARK: - Auth User Model
 
-struct AuthUser {
+struct AuthUser: Equatable {
     let userId: String
     let displayName: String?
     let email: String?
     let attributes: [AuthUserAttribute]
+
+    static func == (lhs: AuthUser, rhs: AuthUser) -> Bool {
+        lhs.userId == rhs.userId &&
+            lhs.displayName == rhs.displayName &&
+            lhs.email == rhs.email
+        // Note: We don't compare attributes as AuthUserAttribute doesn't conform to Equatable
+        // and it's not critical for our use case
+    }
 }
 
 final class AuthManager: ObservableObject {
@@ -186,39 +228,63 @@ final class AuthManager: ObservableObject {
         do {
             let currentUser = try await Amplify.Auth.getCurrentUser()
 
-            // Try to get user attributes first
+            // Try to get user attributes with retry logic
             var attributes: [AuthUserAttribute] = []
             var displayName: String?
             var email: String?
+            var attributesLoadedSuccessfully = false
 
-            do {
-                attributes = try await loadUserAttributes()
+            // Attempt to load user attributes with retry
+            for attempt in 1 ... 3 {
+                do {
+                    attributes = try await loadUserAttributes()
 
-                // Extract display name from attributes
-                displayName = attributes.first(where: { $0.key == .name })?.value
-                    ?? attributes.first(where: { $0.key == .givenName })?.value
-                    ?? attributes.first(where: { $0.key == .email })?.value
+                    // Extract display name from attributes
+                    displayName = attributes.first(where: { $0.key == .name })?.value
+                        ?? attributes.first(where: { $0.key == .givenName })?.value
+                        ?? attributes.first(where: { $0.key == .email })?.value
 
-                email = attributes.first(where: { $0.key == .email })?.value
+                    email = attributes.first(where: { $0.key == .email })?.value
+                    attributesLoadedSuccessfully = true
+                    logger.logAuthenticationStateChange(.userAttributesLoaded(count: attributes.count))
+                    break
 
-                logger.logAuthenticationStateChange(.userAttributesLoaded(count: attributes.count))
+                } catch {
+                    // Log the attempt but don't treat as failure yet
+                    print("🔄 Attempt \(attempt)/3 to load user attributes failed: \(error.localizedDescription)")
 
-            } catch {
-                logger.logAuthenticationStateChange(.userAttributesFailure(error: error))
+                    if attempt < 3 {
+                        // Wait before retrying (exponential backoff)
+                        do {
+                            try await Task.sleep(nanoseconds: UInt64(attempt * 500_000_000)) // 0.5s, 1s, 1.5s
+                        } catch {
+                            // Sleep was cancelled, continue anyway
+                        }
+                    } else {
+                        // All attempts failed, use fallback
+                        logger.logAuthenticationStateChange(.userAttributesFailure(error: error))
+                    }
+                }
+            }
 
-                // Fallback: Try to extract user info from ID token
+            // If attributes loading failed, use ID token fallback
+            if !attributesLoadedSuccessfully {
+                print("🔄 Using ID token fallback for user info")
                 do {
                     if let idToken = try await AuthSessionManager.shared.getIDToken() {
                         let tokenInfo = extractUserInfoFromIDToken(idToken)
                         displayName = tokenInfo.name ?? tokenInfo.email ?? currentUser.username
                         email = tokenInfo.email
                         logger.logAuthenticationStateChange(.userAttributesLoaded(count: 0))
+                        print("✅ Successfully extracted user info from ID token")
                     } else {
                         displayName = currentUser.username
+                        print("⚠️ No ID token available, using username as fallback")
                     }
                 } catch {
                     logger.logAuthenticationStateChange(.userAttributesFailure(error: error))
                     displayName = currentUser.username
+                    print("⚠️ ID token extraction failed, using username as fallback")
                 }
             }
 
@@ -235,6 +301,11 @@ final class AuthManager: ObservableObject {
             authenticationState = .authenticated(user: authUser)
 
             logger.logAuthenticationStateChange(.signInSuccess(userId: currentUser.userId, method: "session_restore"))
+
+            // Trigger user profile loading in UserSession
+            Task {
+                await UserSession.shared.loadUserProfile()
+            }
 
         } catch {
             logger.logAuthenticationStateChange(.signInFailure(error: error, method: "load_user_attributes"))
@@ -313,7 +384,11 @@ final class AuthManager: ObservableObject {
                 await forceSignOut()
 
                 // Wait a moment for sign out to complete
-                try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                do {
+                    try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                } catch {
+                    // Sleep was cancelled, continue anyway
+                }
 
                 // Retry sign in
                 return try await signInWithHostedUI()

@@ -491,19 +491,6 @@ struct FamilySkeletonItem: View {
     }
 }
 
-struct LoadingView: View {
-    var body: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .scaleEffect(1.2)
-            Text("Loading families...")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
 struct EmptySearchView: View {
     var body: some View {
         VStack(spacing: 16) {

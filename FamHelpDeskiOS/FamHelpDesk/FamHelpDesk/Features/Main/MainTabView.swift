@@ -65,6 +65,11 @@ struct MainTabView: View {
             // Load notifications when app starts to get unread count
             await notificationSession.fetchNotifications(refresh: true)
 
+            // Load user profile if not already loaded
+            if userSession.currentUser == nil, !userSession.isFetching {
+                await userSession.loadUserProfile()
+            }
+
             // Mark navigation context as ready for deep links
             navigationContext.setReadyForDeepLinks()
 
@@ -105,15 +110,16 @@ struct CustomNavigationBar: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Logo placeholder (you can replace with actual logo image) - Tappable to go home
+            // Logo - Tappable to go home
             Button {
                 // Navigate back to home (families list)
                 navigationContext.popToRoot()
             } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: "ticket.fill")
-                        .font(.title2)
-                        .foregroundColor(.blue)
+                    Image("FamHelpDeskTransparent")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 24, height: 24)
 
                     Text("Fam Help Desk")
                         .font(.headline)
@@ -171,16 +177,16 @@ struct CustomNavigationBar: View {
                 showProfile = true
             } label: {
                 Circle()
-                    .fill(profileBackgroundColor.opacity(0.2))
+                    .fill(profileBackgroundColor)
                     .frame(width: 36, height: 36)
                     .overlay {
                         if let user = userSession.currentUser {
                             Text(user.displayName.prefix(1).uppercased())
                                 .font(.headline)
-                                .foregroundColor(profileColor)
+                                .foregroundColor(.white)
                         } else {
                             Image(systemName: "person.fill")
-                                .foregroundColor(.blue)
+                                .foregroundColor(.white)
                         }
                     }
             }

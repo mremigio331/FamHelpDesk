@@ -21,28 +21,14 @@ class InvalidProfileColorException(Exception):
     pass
 
 
-class InvalidDarkModeException(Exception):
-    """Raised when an invalid dark mode object is provided."""
-
-    pass
-
-
-# Pydantic model for dark mode validation
-class DarkModeOptionsRequest(BaseModel):
-    web: Optional[bool] = False
-    mobile: Optional[bool] = False
-    ios: Optional[bool] = False
-
-
 logger = Logger(service=API_SERVICE)
 router = APIRouter()
 
 
 class UpdateUserProfileRequest(BaseModel):
     display_name: Optional[str] = None
-    nick_name: Optional[str] = None
     profile_color: Optional[str] = None
-    dark_mode: Optional[dict] = None
+    dark_mode: Optional[bool] = None
 
 
 @router.put(
@@ -61,13 +47,15 @@ def update_user_profile(request: Request, update_data: UpdateUserProfileRequest)
         Returns:
             A JSON response containing the updated user's profile information.
         Args:
-            update_data: The profile data to update (display_name, nick_name, profile_color, dark_mode)
+            update_data: The profile data to update (display_name, profile_color, dark_mode)
 
     Returns:
         A JSON response containing the updated user's profile information.
     """
     logger.append_keys(request_id=request.state.request_id)
     logger.info("Updating user profile.")
+    logger.info(f"Received update_data: {update_data}")
+    logger.info(f"Update data dict: {update_data.dict()}")
 
     token_user_id = getattr(request.state, "user_token", None)
     logger.info(f"Extracted token_user_id: {token_user_id}")
@@ -76,8 +64,24 @@ def update_user_profile(request: Request, update_data: UpdateUserProfileRequest)
         logger.warning("Token User ID could not be extracted from JWT.")
         raise InvalidUserIdException("Token User ID is required.")
 
-    # Validate that at least one field is being updated
+    # Get only the fields that were explicitly provided in the request
     update_dict = update_data.dict(exclude_unset=True)
+    logger.info(f"Fields to update: {list(update_dict.keys())}")
+
+    # Validate display_name is not empty if provided
+    if "display_name" in update_dict:
+        display_name = update_dict["display_name"]
+        if display_name is not None:
+            display_name = display_name.strip() if display_name else ""
+            if not display_name:
+                logger.warning("Empty display name provided.")
+                return JSONResponse(
+                    content={"error": "Display name cannot be empty."},
+                    status_code=400,
+                )
+            update_dict["display_name"] = display_name
+
+    # Validate profile_color if provided
     if "profile_color" in update_dict:
         try:
             color_input = update_dict["profile_color"].strip().capitalize()
@@ -88,6 +92,8 @@ def update_user_profile(request: Request, update_data: UpdateUserProfileRequest)
             raise InvalidProfileColorException(
                 f"Invalid profile color: {update_dict['profile_color']}. Must be one of: {', '.join(ProfileColorOptions.__members__.keys())}"
             )
+
+    # Check that at least one field is being updated
     if not update_dict:
         logger.warning("No fields provided for update.")
         return JSONResponse(

@@ -6,6 +6,7 @@ import SwiftUI
 struct FamHelpDeskApp: App {
     @StateObject private var auth = AuthManager()
     @State private var userSession = UserSession.shared
+    @State private var showErrorAfterDelay = false
     private let logger = AuthLogger.shared
 
     init() {
@@ -14,14 +15,75 @@ struct FamHelpDeskApp: App {
 
     var body: some Scene {
         WindowGroup {
-            if auth.isAuthenticated {
-                MainTabView()
-                    .environmentObject(auth)
-                    .environment(userSession)
-            } else {
-                WelcomeView()
-                    .environmentObject(auth)
-                    .environment(userSession)
+            Group {
+                switch auth.authenticationState {
+                case .unknown:
+                    // Show loading while checking authentication
+                    LoadingView(message: "")
+                case .authenticated:
+                    // Show loading while fetching user profile
+                    if userSession.currentUser == nil, userSession.isLoading {
+                        LoadingView(message: "")
+                    } else if userSession.currentUser != nil {
+                        // User is authenticated and profile is loaded
+                        MainTabView()
+                            .environmentObject(auth)
+                            .environment(userSession)
+                    } else if showErrorAfterDelay {
+                        // Authenticated but failed to load profile after delay - show error with retry
+                        ProfileLoadErrorView()
+                            .environmentObject(auth)
+                            .environment(userSession)
+                    } else {
+                        // Still trying to load profile - show loading
+                        LoadingView(message: "")
+                    }
+                case .unauthenticated:
+                    WelcomeView()
+                        .environmentObject(auth)
+                        .environment(userSession)
+                case .error:
+                    if showErrorAfterDelay {
+                        WelcomeView()
+                            .environmentObject(auth)
+                            .environment(userSession)
+                    } else {
+                        LoadingView(message: "")
+                    }
+                }
+            }
+            .task {
+                // Load user profile when authentication state changes to authenticated
+                if case .authenticated = auth.authenticationState, userSession.currentUser == nil {
+                    await userSession.loadUserProfile()
+                }
+            }
+            .onChange(of: auth.authenticationState) { _, newState in
+                Task {
+                    if case .authenticated = newState, userSession.currentUser == nil {
+                        await userSession.loadUserProfile()
+                    } else if case .unauthenticated = newState {
+                        userSession.signOut()
+                        showErrorAfterDelay = false
+                    }
+                }
+            }
+            .onChange(of: userSession.errorMessage) { _, errorMessage in
+                // Only show error UI after a delay to allow for retries
+                if errorMessage != nil {
+                    Task {
+                        do {
+                            try await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
+                        } catch {
+                            // Sleep was cancelled, continue anyway
+                        }
+                        if userSession.errorMessage != nil, userSession.currentUser == nil {
+                            showErrorAfterDelay = true
+                        }
+                    }
+                } else {
+                    showErrorAfterDelay = false
+                }
             }
         }
     }
@@ -196,5 +258,78 @@ extension AppStage {
         case .prod:
             "production"
         }
+    }
+}
+
+// MARK: - Loading Views
+
+struct LoadingView: View {
+    let message: String
+
+    var body: some View {
+        VStack(spacing: 30) {
+            // App Logo
+            Image("FamHelpDeskTransparent")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 400, height: 400)
+
+            // Loading indicator
+            ProgressView()
+                .scaleEffect(1.2)
+                .tint(.blue)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(uiColor: .systemBackground))
+    }
+}
+
+struct ProfileLoadErrorView: View {
+    @Environment(UserSession.self) private var userSession
+    @EnvironmentObject var auth: AuthManager
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.largeTitle)
+                .foregroundColor(.orange)
+
+            Text("Failed to Load Profile")
+                .font(.headline)
+
+            if let errorMessage = userSession.errorMessage {
+                Text(errorMessage)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+            }
+
+            VStack(spacing: 12) {
+                Button("Retry") {
+                    Task {
+                        await userSession.loadUserProfile()
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(userSession.isFetching)
+
+                Button("Sign Out") {
+                    Task {
+                        await auth.signOut()
+                    }
+                }
+                .buttonStyle(.bordered)
+            }
+
+            if userSession.isFetching {
+                ProgressView()
+                    .scaleEffect(0.8)
+                    .padding(.top)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(uiColor: .systemBackground))
+        .padding()
     }
 }
