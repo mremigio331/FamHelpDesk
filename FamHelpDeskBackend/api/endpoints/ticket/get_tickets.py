@@ -134,39 +134,3 @@ def search_tickets(
         },
         status_code=200,
     )
-
-
-# Keep the old GET endpoint for backward compatibility
-@router.get(
-    "/tickets/{family_id}",
-    summary="[Deprecated] Get tickets - use POST /tickets/{family_id}/search instead",
-    response_description="Paginated list of tickets based on query parameters",
-)
-@exceptions_decorator
-def get_tickets_legacy(
-    request: Request,
-    family_id: str,
-    queue_id: Optional[str] = Query(None, description="Filter by queue ID"),
-    group_id: Optional[str] = Query(None, description="Filter by group ID"),
-    assigned_to: Optional[str] = Query(None, description="Filter by assigned user ID"),
-    status: Optional[str] = Query(None, description="Filter by ticket status"),
-    limit: int = Query(
-        default=25, ge=1, le=100, description="Number of tickets to return"
-    ),
-    next_token: Optional[str] = Query(default=None, description="Pagination token"),
-):
-    """Legacy GET endpoint for backward compatibility. Use POST /tickets/{family_id}/search for new features."""
-
-    # Convert single values to arrays for the new system
-    search_request = GetTicketsRequest(
-        queue_ids=[queue_id] if queue_id else None,
-        group_ids=[group_id] if group_id else None,
-        assigned_to_users=[assigned_to] if assigned_to else None,
-        statuses=[status] if status else None,
-        severities=None,
-        limit=limit,
-        next_token=next_token,
-    )
-
-    # Delegate to the new search endpoint
-    return search_tickets(request, family_id, search_request)

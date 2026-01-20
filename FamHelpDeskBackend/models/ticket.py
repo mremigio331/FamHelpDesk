@@ -108,3 +108,31 @@ class TicketModel(FamHelpDeskBaseModel):
         if getattr(ticket, "assigned_to", None) is not None:
             data["assigned_to"] = EntityRef(id=ticket.assigned_to)
         return data
+
+    @staticmethod
+    def clean_returned_ticket_for_audit(ticket: "TicketModel") -> dict:
+        """Return a serializable version of the ticket for audit records"""
+        data = {
+            "family_id": ticket.family_id,
+            "group_id": ticket.group_id,
+            "queue_id": ticket.queue_id,
+            "ticket_id": ticket.ticket_id,
+            "title": ticket.title,
+            "severity": ticket.severity,
+            "status": ticket.status,
+            "creation_date": ticket.creation_date,
+            "created_by": ticket.created_by,
+            "last_update_time": ticket.last_update_time,
+            "private": ticket.private,
+        }
+        if getattr(ticket, "description", None) is not None:
+            data["description"] = ticket.description
+        if getattr(ticket, "resolved_date", None) is not None:
+            data["resolved_date"] = ticket.resolved_date
+        if getattr(ticket, "closed_date", None) is not None:
+            data["closed_date"] = ticket.closed_date
+        if getattr(ticket, "reopen_until", None) is not None:
+            data["reopen_until"] = ticket.reopen_until
+        if getattr(ticket, "assigned_to", None) is not None:
+            data["assigned_to"] = ticket.assigned_to
+        return data

@@ -121,11 +121,8 @@ class TicketHelper:
         # Save ticket to DynamoDB
         ticket.save()
 
-        ticket_data = TicketModel.clean_returned_ticket(ticket)
-        # Convert EntityRef objects to dictionaries for audit storage
-        audit_data = EntityRefHelper._convert_entity_refs_to_dicts(ticket_data)
-
         # Create audit record with action CREATE
+        audit_data = TicketModel.clean_returned_ticket_for_audit(ticket)
         self.audit_helper.create_family_audit_record(
             family_id=family_id,
             entity_type=AuditEntityTypes.TICKET,
@@ -188,7 +185,7 @@ class TicketHelper:
         updated_by: str,
         title: Optional[str] = None,
         description: Optional[str] = None,
-        severity: Optional[str] = None,
+        severity: Optional[float] = None,
         status: Optional[str] = None,
         assigned_to: Optional[str] = None,
     ) -> TicketModel:
@@ -236,7 +233,7 @@ class TicketHelper:
         updated_by: str,
         title: Optional[str] = None,
         description: Optional[str] = None,
-        severity: Optional[str] = None,
+        severity: Optional[float] = None,
         status: Optional[str] = None,
         assigned_to: Optional[str] = None,
         group_id: Optional[str] = None,
@@ -277,7 +274,7 @@ class TicketHelper:
             raise TicketNotFoundException(f"Ticket {ticket_id} not found")
 
         # Capture before state for audit
-        before_state = TicketModel.clean_returned_ticket(ticket)
+        before_state = TicketModel.clean_returned_ticket_for_audit(ticket)
 
         # Track changes for notifications and last_update
         assignment_changed = False
@@ -366,7 +363,7 @@ class TicketHelper:
         ticket.save()
 
         # Capture after state for audit
-        after_state = TicketModel.clean_returned_ticket(ticket)
+        after_state = TicketModel.clean_returned_ticket_for_audit(ticket)
 
         # Create audit record with before and after states
         self.audit_helper.create_family_audit_record(
