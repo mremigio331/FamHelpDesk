@@ -216,13 +216,17 @@ final class GroupService {
     /// - Throws: ServiceError for network failures or business logic errors
     func addGroupMember(familyId: String, groupId: String, userId: String, isAdmin: Bool = false) async throws -> GroupMembershipResponse {
         do {
-            let request = AddGroupMemberRequest(familyId: familyId, groupId: groupId, userId: userId, isAdmin: isAdmin)
-            let response: GroupMembershipResponse = try await networkManager.post(
+            let request = AddGroupMemberRequest(targetUserId: userId, makeAdmin: isAdmin)
+
+            // Use raw data request since we only care about 2xx status code
+            _ = try await networkManager.postRawData(
                 endpoint: APIEndpoint.addGroupMember(familyId: familyId, groupId: groupId).path,
                 body: request
             )
+
             print("📱 Added Group Member: \(userId) to \(groupId)")
-            return response
+            // Return a success response since we got a 2xx status code
+            return GroupMembershipResponse(success: true, message: "Member added successfully")
         } catch {
             let serviceError = mapToServiceError(error)
             print("❌ Error adding group member: \(serviceError)")

@@ -172,43 +172,75 @@ struct CreateGroupView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Navigation toolbar with back button
-            NavigationToolbar(title: "Create Group", customBackAction: {
-                dismiss()
-            })
+        NavigationView {
+            VStack(spacing: 0) {
+                // Clean header with improved styling
+                HStack {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundColor(.blue)
 
-            Form {
-                Section {
-                    TextField("Group Name", text: $groupName)
-                        .textInputAutocapitalization(.words)
+                    Spacer()
 
-                    TextField("Description (Optional)", text: $groupDescription, axis: .vertical)
-                        .lineLimit(3 ... 6)
-                        .textInputAutocapitalization(.sentences)
-                } header: {
-                    Text("Group Information")
-                } footer: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Group name must be 2-50 characters long.")
-                        if !groupDescription.isEmpty {
-                            Text("Description can be up to 200 characters.")
+                    Text("Create Group")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+
+                    Spacer()
+
+                    Button(isCreating ? "Creating..." : "Create") {
+                        Task {
+                            await createGroup()
                         }
                     }
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(isFormValid && !isCreating ? .blue : .gray)
+                    .fontWeight(.semibold)
+                    .disabled(!isFormValid || isCreating)
                 }
+                .padding(.horizontal)
+                .padding(.vertical, 12)
+                .background(Color(uiColor: .systemBackground))
+                .overlay(
+                    Rectangle()
+                        .frame(height: 0.5)
+                        .foregroundColor(Color(uiColor: .separator)),
+                    alignment: .bottom
+                )
 
-                Section {
-                    Text("Family: \(family.familyName)")
+                Form {
+                    Section {
+                        TextField("Group Name", text: $groupName)
+                            .textInputAutocapitalization(.words)
+
+                        TextField("Description (Optional)", text: $groupDescription, axis: .vertical)
+                            .lineLimit(3 ... 6)
+                            .textInputAutocapitalization(.sentences)
+                    } header: {
+                        Text("Group Information")
+                    } footer: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Group name must be 2-50 characters long.")
+                            if !groupDescription.isEmpty {
+                                Text("Description can be up to 200 characters.")
+                            }
+                        }
+                        .font(.caption)
                         .foregroundColor(.secondary)
+                    }
+
+                    Section {
+                        Text("Family: \(family.familyName)")
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .alert("Error", isPresented: $showingAlert) {
+                    Button("OK") {}
+                } message: {
+                    Text(alertMessage)
                 }
             }
-            .alert("Error", isPresented: $showingAlert) {
-                Button("OK") {}
-            } message: {
-                Text(alertMessage)
-            }
+            .navigationBarHidden(true)
         }
     }
 

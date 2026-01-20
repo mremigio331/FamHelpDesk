@@ -111,7 +111,7 @@ enum APIEndpoint {
         case let .requestGroupMembership(familyId, groupId):
             "/membership/\(familyId)/\(groupId)/request"
         case let .addGroupMember(familyId, groupId):
-            "/membership/\(familyId)/\(groupId)/add"
+            "/membership/\(familyId)/\(groupId)/members"
         case let .removeGroupMember(familyId, groupId, userId):
             "/membership/\(familyId)/\(groupId)/remove/\(userId)"
         case let .getGroupMembershipRequests(familyId, groupId):

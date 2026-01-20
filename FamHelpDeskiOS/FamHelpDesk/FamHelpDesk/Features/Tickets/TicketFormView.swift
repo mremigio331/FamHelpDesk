@@ -497,11 +497,11 @@ struct TicketFormView: View {
 
         // Use TicketSession to create the ticket so cache management happens automatically
         let success = await ticketSession.createTicket(request: request)
-        
+
         if !success {
             throw NetworkError.serverError(statusCode: 500, message: "Failed to create ticket")
         }
-        
+
         // Get the newly created ticket from the cache (should be at index 0)
         if let newTicket = ticketSession.tickets.first {
             print("✅ Created ticket: \(newTicket.ticketId)")
@@ -530,11 +530,11 @@ struct TicketFormView: View {
 
         // Use TicketSession to update the ticket so cache invalidation happens automatically
         let success = await ticketSession.updateTicket(ticketId: originalTicket.ticketId, request: request)
-        
+
         if !success {
             throw NetworkError.serverError(statusCode: 500, message: "Failed to update ticket")
         }
-        
+
         // Get the updated ticket from the cache
         if let updatedTicket = ticketSession.tickets.first(where: { $0.ticketId == originalTicket.ticketId }) {
             print("✅ Updated ticket: \(updatedTicket.ticketId)")

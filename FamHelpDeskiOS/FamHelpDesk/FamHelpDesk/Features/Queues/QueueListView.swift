@@ -203,51 +203,83 @@ struct CreateQueueView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Navigation toolbar with back button
-            NavigationToolbar(title: "Create Queue", customBackAction: {
-                dismiss()
-            })
+        NavigationView {
+            VStack(spacing: 0) {
+                // Clean header with improved styling
+                HStack {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundColor(.blue)
 
-            Form {
-                Section {
-                    TextField("Queue Name", text: $queueName)
-                        .textInputAutocapitalization(.words)
+                    Spacer()
 
-                    TextField("Description (Optional)", text: $queueDescription, axis: .vertical)
-                        .lineLimit(3 ... 6)
-                        .textInputAutocapitalization(.sentences)
-                } header: {
-                    Text("Queue Information")
-                } footer: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Queue name must be 2-50 characters long.")
-                        if !queueDescription.isEmpty {
-                            Text("Description can be up to 200 characters.")
+                    Text("Create Queue")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+
+                    Spacer()
+
+                    Button(isCreating ? "Creating..." : "Create") {
+                        Task {
+                            await createQueue()
                         }
                     }
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(isFormValid && !isCreating ? .blue : .gray)
+                    .fontWeight(.semibold)
+                    .disabled(!isFormValid || isCreating)
                 }
+                .padding(.horizontal)
+                .padding(.vertical, 12)
+                .background(Color(uiColor: .systemBackground))
+                .overlay(
+                    Rectangle()
+                        .frame(height: 0.5)
+                        .foregroundColor(Color(uiColor: .separator)),
+                    alignment: .bottom
+                )
 
-                Section {
-                    Text("Group: \(group.groupName)")
-                        .foregroundColor(.secondary)
-                    Text("Family: \(group.familyId)")
-                        .foregroundColor(.secondary)
+                Form {
+                    Section {
+                        TextField("Queue Name", text: $queueName)
+                            .textInputAutocapitalization(.words)
+
+                        TextField("Description (Optional)", text: $queueDescription, axis: .vertical)
+                            .lineLimit(3 ... 6)
+                            .textInputAutocapitalization(.sentences)
+                    } header: {
+                        Text("Queue Information")
+                    } footer: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Queue name must be 2-50 characters long.")
+                            if !queueDescription.isEmpty {
+                                Text("Description can be up to 200 characters.")
+                            }
+                        }
                         .font(.caption)
+                        .foregroundColor(.secondary)
+                    }
+
+                    Section {
+                        Text("Group: \(group.groupName)")
+                            .foregroundColor(.secondary)
+                        Text("Family: \(group.familyId)")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                    }
+                }
+                .alert(item: $alertType) { alertType in
+                    switch alertType {
+                    case let .error(message):
+                        Alert(
+                            title: Text("Error"),
+                            message: Text(message),
+                            dismissButton: .default(Text("OK"))
+                        )
+                    }
                 }
             }
-            .alert(item: $alertType) { alertType in
-                switch alertType {
-                case let .error(message):
-                    Alert(
-                        title: Text("Error"),
-                        message: Text(message),
-                        dismissButton: .default(Text("OK"))
-                    )
-                }
-            }
+            .navigationBarHidden(true)
         }
     }
 

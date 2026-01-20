@@ -59,7 +59,12 @@ struct GroupMembershipManagementView: View {
             Text(errorMessage ?? "An unknown error occurred")
         }
         .sheet(isPresented: $showingAddMember) {
-            AddGroupMemberView(group: group)
+            AddGroupMemberView(group: group) {
+                // Refresh data when a member is added
+                Task {
+                    await loadData()
+                }
+            }
         }
     }
 

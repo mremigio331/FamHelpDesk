@@ -16,11 +16,11 @@ final class TicketSession {
     // Current filter state
     var currentFamilyId: String?
     var currentFilters: TicketFilters = .init()
-    
+
     // Task management for cancellation
     private var currentLoadTask: Task<Void, Never>?
     private var currentLoadMoreTask: Task<Void, Never>?
-    
+
     // Debounce mechanism to prevent rapid successive calls
     private var lastLoadTime: Date = .distantPast
     private let minimumLoadInterval: TimeInterval = 0.5 // 500ms minimum between loads
@@ -38,15 +38,15 @@ final class TicketSession {
     func loadTickets(familyId: String, filters: TicketFilters = TicketFilters(), refresh: Bool = false) async {
         // Cancel any existing load task
         currentLoadTask?.cancel()
-        
+
         // Create new task for this load operation
         currentLoadTask = Task {
             await performLoadTickets(familyId: familyId, filters: filters, refresh: refresh)
         }
-        
+
         await currentLoadTask?.value
     }
-    
+
     /// Internal method that performs the actual loading
     @MainActor
     private func performLoadTickets(familyId: String, filters: TicketFilters, refresh: Bool) async {
@@ -55,7 +55,7 @@ final class TicketSession {
             print("🚫 Load tickets task was cancelled before starting")
             return
         }
-        
+
         // Debounce: prevent rapid successive calls unless it's a refresh
         let now = Date()
         if !refresh && now.timeIntervalSince(lastLoadTime) < minimumLoadInterval {
@@ -63,11 +63,11 @@ final class TicketSession {
             return
         }
         lastLoadTime = now
-        
+
         // Prevent multiple simultaneous loads
-        guard !isLoading else { 
+        guard !isLoading else {
             print("🚫 Already loading tickets, skipping")
-            return 
+            return
         }
 
         print("🎯 TicketSession.loadTickets called with:")
@@ -98,7 +98,7 @@ final class TicketSession {
                 isLoading = false
                 return
             }
-            
+
             print("🌐 Calling TicketService.searchTickets...")
 
             // Convert filter sets to arrays of values
@@ -205,15 +205,15 @@ final class TicketSession {
 
         // Cancel any existing load more task
         currentLoadMoreTask?.cancel()
-        
+
         // Create new task for this load more operation
         currentLoadMoreTask = Task {
             await performLoadMoreTickets(familyId: familyId)
         }
-        
+
         await currentLoadMoreTask?.value
     }
-    
+
     /// Internal method that performs the actual load more operation
     @MainActor
     private func performLoadMoreTickets(familyId: String) async {
@@ -232,7 +232,7 @@ final class TicketSession {
                 isLoadingMore = false
                 return
             }
-            
+
             // Convert filter sets to arrays of values
             let queueIds: [String]? = currentFilters.queueId != nil ? [currentFilters.queueId!] : nil
 
@@ -345,7 +345,7 @@ final class TicketSession {
 
             // Optimistic update - update the ticket in cache
             updateTicketInCache(updatedTicket)
-            
+
             // Also invalidate the cache to ensure fresh data (like last_update_time)
             // This ensures the ticket list is fully up-to-date when navigating back
             await invalidateTickets()
@@ -379,7 +379,7 @@ final class TicketSession {
         // Cancel any ongoing tasks
         currentLoadTask?.cancel()
         currentLoadMoreTask?.cancel()
-        
+
         tickets.removeAll()
         nextToken = nil
         hasMore = false
@@ -395,22 +395,22 @@ final class TicketSession {
     func clearError() {
         errorMessage = nil
     }
-    
+
     // MARK: - Cache Invalidation (React Query Style)
-    
+
     /// Invalidates and refetches tickets for the current family/filters
     @MainActor
     func invalidateTickets() async {
         guard let familyId = currentFamilyId else { return }
         await loadTickets(familyId: familyId, filters: currentFilters, refresh: true)
     }
-    
+
     /// Invalidates tickets for a specific family (useful when switching contexts)
     @MainActor
     func invalidateTickets(for familyId: String, filters: TicketFilters = TicketFilters()) async {
         await loadTickets(familyId: familyId, filters: filters, refresh: true)
     }
-    
+
     /// Invalidates all ticket data and clears cache
     @MainActor
     func invalidateAllTickets() async {
@@ -419,7 +419,7 @@ final class TicketSession {
             await loadTickets(familyId: familyId, filters: currentFilters, refresh: true)
         }
     }
-    
+
     /// Optimistically updates a ticket in the cache (like React Query's setQueryData)
     @MainActor
     func updateTicketInCache(_ updatedTicket: Ticket) {
@@ -428,14 +428,14 @@ final class TicketSession {
             print("🔄 Optimistically updated ticket in cache: \(updatedTicket.ticketId)")
         }
     }
-    
+
     /// Adds a new ticket to the cache optimistically
     @MainActor
     func addTicketToCache(_ newTicket: Ticket, at position: Int = 0) {
         tickets.insert(newTicket, at: position)
         print("➕ Optimistically added ticket to cache: \(newTicket.ticketId)")
     }
-    
+
     /// Removes a ticket from the cache optimistically
     @MainActor
     func removeTicketFromCache(ticketId: String) {
@@ -486,7 +486,7 @@ struct TicketFilters {
     var hasActiveFilters: Bool {
         // Don't count "open only" as an active filter since it's the default
         let hasNonDefaultStatuses = statuses != [.open]
-        
+
         return queueId != nil ||
             groupId != nil ||
             assignedTo != nil ||
@@ -502,18 +502,18 @@ struct TicketFilters {
     var isSearchQueryEmpty: Bool {
         searchQuery?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true
     }
-    
+
     /// Returns true if this is the default filter (only open tickets)
     var isDefaultFilter: Bool {
         queueId == nil &&
-        groupId == nil &&
-        assignedTo == nil &&
-        status == nil &&
-        severity == nil &&
-        statuses == [.open] &&
-        severities == nil &&
-        groupIds == nil &&
-        assignedToUsers == nil &&
-        isSearchQueryEmpty
+            groupId == nil &&
+            assignedTo == nil &&
+            status == nil &&
+            severity == nil &&
+            statuses == [.open] &&
+            severities == nil &&
+            groupIds == nil &&
+            assignedToUsers == nil &&
+            isSearchQueryEmpty
     }
 }

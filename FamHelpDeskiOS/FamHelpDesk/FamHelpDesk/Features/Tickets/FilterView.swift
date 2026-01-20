@@ -204,7 +204,7 @@ struct FilterView: View {
                             .foregroundColor(.secondary)
                     }
                 }
-                
+
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 12) {
                     ForEach(TicketStatus.allCases, id: \.self) { status in
                         FilterToggleButton(
@@ -294,7 +294,7 @@ struct FilterView: View {
     private var hasActiveFilters: Bool {
         // Don't count "open only" as an active filter since it's the default
         let hasNonDefaultStatuses = selectedStatuses != [.open]
-        
+
         return hasNonDefaultStatuses ||
             !selectedSeverities.isEmpty ||
             !selectedGroups.isEmpty ||

@@ -131,10 +131,13 @@ struct GroupMembershipResponse: Codable {
 }
 
 struct AddGroupMemberRequest: Codable {
-    let familyId: String
-    let groupId: String
-    let userId: String
-    let isAdmin: Bool
+    let targetUserId: String
+    let makeAdmin: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case targetUserId = "target_user_id"
+        case makeAdmin = "make_admin"
+    }
 }
 
 struct GroupMembershipRequestItem: Codable, Identifiable {
