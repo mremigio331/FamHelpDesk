@@ -53,14 +53,54 @@ final class TicketSession {
         currentFilters = filters
 
         do {
-            print("🌐 Calling TicketService.getTickets...")
-            let result = try await ticketService.getTickets(
+            print("🌐 Calling TicketService.searchTickets...")
+
+            // Convert filter sets to arrays of values
+            let queueIds: [String]? = filters.queueId != nil ? [filters.queueId!] : nil
+
+            let groupIds: [String]? = {
+                if let groupIds = filters.groupIds, !groupIds.isEmpty {
+                    return Array(groupIds)
+                } else if let groupId = filters.groupId {
+                    return [groupId]
+                }
+                return nil
+            }()
+
+            let assignedToUsers: [String]? = {
+                if let assignedToUsers = filters.assignedToUsers, !assignedToUsers.isEmpty {
+                    return Array(assignedToUsers)
+                } else if let assignedTo = filters.assignedTo {
+                    return [assignedTo]
+                }
+                return nil
+            }()
+
+            let statusValues: [String]? = {
+                if let statuses = filters.statuses, !statuses.isEmpty {
+                    return Array(statuses).map(\.rawValue)
+                } else if let status = filters.status {
+                    return [status.rawValue]
+                }
+                return nil
+            }()
+
+            let severityValues: [Double]? = {
+                if let severities = filters.severities, !severities.isEmpty {
+                    return Array(severities).map(\.rawValue)
+                } else if let severity = filters.severity {
+                    return [severity.rawValue]
+                }
+                return nil
+            }()
+
+            let result = try await ticketService.searchTickets(
                 familyId: familyId,
-                queueId: filters.queueId,
-                groupId: filters.groupId,
-                assignedTo: filters.assignedTo,
-                status: filters.status?.rawValue,
-                severity: filters.severity?.rawValue.description,
+                queueIds: queueIds,
+                groupIds: groupIds,
+                assignedToUsers: assignedToUsers,
+                statuses: statusValues,
+                severities: severityValues,
                 limit: 25,
                 nextToken: refresh ? nil : nextToken
             )
@@ -108,13 +148,52 @@ final class TicketSession {
         isLoadingMore = true
 
         do {
-            let result = try await ticketService.getTickets(
+            // Convert filter sets to arrays of values
+            let queueIds: [String]? = currentFilters.queueId != nil ? [currentFilters.queueId!] : nil
+
+            let groupIds: [String]? = {
+                if let groupIds = currentFilters.groupIds, !groupIds.isEmpty {
+                    return Array(groupIds)
+                } else if let groupId = currentFilters.groupId {
+                    return [groupId]
+                }
+                return nil
+            }()
+
+            let assignedToUsers: [String]? = {
+                if let assignedToUsers = currentFilters.assignedToUsers, !assignedToUsers.isEmpty {
+                    return Array(assignedToUsers)
+                } else if let assignedTo = currentFilters.assignedTo {
+                    return [assignedTo]
+                }
+                return nil
+            }()
+
+            let statusValues: [String]? = {
+                if let statuses = currentFilters.statuses, !statuses.isEmpty {
+                    return Array(statuses).map(\.rawValue)
+                } else if let status = currentFilters.status {
+                    return [status.rawValue]
+                }
+                return nil
+            }()
+
+            let severityValues: [Double]? = {
+                if let severities = currentFilters.severities, !severities.isEmpty {
+                    return Array(severities).map(\.rawValue)
+                } else if let severity = currentFilters.severity {
+                    return [severity.rawValue]
+                }
+                return nil
+            }()
+
+            let result = try await ticketService.searchTickets(
                 familyId: familyId,
-                queueId: currentFilters.queueId,
-                groupId: currentFilters.groupId,
-                assignedTo: currentFilters.assignedTo,
-                status: currentFilters.status?.rawValue,
-                severity: currentFilters.severity?.rawValue.description,
+                queueIds: queueIds,
+                groupIds: groupIds,
+                assignedToUsers: assignedToUsers,
+                statuses: statusValues,
+                severities: severityValues,
                 limit: 25,
                 nextToken: nextToken
             )
@@ -221,18 +300,51 @@ struct TicketFilters {
     var assignedTo: String?
     var status: TicketStatus?
     var severity: TicketSeverity?
+    var statuses: Set<TicketStatus>?
+    var severities: Set<TicketSeverity>?
+    var groupIds: Set<String>?
+    var assignedToUsers: Set<String>?
+    var searchQuery: String?
 
     init(
         queueId: String? = nil,
         groupId: String? = nil,
         assignedTo: String? = nil,
         status: TicketStatus? = nil,
-        severity: TicketSeverity? = nil
+        severity: TicketSeverity? = nil,
+        statuses: Set<TicketStatus>? = nil,
+        severities: Set<TicketSeverity>? = nil,
+        groupIds: Set<String>? = nil,
+        assignedToUsers: Set<String>? = nil,
+        searchQuery: String? = nil
     ) {
         self.queueId = queueId
         self.groupId = groupId
         self.assignedTo = assignedTo
         self.status = status
         self.severity = severity
+        self.statuses = statuses
+        self.severities = severities
+        self.groupIds = groupIds
+        self.assignedToUsers = assignedToUsers
+        self.searchQuery = searchQuery
+    }
+
+    // Computed properties for backward compatibility
+    var hasActiveFilters: Bool {
+        queueId != nil ||
+            groupId != nil ||
+            assignedTo != nil ||
+            status != nil ||
+            severity != nil ||
+            !(statuses?.isEmpty ?? true) ||
+            !(severities?.isEmpty ?? true) ||
+            !(groupIds?.isEmpty ?? true) ||
+            !(assignedToUsers?.isEmpty ?? true) ||
+            !isSearchQueryEmpty
+    }
+
+    var isSearchQueryEmpty: Bool {
+        searchQuery?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true
     }
 }

@@ -19,6 +19,11 @@ struct TicketDetailView: View {
     @State private var showCommentError = false
     @State private var editCommentError: String?
     @State private var showEditCommentError = false
+    @State private var resolveError: String?
+    @State private var showResolveError = false
+    @State private var isResolvingTicket = false
+    @State private var showResolveSuccess = false
+    @State private var resolveSuccessMessage = ""
 
     // Edit ticket state
     @State private var showEditTicket = false
@@ -46,11 +51,56 @@ struct TicketDetailView: View {
 
                 Spacer()
 
-                // Edit button
-                Button("Edit") {
-                    showEditTicket = true
+                // Action buttons
+                HStack(spacing: 12) {
+                    // Quick resolve button (only for open tickets)
+                    if ticket.status == .open {
+                        Button(action: {
+                            Task {
+                                await resolveTicket()
+                            }
+                        }) {
+                            HStack(spacing: 4) {
+                                if isResolvingTicket {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                } else {
+                                    Image(systemName: "checkmark.circle")
+                                }
+                                Text("Resolve")
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(isResolvingTicket)
+                    }
+
+                    // Quick reopen button (only for resolved tickets within reopen window)
+                    if ticket.status == .resolved, ticket.canReopen {
+                        Button(action: {
+                            Task {
+                                await reopenTicket()
+                            }
+                        }) {
+                            HStack(spacing: 4) {
+                                if isResolvingTicket {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                } else {
+                                    Image(systemName: "arrow.counterclockwise")
+                                }
+                                Text("Reopen")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(isResolvingTicket)
+                    }
+
+                    // Edit button
+                    Button("Edit") {
+                        showEditTicket = true
+                    }
+                    .buttonStyle(.bordered)
                 }
-                .buttonStyle(.bordered)
                 .padding(.trailing)
             }
             .frame(height: 44) // Standard navigation bar height
@@ -67,6 +117,23 @@ struct TicketDetailView: View {
             }
         }
         .navigationBarHidden(true)
+        .overlay(alignment: .top) {
+            // Success toast for resolve action
+            if showResolveSuccess {
+                HStack {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                    Text(resolveSuccessMessage)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                }
+                .padding()
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                .padding(.top, 60) // Account for navigation area
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .animation(.easeInOut(duration: 0.3), value: showResolveSuccess)
+            }
+        }
         .task {
             await loadComments()
         }
@@ -99,6 +166,11 @@ struct TicketDetailView: View {
             Button("OK") {}
         } message: {
             Text(editCommentError ?? "An error occurred while editing your comment.")
+        }
+        .alert("Resolve Error", isPresented: $showResolveError) {
+            Button("OK") {}
+        } message: {
+            Text(resolveError ?? "An error occurred while resolving the ticket.")
         }
     }
 
@@ -577,6 +649,90 @@ struct TicketDetailView: View {
         commentToDelete = nil
     }
 
+    // MARK: - Ticket Operations
+
+    @MainActor
+    private func resolveTicket() async {
+        isResolvingTicket = true
+        resolveError = nil
+
+        do {
+            let request = UpdateTicketRequest(
+                ticketId: ticket.ticketId,
+                title: nil,
+                description: nil,
+                severity: nil,
+                status: .resolved,
+                assignedTo: nil
+            )
+
+            let updatedTicket = try await ticketService.updateTicket(request: request)
+
+            // Update the local ticket state
+            ticket = updatedTicket
+
+            // Show success feedback
+            resolveSuccessMessage = "Ticket resolved successfully"
+            showResolveSuccess = true
+
+            // Hide success message after 2 seconds
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                showResolveSuccess = false
+            }
+
+            print("✅ Resolved ticket: \(ticket.ticketId)")
+        } catch let error as NetworkError {
+            handleResolveError(error)
+        } catch {
+            resolveError = "Failed to resolve ticket: \(error.localizedDescription)"
+            showResolveError = true
+            print("❌ Error resolving ticket: \(error)")
+        }
+
+        isResolvingTicket = false
+    }
+
+    @MainActor
+    private func reopenTicket() async {
+        isResolvingTicket = true
+        resolveError = nil
+
+        do {
+            let request = UpdateTicketRequest(
+                ticketId: ticket.ticketId,
+                title: nil,
+                description: nil,
+                severity: nil,
+                status: .open,
+                assignedTo: nil
+            )
+
+            let updatedTicket = try await ticketService.updateTicket(request: request)
+
+            // Update the local ticket state
+            ticket = updatedTicket
+
+            // Show success feedback
+            resolveSuccessMessage = "Ticket reopened successfully"
+            showResolveSuccess = true
+
+            // Hide success message after 2 seconds
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                showResolveSuccess = false
+            }
+
+            print("✅ Reopened ticket: \(ticket.ticketId)")
+        } catch let error as NetworkError {
+            handleResolveError(error)
+        } catch {
+            resolveError = "Failed to reopen ticket: \(error.localizedDescription)"
+            showResolveError = true
+            print("❌ Error reopening ticket: \(error)")
+        }
+
+        isResolvingTicket = false
+    }
+
     // MARK: - Error Handling
 
     private func handleCommentError(_ error: NetworkError) {
@@ -619,6 +775,28 @@ struct TicketDetailView: View {
             editCommentError = "An error occurred: \(error.localizedDescription)"
         }
         showEditCommentError = true
+    }
+
+    private func handleResolveError(_ error: NetworkError) {
+        switch error {
+        case .unauthorized:
+            resolveError = "You are not authorized to perform this action on this ticket"
+        case let .serverError(statusCode, message):
+            if statusCode == 403 {
+                resolveError = "You don't have permission to perform this action on this ticket"
+            } else if statusCode == 400 {
+                resolveError = "This ticket cannot be updated in its current state"
+            } else {
+                resolveError = message ?? "Server error occurred"
+            }
+        case .networkTimeout:
+            resolveError = "Request timed out. Please try again."
+        case .noConnection:
+            resolveError = "No internet connection. Please check your network."
+        default:
+            resolveError = "An error occurred: \(error.localizedDescription)"
+        }
+        showResolveError = true
     }
 }
 

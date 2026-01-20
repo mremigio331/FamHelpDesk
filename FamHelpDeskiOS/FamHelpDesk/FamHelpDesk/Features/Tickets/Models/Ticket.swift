@@ -39,17 +39,6 @@ enum TicketSeverity: Double, CaseIterable, Codable {
         }
     }
 
-    var apiValue: String {
-        switch self {
-        case .sev1: "SEV_1"
-        case .sev2: "SEV_2"
-        case .sev2_5: "SEV_2_5"
-        case .sev3: "SEV_3"
-        case .sev4: "SEV_4"
-        case .sev5: "SEV_5"
-        }
-    }
-
     var displayNumber: String {
         switch self {
         case .sev1: "1"
@@ -258,7 +247,9 @@ struct UpdateTicketRequest: Codable {
         if let severity {
             try container.encode(severity.rawValue, forKey: .severity)
         }
-        try container.encodeIfPresent(status, forKey: .status)
+        if let status {
+            try container.encode(status.rawValue, forKey: .status)
+        }
         try container.encodeIfPresent(assignedTo, forKey: .assignedTo)
     }
 }

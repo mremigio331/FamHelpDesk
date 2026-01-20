@@ -52,6 +52,7 @@ enum APIEndpoint {
 
     // Ticket endpoints
     case getTickets(familyId: String)
+    case searchTickets(familyId: String)
     case getTicket(familyId: String, ticketId: String)
     case getTicketById(ticketId: String)
     case createTicket
@@ -141,6 +142,8 @@ enum APIEndpoint {
             "/family/search"
         case let .getTickets(familyId):
             "/ticket/tickets/\(familyId)"
+        case let .searchTickets(familyId):
+            "/ticket/tickets/\(familyId)/search"
         case let .getTicket(familyId, ticketId):
             "/ticket/\(ticketId)"
         case .createTicket:

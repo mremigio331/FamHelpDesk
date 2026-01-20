@@ -6,6 +6,7 @@ struct TicketListView: View {
 
     @State private var viewModel: TicketListViewModel
     @State private var showCreateTicket = false
+    @State private var showFilterView = false
 
     init(familyId: String, filters: TicketFilters = TicketFilters()) {
         self.familyId = familyId
@@ -23,6 +24,17 @@ struct TicketListView: View {
 
                 Spacer()
 
+                // Filter button
+                Button(action: {
+                    showFilterView = true
+                }) {
+                    Image(systemName: hasActiveFilters ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(hasActiveFilters ? .blue : .primary)
+                }
+                .buttonStyle(.borderedProminent)
+                .clipShape(Circle())
+
                 // Create ticket button with plus icon
                 Button(action: {
                     showCreateTicket = true
@@ -36,6 +48,9 @@ struct TicketListView: View {
             }
             .frame(height: 44) // Standard navigation bar height
 
+            // Search bar
+            searchBar
+
             // Main content
             if viewModel.showLoadingState {
                 // Initial loading state
@@ -43,6 +58,9 @@ struct TicketListView: View {
             } else if viewModel.hasError {
                 // Error state
                 errorView
+            } else if viewModel.showSearchEmptyState {
+                // Search empty state
+                searchEmptyStateView
             } else if viewModel.showEmptyState {
                 // Empty state
                 emptyStateView
@@ -68,6 +86,61 @@ struct TicketListView: View {
                 }
             )
         }
+        .sheet(isPresented: $showFilterView) {
+            FilterView(
+                currentFilters: viewModel.filters,
+                familyId: familyId,
+                onApplyFilters: { newFilters in
+                    Task {
+                        await viewModel.updateFilters(newFilters)
+                    }
+                },
+                onClearFilters: {
+                    Task {
+                        await viewModel.updateFilters(TicketFilters())
+                    }
+                }
+            )
+        }
+    }
+
+    // MARK: - Search Bar
+
+    private var searchBar: some View {
+        HStack {
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.secondary)
+                    .font(.system(size: 16))
+
+                TextField("Search tickets...", text: $viewModel.searchText)
+                    .textFieldStyle(.plain)
+                    .onChange(of: viewModel.searchText) { _, newValue in
+                        viewModel.updateSearchText(newValue)
+                    }
+
+                if !viewModel.searchText.isEmpty {
+                    Button(action: {
+                        viewModel.clearSearch()
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.secondary)
+                            .font(.system(size: 16))
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color(uiColor: .systemGray6))
+            .cornerRadius(10)
+
+            if viewModel.isSearching {
+                ProgressView()
+                    .scaleEffect(0.8)
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
     }
 
     // MARK: - Loading View
@@ -169,6 +242,43 @@ struct TicketListView: View {
         .background(Color(uiColor: .systemBackground))
     }
 
+    // MARK: - Search Empty State View
+
+    private var searchEmptyStateView: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 60))
+                .foregroundColor(.gray)
+
+            VStack(spacing: 8) {
+                Text("No Results Found")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+
+                Text("No tickets match your search for \"\(viewModel.searchText)\". Try adjusting your search terms.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+            }
+
+            // Action buttons
+            HStack(spacing: 16) {
+                Button("Clear Search") {
+                    viewModel.clearSearch()
+                }
+                .buttonStyle(.borderedProminent)
+
+                Button("Create Ticket") {
+                    showCreateTicket = true
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(uiColor: .systemBackground))
+    }
+
     // MARK: - Tickets List
 
     private var ticketsList: some View {
@@ -179,7 +289,8 @@ struct TicketListView: View {
                     NavigationLink(destination: TicketDetailView(ticket: ticket)) {
                         TicketRowView(
                             ticket: ticket,
-                            isSelected: ticket.ticketId == viewModel.selectedTicketId
+                            isSelected: ticket.ticketId == viewModel.selectedTicketId,
+                            searchQuery: viewModel.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : viewModel.searchText
                         )
                     }
                     .onAppear {
@@ -251,6 +362,10 @@ struct TicketListView: View {
     }
 
     // MARK: - Helper Methods
+
+    private var hasActiveFilters: Bool {
+        viewModel.filters.hasActiveFilters
+    }
 
     private func formatRelativeTime(_ date: Date) -> String {
         let formatter = RelativeDateTimeFormatter()

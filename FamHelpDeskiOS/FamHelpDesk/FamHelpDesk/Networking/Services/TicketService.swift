@@ -10,51 +10,32 @@ final class TicketService {
 
     // MARK: - Ticket CRUD Operations
 
-    /// Get tickets with pagination support and multiple filter options
-    func getTickets(
+    /// Search tickets with pagination support and multiple filter options
+    func searchTickets(
         familyId: String,
-        queueId: String? = nil,
-        groupId: String? = nil,
-        assignedTo: String? = nil,
-        status: String? = nil,
-        severity: String? = nil,
+        queueIds: [String]? = nil,
+        groupIds: [String]? = nil,
+        assignedToUsers: [String]? = nil,
+        statuses: [String]? = nil,
+        severities: [Double]? = nil,
         limit: Int = 25,
         nextToken: String? = nil
     ) async throws -> PaginatedTickets {
-        var queryItems: [URLQueryItem] = [
-            URLQueryItem(name: "limit", value: String(limit)),
-        ]
-
-        // Add filter parameters if provided
-        if let queueId {
-            queryItems.append(URLQueryItem(name: "queue_id", value: queueId))
-        }
-        if let groupId {
-            queryItems.append(URLQueryItem(name: "group_id", value: groupId))
-        }
-        if let assignedTo {
-            queryItems.append(URLQueryItem(name: "assigned_to", value: assignedTo))
-        }
-        if let status {
-            queryItems.append(URLQueryItem(name: "status", value: status))
-        }
-        if let severity {
-            queryItems.append(URLQueryItem(name: "severity", value: severity))
-        }
-        if let nextToken {
-            queryItems.append(URLQueryItem(name: "next_token", value: nextToken))
-        }
+        let request = SearchTicketsRequest(
+            queueIds: queueIds,
+            groupIds: groupIds,
+            assignedToUsers: assignedToUsers,
+            statuses: statuses,
+            severities: severities,
+            limit: limit,
+            nextToken: nextToken
+        )
 
         do {
-            // First, let's get the raw data to see what we're receiving
-            let rawData = try await networkManager.getRawData(
-                endpoint: APIEndpoint.getTickets(familyId: familyId).path,
-                queryItems: queryItems
+            let response: GetTicketsResponse = try await networkManager.post(
+                endpoint: APIEndpoint.searchTickets(familyId: familyId).path,
+                body: request
             )
-
-            // Now try to decode it
-            let decoder = JSONDecoder()
-            let response = try decoder.decode(GetTicketsResponse.self, from: rawData)
 
             return PaginatedTickets(
                 tickets: response.tickets,
@@ -63,6 +44,31 @@ final class TicketService {
         } catch {
             throw error
         }
+    }
+
+    /// Get tickets with pagination support and multiple filter options (legacy method)
+    /// Use searchTickets for new implementations
+    func getTickets(
+        familyId: String,
+        queueId: String? = nil,
+        groupId: String? = nil,
+        assignedTo: String? = nil,
+        status: String? = nil,
+        severities: [Double]? = nil,
+        limit: Int = 25,
+        nextToken: String? = nil
+    ) async throws -> PaginatedTickets {
+        // Convert single values to arrays for the new search method
+        try await searchTickets(
+            familyId: familyId,
+            queueIds: queueId != nil ? [queueId!] : nil,
+            groupIds: groupId != nil ? [groupId!] : nil,
+            assignedToUsers: assignedTo != nil ? [assignedTo!] : nil,
+            statuses: status != nil ? [status!] : nil,
+            severities: severities,
+            limit: limit,
+            nextToken: nextToken
+        )
     }
 
     /// Get a single ticket by family ID and ticket ID
@@ -177,6 +183,26 @@ final class TicketService {
 }
 
 // MARK: - Response Models
+
+struct SearchTicketsRequest: Codable {
+    let queueIds: [String]?
+    let groupIds: [String]?
+    let assignedToUsers: [String]?
+    let statuses: [String]?
+    let severities: [Double]?
+    let limit: Int
+    let nextToken: String?
+
+    enum CodingKeys: String, CodingKey {
+        case queueIds = "queue_ids"
+        case groupIds = "group_ids"
+        case assignedToUsers = "assigned_to_users"
+        case statuses
+        case severities
+        case limit
+        case nextToken = "next_token"
+    }
+}
 
 struct GetTicketResponse: Codable {
     let ticket: Ticket

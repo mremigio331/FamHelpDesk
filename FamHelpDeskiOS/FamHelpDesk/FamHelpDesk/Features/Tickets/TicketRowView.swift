@@ -3,10 +3,12 @@ import SwiftUI
 struct TicketRowView: View {
     let ticket: Ticket
     let isSelected: Bool
+    let searchQuery: String?
 
-    init(ticket: Ticket, isSelected: Bool = false) {
+    init(ticket: Ticket, isSelected: Bool = false, searchQuery: String? = nil) {
         self.ticket = ticket
         self.isSelected = isSelected
+        self.searchQuery = searchQuery
     }
 
     var body: some View {
@@ -20,12 +22,19 @@ struct TicketRowView: View {
 
             // Main content section
             VStack(alignment: .leading, spacing: 6) {
-                // Title
-                Text(ticket.title)
-                    .font(.headline)
-                    .foregroundColor(.primary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
+                // Title with search highlighting
+                if let searchQuery, !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text(highlightedTitle)
+                        .font(.headline)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                } else {
+                    Text(ticket.title)
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                }
 
                 // Status badge under title
                 HStack {
@@ -153,6 +162,39 @@ struct TicketRowView: View {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
         return formatter.localizedString(for: date, relativeTo: Date())
+    }
+
+    // MARK: - Search Highlighting
+
+    private var highlightedTitle: AttributedString {
+        guard let searchQuery = searchQuery?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !searchQuery.isEmpty
+        else {
+            return AttributedString(ticket.title)
+        }
+
+        var attributedString = AttributedString(ticket.title)
+
+        // Find all occurrences of the search query (case-insensitive)
+        let lowercaseTitle = ticket.title.lowercased()
+        let lowercaseQuery = searchQuery.lowercased()
+
+        var searchRange = lowercaseTitle.startIndex
+
+        while let range = lowercaseTitle.range(of: lowercaseQuery, range: searchRange ..< lowercaseTitle.endIndex) {
+            // Convert String.Index to AttributedString.Index
+            let startIndex = AttributedString.Index(range.lowerBound, within: attributedString)
+            let endIndex = AttributedString.Index(range.upperBound, within: attributedString)
+
+            if let startIndex, let endIndex {
+                attributedString[startIndex ..< endIndex].backgroundColor = Color.yellow
+                attributedString[startIndex ..< endIndex].foregroundColor = Color.black
+            }
+
+            searchRange = range.upperBound
+        }
+
+        return attributedString
     }
 }
 

@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import SwiftUI
 
 @Observable
 final class TicketListViewModel {
@@ -21,8 +22,54 @@ final class TicketListViewModel {
     var hasError = false
     var errorType: TicketListError?
 
+    // Search state
+    var searchText = ""
+    var isSearching = false
+    private var searchTask: Task<Void, Never>?
+
     // Computed properties from session
-    var tickets: [Ticket] { ticketSession.tickets }
+    var tickets: [Ticket] {
+        var filteredTickets = ticketSession.tickets
+
+        // Apply client-side status filtering
+        if let statuses = filters.statuses, !statuses.isEmpty {
+            filteredTickets = filteredTickets.filter { ticket in
+                statuses.contains(ticket.status)
+            }
+        } else if let status = filters.status {
+            filteredTickets = filteredTickets.filter { ticket in
+                ticket.status == status
+            }
+        }
+
+        // Apply client-side severity filtering
+        if let severities = filters.severities, !severities.isEmpty {
+            filteredTickets = filteredTickets.filter { ticket in
+                severities.contains(ticket.severity)
+            }
+        } else if let severity = filters.severity {
+            filteredTickets = filteredTickets.filter { ticket in
+                ticket.severity == severity
+            }
+        }
+
+        // Apply client-side group filtering
+        if let groupId = filters.groupId {
+            filteredTickets = filteredTickets.filter { ticket in
+                ticket.groupId.id == groupId
+            }
+        }
+
+        // Apply client-side search filtering
+        if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            filteredTickets = filteredTickets.filter { ticket in
+                searchMatches(ticket: ticket, query: searchText)
+            }
+        }
+
+        return filteredTickets
+    }
+
     var isLoading: Bool { ticketSession.isLoading }
     var isLoadingMore: Bool { ticketSession.isLoadingMore }
     var hasMore: Bool { ticketSession.hasMore }
@@ -34,6 +81,12 @@ final class TicketListViewModel {
     var showLoadingState: Bool { isLoading && tickets.isEmpty }
     var canRefresh: Bool { !isLoading && !isLoadingMore }
     var canLoadMore: Bool { hasMore && !isLoading && !isLoadingMore }
+    var showSearchEmptyState: Bool {
+        !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+            tickets.isEmpty &&
+            !isLoading &&
+            !hasError
+    }
 
     init(familyId: String, filters: TicketFilters = TicketFilters()) {
         self.familyId = familyId
@@ -235,6 +288,95 @@ final class TicketListViewModel {
     /// Gets tickets by severity for filtering
     func tickets(with severity: TicketSeverity) -> [Ticket] {
         tickets.filter { $0.severity == severity }
+    }
+
+    // MARK: - Search Methods
+
+    /// Updates search text with debouncing
+    @MainActor
+    func updateSearchText(_ newText: String) {
+        searchText = newText
+
+        // Cancel previous search task
+        searchTask?.cancel()
+
+        // If search is empty, clear immediately
+        if newText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            isSearching = false
+            return
+        }
+
+        // Debounce search with 300ms delay
+        searchTask = Task {
+            isSearching = true
+
+            try? await Task.sleep(nanoseconds: 300_000_000) // 300ms
+
+            if !Task.isCancelled {
+                isSearching = false
+            }
+        }
+    }
+
+    /// Clears search text and results
+    @MainActor
+    func clearSearch() {
+        searchTask?.cancel()
+        searchText = ""
+        isSearching = false
+    }
+
+    /// Checks if a ticket matches the search query
+    private func searchMatches(ticket: Ticket, query: String) -> Bool {
+        let searchQuery = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        guard !searchQuery.isEmpty else { return true }
+
+        // Search in title
+        if ticket.title.lowercased().contains(searchQuery) {
+            return true
+        }
+
+        // Search in description
+        if let description = ticket.description,
+           description.lowercased().contains(searchQuery)
+        {
+            return true
+        }
+
+        return false
+    }
+
+    /// Gets highlighted text for search results
+    func highlightedText(for text: String, query: String) -> AttributedString {
+        let searchQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !searchQuery.isEmpty else {
+            return AttributedString(text)
+        }
+
+        var attributedString = AttributedString(text)
+
+        // Find all occurrences of the search query (case-insensitive)
+        let lowercaseText = text.lowercased()
+        let lowercaseQuery = searchQuery.lowercased()
+
+        var searchRange = lowercaseText.startIndex
+
+        while let range = lowercaseText.range(of: lowercaseQuery, range: searchRange ..< lowercaseText.endIndex) {
+            // Convert String.Index to AttributedString.Index
+            let startIndex = AttributedString.Index(range.lowerBound, within: attributedString)
+            let endIndex = AttributedString.Index(range.upperBound, within: attributedString)
+
+            if let startIndex, let endIndex {
+                attributedString[startIndex ..< endIndex].backgroundColor = Color.yellow
+                attributedString[startIndex ..< endIndex].foregroundColor = Color.black
+            }
+
+            searchRange = range.upperBound
+        }
+
+        return attributedString
     }
 }
 
