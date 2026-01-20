@@ -32,7 +32,9 @@ struct FilterView: View {
         self.onClearFilters = onClearFilters
 
         // Initialize state from current filters
-        _selectedStatuses = State(initialValue: currentFilters.statuses ?? (currentFilters.status != nil ? Set([currentFilters.status!]) : []))
+        // If no statuses are set, default to open only
+        let initialStatuses = currentFilters.statuses ?? (currentFilters.status != nil ? Set([currentFilters.status!]) : [.open])
+        _selectedStatuses = State(initialValue: initialStatuses)
         _selectedSeverities = State(initialValue: currentFilters.severities ?? (currentFilters.severity != nil ? Set([currentFilters.severity!]) : []))
 
         // Initialize groups - support both single and multiple
@@ -190,13 +192,27 @@ struct FilterView: View {
 
     private var statusFilterSection: some View {
         FilterSection(title: "Status") {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 12) {
-                ForEach(TicketStatus.allCases, id: \.self) { status in
-                    FilterToggleButton(
-                        title: status.rawValue.capitalized,
-                        isSelected: selectedStatuses.contains(status)
-                    ) {
-                        toggleStatus(status)
+            VStack(alignment: .leading, spacing: 12) {
+                // Default indicator
+                if selectedStatuses == [.open] {
+                    HStack {
+                        Image(systemName: "info.circle")
+                            .foregroundColor(.blue)
+                            .font(.caption)
+                        Text("Showing open tickets by default")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 12) {
+                    ForEach(TicketStatus.allCases, id: \.self) { status in
+                        FilterToggleButton(
+                            title: status.rawValue.capitalized,
+                            isSelected: selectedStatuses.contains(status)
+                        ) {
+                            toggleStatus(status)
+                        }
                     }
                 }
             }
@@ -276,7 +292,10 @@ struct FilterView: View {
     // MARK: - Helper Methods
 
     private var hasActiveFilters: Bool {
-        !selectedStatuses.isEmpty ||
+        // Don't count "open only" as an active filter since it's the default
+        let hasNonDefaultStatuses = selectedStatuses != [.open]
+        
+        return hasNonDefaultStatuses ||
             !selectedSeverities.isEmpty ||
             !selectedGroups.isEmpty ||
             !selectedAssignedUsers.isEmpty ||
@@ -382,7 +401,7 @@ struct FilterView: View {
     }
 
     private func clearAllFilters() {
-        selectedStatuses.removeAll()
+        selectedStatuses = [.open] // Reset to default (open only)
         selectedSeverities.removeAll()
         selectedGroups.removeAll()
         selectedAssignedUsers.removeAll()

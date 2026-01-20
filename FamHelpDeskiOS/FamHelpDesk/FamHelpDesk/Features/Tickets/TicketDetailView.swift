@@ -539,6 +539,9 @@ struct TicketDetailView: View {
             // Add comment to list and clear input on success
             comments.append(newComment)
             newCommentText = ""
+            
+            // Invalidate ticket cache to refresh last_update_time and other changes
+            await TicketSession.shared.invalidateTickets()
 
             print("✅ Created comment: \(newComment.commentId)")
         } catch let error as NetworkError {
@@ -601,6 +604,9 @@ struct TicketDetailView: View {
             if let index = comments.firstIndex(where: { $0.commentId == comment.commentId }) {
                 comments[index] = updatedComment
             }
+            
+            // Invalidate ticket cache to refresh last_update_time
+            await TicketSession.shared.invalidateTickets()
 
             cancelEditingComment()
             print("✅ Updated comment: \(comment.commentId)")
@@ -636,6 +642,9 @@ struct TicketDetailView: View {
 
             // Remove the comment from the list
             comments.removeAll { $0.commentId == comment.commentId }
+            
+            // Invalidate ticket cache to refresh last_update_time
+            await TicketSession.shared.invalidateTickets()
 
             print("✅ Deleted comment: \(comment.commentId)")
         } catch let error as NetworkError {
@@ -670,6 +679,10 @@ struct TicketDetailView: View {
 
             // Update the local ticket state
             ticket = updatedTicket
+            
+            // Update the ticket in cache (TicketSession.updateTicket would handle this, but we're calling service directly)
+            TicketSession.shared.updateTicketInCache(updatedTicket)
+            await TicketSession.shared.invalidateTickets()
 
             // Show success feedback
             resolveSuccessMessage = "Ticket resolved successfully"
@@ -711,6 +724,10 @@ struct TicketDetailView: View {
 
             // Update the local ticket state
             ticket = updatedTicket
+            
+            // Update the ticket in cache (TicketSession.updateTicket would handle this, but we're calling service directly)
+            TicketSession.shared.updateTicketInCache(updatedTicket)
+            await TicketSession.shared.invalidateTickets()
 
             // Show success feedback
             resolveSuccessMessage = "Ticket reopened successfully"

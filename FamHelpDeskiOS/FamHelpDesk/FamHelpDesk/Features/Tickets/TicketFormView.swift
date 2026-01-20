@@ -495,9 +495,23 @@ struct TicketFormView: View {
             assignedTo: selectedAssignedUser?.userId
         )
 
-        let ticket = try await ticketService.createTicket(request: request)
-        print("✅ Created ticket: \(ticket.ticketId)")
-        return ticket
+        // Use TicketSession to create the ticket so cache management happens automatically
+        let success = await ticketSession.createTicket(request: request)
+        
+        if !success {
+            throw NetworkError.serverError(statusCode: 500, message: "Failed to create ticket")
+        }
+        
+        // Get the newly created ticket from the cache (should be at index 0)
+        if let newTicket = ticketSession.tickets.first {
+            print("✅ Created ticket: \(newTicket.ticketId)")
+            return newTicket
+        } else {
+            // Fallback: call the service directly if not found in cache
+            let ticket = try await ticketService.createTicket(request: request)
+            print("✅ Created ticket (fallback): \(ticket.ticketId)")
+            return ticket
+        }
     }
 
     private func updateTicket() async throws -> Ticket {
@@ -514,9 +528,23 @@ struct TicketFormView: View {
             assignedTo: selectedAssignedUser?.userId
         )
 
-        let ticket = try await ticketService.updateTicket(request: request)
-        print("✅ Updated ticket: \(ticket.ticketId)")
-        return ticket
+        // Use TicketSession to update the ticket so cache invalidation happens automatically
+        let success = await ticketSession.updateTicket(ticketId: originalTicket.ticketId, request: request)
+        
+        if !success {
+            throw NetworkError.serverError(statusCode: 500, message: "Failed to update ticket")
+        }
+        
+        // Get the updated ticket from the cache
+        if let updatedTicket = ticketSession.tickets.first(where: { $0.ticketId == originalTicket.ticketId }) {
+            print("✅ Updated ticket: \(updatedTicket.ticketId)")
+            return updatedTicket
+        } else {
+            // Fallback: call the service directly if not found in cache
+            let ticket = try await ticketService.updateTicket(request: request)
+            print("✅ Updated ticket (fallback): \(ticket.ticketId)")
+            return ticket
+        }
     }
 
     // MARK: - Error Handling
