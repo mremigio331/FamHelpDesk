@@ -772,7 +772,7 @@ class TicketHelper:
     def get_tickets_by_severity(
         self,
         family_id: str,
-        severity: str,
+        severity: float,
         limit: int = 25,
         last_evaluated_key: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
@@ -782,7 +782,7 @@ class TicketHelper:
 
         Args:
             family_id: The family ID this ticket belongs to
-            severity: The severity to filter by (SEV_1, SEV_2, SEV_2_5, SEV_3, SEV_4, SEV_5)
+            severity: The severity to filter by (1.0, 2.0, 2.5, 3.0, 4.0, 5.0)
             limit: Maximum number of tickets to return (default: 25)
             last_evaluated_key: Pagination token from previous request
 
@@ -796,6 +796,96 @@ class TicketHelper:
             filter_func=lambda item: hasattr(item, "severity")
             and item.severity == severity,
             filter_description=f"with severity {severity}",
+            limit=limit,
+            last_evaluated_key=last_evaluated_key,
+        )
+
+    def get_tickets_with_multiple_filters(
+        self,
+        family_id: str,
+        queue_ids: Optional[List[str]] = None,
+        group_ids: Optional[List[str]] = None,
+        assigned_to_users: Optional[List[str]] = None,
+        statuses: Optional[List[str]] = None,
+        severities: Optional[List[float]] = None,
+        limit: int = 25,
+        last_evaluated_key: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Query tickets with multiple filters applied simultaneously.
+        Uses TicketTimeIndex GSI with batch-and-filter approach for time-ordered results.
+
+        Args:
+            family_id: The family ID this ticket belongs to
+            queue_ids: Optional list of queue IDs to filter by
+            group_ids: Optional list of group IDs to filter by
+            assigned_to_users: Optional list of user IDs to filter by assigned tickets
+            statuses: Optional list of statuses to filter by (OPEN, RESOLVED, CLOSED)
+            severities: Optional list of severities to filter by (1.0, 2.0, 2.5, 3.0, 4.0, 5.0)
+            limit: Maximum number of tickets to return (default: 25)
+            last_evaluated_key: Pagination token from previous request
+
+        Returns:
+            Dict containing:
+                - tickets: List[TicketModel] - List of tickets matching all filters ordered by last_update_time (most recent first)
+                - next_token: Optional[Dict] - Pagination token for next page (None if no more results)
+        """
+        # Build filter description for logging
+        filter_parts = []
+        if queue_ids:
+            filter_parts.append(f"queue_ids={queue_ids}")
+        if group_ids:
+            filter_parts.append(f"group_ids={group_ids}")
+        if assigned_to_users:
+            filter_parts.append(f"assigned_to_users={assigned_to_users}")
+        if statuses:
+            filter_parts.append(f"statuses={statuses}")
+        if severities:
+            filter_parts.append(f"severities={severities}")
+
+        filter_description = (
+            f"with filters: {', '.join(filter_parts)}" if filter_parts else "no filters"
+        )
+
+        def multi_filter_func(item) -> bool:
+            """Apply all filters to a ticket item."""
+            # Queue filter (OR logic within the list)
+            if queue_ids and (
+                not hasattr(item, "queue_id") or item.queue_id not in queue_ids
+            ):
+                return False
+
+            # Group filter (OR logic within the list)
+            if group_ids and (
+                not hasattr(item, "group_id") or item.group_id not in group_ids
+            ):
+                return False
+
+            # Assigned to filter (OR logic within the list)
+            if assigned_to_users and (
+                not hasattr(item, "assigned_to")
+                or item.assigned_to not in assigned_to_users
+            ):
+                return False
+
+            # Status filter (OR logic within the list)
+            if statuses and (
+                not hasattr(item, "status") or item.status not in statuses
+            ):
+                return False
+
+            # Severities filter (OR logic within the list)
+            if severities and (
+                not hasattr(item, "severity") or item.severity not in severities
+            ):
+                return False
+
+            return True
+
+        return self._get_tickets_with_filter(
+            family_id=family_id,
+            filter_func=multi_filter_func,
+            filter_description=filter_description,
             limit=limit,
             last_evaluated_key=last_evaluated_key,
         )
