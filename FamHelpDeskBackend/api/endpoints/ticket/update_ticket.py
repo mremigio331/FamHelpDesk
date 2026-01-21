@@ -29,6 +29,8 @@ class UpdateTicketRequest(BaseModel):
     severity: Optional[float] = None
     status: Optional[str] = None
     assigned_to: Optional[str] = None
+    group_id: Optional[str] = None
+    queue_id: Optional[str] = None
 
     @validator("ticket_id")
     def validate_ticket_id_not_empty(cls, v):
@@ -36,7 +38,7 @@ class UpdateTicketRequest(BaseModel):
             raise ValueError("Ticket ID cannot be empty")
         return v.strip()
 
-    @validator("title", "description", "status", "assigned_to")
+    @validator("title", "description", "status", "assigned_to", "group_id", "queue_id")
     def validate_optional_fields_not_empty_string(cls, v):
         if v is not None:
             v = v.strip()
@@ -66,7 +68,7 @@ def update_ticket(request: Request, body: UpdateTicketRequest):
         helper = TicketHelper(request_id=request.state.request_id)
 
         if any(
-            [body.title, body.description, body.severity, body.status, body.assigned_to]
+            [body.title, body.description, body.severity, body.status, body.assigned_to, body.group_id, body.queue_id]
         ):
             updated_ticket = helper.update_ticket_by_id(
                 ticket_id=body.ticket_id,
@@ -76,6 +78,8 @@ def update_ticket(request: Request, body: UpdateTicketRequest):
                 severity=body.severity,
                 status=body.status,
                 assigned_to=body.assigned_to,
+                group_id=body.group_id,
+                queue_id=body.queue_id,
             )
         else:
             # No fields to update, just return the existing ticket

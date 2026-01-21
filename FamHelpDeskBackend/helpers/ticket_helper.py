@@ -188,6 +188,8 @@ class TicketHelper:
         severity: Optional[float] = None,
         status: Optional[str] = None,
         assigned_to: Optional[str] = None,
+        group_id: Optional[str] = None,
+        queue_id: Optional[str] = None,
     ) -> TicketModel:
         """
         Update an existing ticket by ticket_id only with validation of status transitions and business rules.
@@ -200,6 +202,8 @@ class TicketHelper:
             severity: Optional new severity
             status: Optional new status
             assigned_to: Optional new assigned user
+            group_id: Optional new group ID
+            queue_id: Optional new queue ID
 
         Returns:
             TicketModel: The updated ticket
@@ -224,6 +228,8 @@ class TicketHelper:
             severity=severity,
             status=status,
             assigned_to=assigned_to,
+            group_id=group_id,
+            queue_id=queue_id,
         )
 
     def update_ticket(
