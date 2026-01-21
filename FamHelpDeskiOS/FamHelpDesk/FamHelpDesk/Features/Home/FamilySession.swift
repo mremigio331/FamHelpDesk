@@ -34,4 +34,17 @@ final class FamilySession {
     func refresh() async {
         await fetchMyFamilies()
     }
+
+    @MainActor
+    func updateFamilyInCache(_ updatedFamily: Family) {
+        // Update the family in the cache if it exists
+        if let existingItem = myFamilies[updatedFamily.familyId] {
+            let updatedItem = MyFamilyItem(
+                family: updatedFamily,
+                membership: existingItem.membership
+            )
+            myFamilies[updatedFamily.familyId] = updatedItem
+            familiesArray = Array(myFamilies.values).sorted { $0.family.createdAt > $1.family.createdAt }
+        }
+    }
 }

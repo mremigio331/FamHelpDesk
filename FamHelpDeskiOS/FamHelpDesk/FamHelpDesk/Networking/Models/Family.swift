@@ -80,3 +80,17 @@ struct CreateFamilyRequest: Codable {
 struct CreateFamilyResponse: Codable {
     let family: Family
 }
+
+struct UpdateFamilyRequest: Codable {
+    let familyName: String
+    let familyDescription: String?
+
+    enum CodingKeys: String, CodingKey {
+        case familyName = "family_name"
+        case familyDescription = "family_description"
+    }
+}
+
+struct UpdateFamilyResponse: Codable {
+    let family: Family
+}

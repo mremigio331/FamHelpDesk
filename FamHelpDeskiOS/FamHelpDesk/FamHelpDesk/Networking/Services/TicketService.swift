@@ -110,11 +110,20 @@ final class TicketService {
 
     /// Update an existing ticket
     func updateTicket(request: UpdateTicketRequest) async throws -> Ticket {
+        print("🔍 UpdateTicketRequest being sent:")
+
         do {
             let response: UpdateTicketResponse = try await networkManager.put(
                 endpoint: APIEndpoint.updateTicket.path,
                 body: request
             )
+
+            // Debug: Print what we got back
+            print("🔍 UpdateTicketResponse received:")
+            print("   - ticketId: \(response.ticket.ticketId)")
+            print("   - groupId: \(response.ticket.groupId.id) (\(response.ticket.groupId.name ?? "no name"))")
+            print("   - queueId: \(response.ticket.queueId.id) (\(response.ticket.queueId.name ?? "no name"))")
+
             return response.ticket
         } catch {
             throw error

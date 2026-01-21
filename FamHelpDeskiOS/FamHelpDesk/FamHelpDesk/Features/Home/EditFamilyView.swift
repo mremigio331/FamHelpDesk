@@ -1,15 +1,22 @@
 import SwiftUI
 
-struct CreateFamilyView: View {
+struct EditFamilyView: View {
+    let family: Family
     @Environment(\.dismiss) private var dismiss
-    @State private var familyName = ""
-    @State private var familyDescription = ""
-    @State private var isCreating = false
+    @State private var familyName: String
+    @State private var familyDescription: String
+    @State private var isUpdating = false
     @State private var errorMessage: String?
     @State private var showError = false
 
     private let familyService = FamilyService()
     private let familySession = FamilySession.shared
+
+    init(family: Family) {
+        self.family = family
+        _familyName = State(initialValue: family.familyName)
+        _familyDescription = State(initialValue: family.familyDescription ?? "")
+    }
 
     private var isFormValid: Bool {
         let trimmedName = familyName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -19,9 +26,18 @@ struct CreateFamilyView: View {
             familyDescription.count <= 200
     }
 
+    private var hasChanges: Bool {
+        let trimmedName = familyName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedDescription = familyDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        let originalDescription = family.familyDescription ?? ""
+
+        return trimmedName != family.familyName ||
+            trimmedDescription != originalDescription
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            // Navigation toolbar with back button and create
+            // Navigation toolbar with back button and save
             HStack {
                 Button("Cancel") {
                     dismiss()
@@ -30,18 +46,20 @@ struct CreateFamilyView: View {
 
                 Spacer()
 
-                Text("Create Family")
+                Text("Edit Family")
                     .font(.headline)
                     .fontWeight(.semibold)
 
                 Spacer()
 
-                Button(isCreating ? "Creating..." : "Create") {
-                    createFamily()
+                Button(isUpdating ? "Saving..." : "Save") {
+                    Task {
+                        await updateFamily()
+                    }
                 }
-                .foregroundColor(isFormValid && !isCreating ? .blue : .gray)
+                .foregroundColor(isFormValid && hasChanges && !isUpdating ? .blue : .gray)
                 .fontWeight(.semibold)
-                .disabled(!isFormValid || isCreating)
+                .disabled(!isFormValid || !hasChanges || isUpdating)
             }
             .padding(.horizontal)
             .padding(.vertical, 12)
@@ -56,8 +74,8 @@ struct CreateFamilyView: View {
             Form {
                 Section {
                     TextField("Family Name", text: $familyName)
-                        .autocapitalization(.words)
-                        .disabled(isCreating)
+                        .textInputAutocapitalization(.words)
+                        .disabled(isUpdating)
                 } header: {
                     Text("Family Name")
                 } footer: {
@@ -78,7 +96,8 @@ struct CreateFamilyView: View {
                 Section {
                     TextField("Description", text: $familyDescription, axis: .vertical)
                         .lineLimit(3 ... 6)
-                        .disabled(isCreating)
+                        .textInputAutocapitalization(.sentences)
+                        .disabled(isUpdating)
                 } header: {
                     Text("Description")
                 } footer: {
@@ -95,6 +114,29 @@ struct CreateFamilyView: View {
                     .foregroundColor(.secondary)
                 }
 
+                Section {
+                    HStack {
+                        Text("Family ID")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text(family.familyId)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .textSelection(.enabled)
+                    }
+
+                    HStack {
+                        Text("Created")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text(formatDate(family.createdAt))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                } header: {
+                    Text("Family Information")
+                }
+
                 if let errorMessage {
                     Section {
                         Text(errorMessage)
@@ -103,9 +145,9 @@ struct CreateFamilyView: View {
                     }
                 }
             }
-            .interactiveDismissDisabled(isCreating)
+            .interactiveDismissDisabled(isUpdating)
             .overlay {
-                if isCreating {
+                if isUpdating {
                     ZStack {
                         Color.black.opacity(0.3)
                             .ignoresSafeArea()
@@ -113,7 +155,7 @@ struct CreateFamilyView: View {
                         VStack(spacing: 16) {
                             ProgressView()
                                 .scaleEffect(1.5)
-                            Text("Creating Family...")
+                            Text("Updating Family...")
                                 .font(.headline)
                         }
                         .padding(32)
@@ -127,37 +169,55 @@ struct CreateFamilyView: View {
         .navigationBarHidden(true)
     }
 
-    private func createFamily() {
-        guard isFormValid else { return }
+    @MainActor
+    private func updateFamily() async {
+        isUpdating = true
+        errorMessage = nil
 
-        Task { @MainActor in
-            isCreating = true
-            errorMessage = nil
+        let trimmedName = familyName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedDescription = familyDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        let finalDescription = trimmedDescription.isEmpty ? nil : trimmedDescription
 
-            do {
-                let trimmedName = familyName.trimmingCharacters(in: .whitespacesAndNewlines)
-                let trimmedDescription = familyDescription.trimmingCharacters(in: .whitespacesAndNewlines)
-                let finalDescription = trimmedDescription.isEmpty ? nil : trimmedDescription
+        do {
+            let updatedFamily = try await familyService.updateFamily(
+                familyId: family.familyId,
+                name: trimmedName,
+                description: finalDescription
+            )
 
-                let _ = try await familyService.createFamily(
-                    name: trimmedName,
-                    description: finalDescription
-                )
+            // Update the family in cache for immediate UI update
+            familySession.updateFamilyInCache(updatedFamily)
 
-                // Refresh families list
-                await familySession.refresh()
-
-                // Dismiss after successful creation
-                dismiss()
-            } catch {
-                isCreating = false
-                errorMessage = "Failed to create family: \(error.localizedDescription)"
-                showError = true
-            }
+            // Dismiss after successful update
+            dismiss()
+        } catch {
+            isUpdating = false
+            errorMessage = "Failed to update family: \(error.localizedDescription)"
+            showError = true
         }
+    }
+
+    private func formatDate(_ dateString: String) -> String {
+        let formatter = ISO8601DateFormatter()
+        guard let date = formatter.date(from: dateString) else {
+            return dateString
+        }
+
+        let displayFormatter = DateFormatter()
+        displayFormatter.dateStyle = .medium
+        displayFormatter.timeStyle = .none
+        return displayFormatter.string(from: date)
     }
 }
 
 #Preview {
-    CreateFamilyView()
+    EditFamilyView(
+        family: Family(
+            familyId: "123",
+            familyName: "Smith Family",
+            familyDescription: "Our family group for managing household tasks and activities",
+            createdBy: "user123",
+            creationDate: Date().timeIntervalSince1970
+        )
+    )
 }

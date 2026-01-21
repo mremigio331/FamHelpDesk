@@ -229,6 +229,8 @@ struct UpdateTicketRequest: Codable {
     let severity: TicketSeverity?
     let status: TicketStatus?
     let assignedTo: String?
+    let groupId: String?
+    let queueId: String?
 
     enum CodingKeys: String, CodingKey {
         case ticketId = "ticket_id"
@@ -237,6 +239,8 @@ struct UpdateTicketRequest: Codable {
         case severity
         case status
         case assignedTo = "assigned_to"
+        case groupId = "group_id"
+        case queueId = "queue_id"
     }
 
     func encode(to encoder: Encoder) throws {
@@ -251,6 +255,8 @@ struct UpdateTicketRequest: Codable {
             try container.encode(status.rawValue, forKey: .status)
         }
         try container.encodeIfPresent(assignedTo, forKey: .assignedTo)
+        try container.encodeIfPresent(groupId, forKey: .groupId)
+        try container.encodeIfPresent(queueId, forKey: .queueId)
     }
 }
 

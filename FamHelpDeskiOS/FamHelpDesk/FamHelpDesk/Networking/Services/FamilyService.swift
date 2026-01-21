@@ -70,6 +70,35 @@ final class FamilyService {
         }
     }
 
+    /// Updates an existing family with input validation and enhanced error handling
+    /// - Parameters:
+    ///   - familyId: The ID of the family to update
+    ///   - name: The new name of the family
+    ///   - description: Optional new description
+    /// - Returns: The updated Family object
+    /// - Throws: ServiceError for validation errors or network failures
+    func updateFamily(familyId: String, name: String, description: String?) async throws -> Family {
+        // Validate input before making API call
+        try validateFamilyInput(name: name, description: description)
+
+        do {
+            let request = UpdateFamilyRequest(
+                familyName: name,
+                familyDescription: description
+            )
+            let response: UpdateFamilyResponse = try await networkManager.put(
+                endpoint: APIEndpoint.updateFamily(familyId: familyId).path,
+                body: request
+            )
+            print("📱 Updated Family: \(response.family.familyName)")
+            return response.family
+        } catch {
+            let serviceError = mapToServiceError(error)
+            print("❌ Error updating family: \(serviceError)")
+            throw serviceError
+        }
+    }
+
     // MARK: - Private Validation Methods
 
     /// Validates family input according to business rules

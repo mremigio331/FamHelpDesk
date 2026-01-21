@@ -9,6 +9,7 @@ struct FamilyDetailView: View {
     @State private var showNotifications = false
     @State private var showSearch = false
     @State private var showCreateTicket = false
+    @State private var showEditFamily = false
     @State private var navigationBarVisible = true
 
     enum Tab: String, CaseIterable {
@@ -134,6 +135,9 @@ struct FamilyDetailView: View {
                 }
             )
         }
+        .sheet(isPresented: $showEditFamily) {
+            EditFamilyView(family: family)
+        }
         .onAppear {
             // Load notifications to get unread count
             Task {
@@ -177,6 +181,17 @@ struct FamilyDetailView: View {
                     }
 
                     Spacer()
+
+                    // Edit button for family admins
+                    if isAdmin {
+                        Button(action: {
+                            showEditFamily = true
+                        }) {
+                            Image(systemName: "pencil.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(.blue)
+                        }
+                    }
                 }
                 .padding()
                 .background(Color(uiColor: .systemBackground))

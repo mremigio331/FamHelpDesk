@@ -7,20 +7,20 @@ enum APIEnvironment {
 
     static var current: APIEnvironment {
         #if DEBUG
-            return .testing     // Local development uses testing endpoint
+            return .testing // Local development uses testing endpoint
         #else
-            return .production  // App Store/TestFlight uses production endpoint
+            return .production // App Store/TestFlight uses production endpoint
         #endif
     }
 
     var baseURL: String {
         switch self {
         case .development:
-            "https://api.testing.famhelpdesk.com"  // Development also uses testing endpoint
+            "https://api.testing.famhelpdesk.com" // Development also uses testing endpoint
         case .testing:
-            "https://api.testing.famhelpdesk.com"  // Testing/staging environment
+            "https://api.testing.famhelpdesk.com" // Testing/staging environment
         case .production:
-            "https://api.famhelpdesk.com"  // Production environment
+            "https://api.famhelpdesk.com" // Production environment
         }
     }
 }

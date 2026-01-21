@@ -525,8 +525,19 @@ struct TicketFormView: View {
             description: description.isEmpty ? nil : description.trimmingCharacters(in: .whitespacesAndNewlines),
             severity: selectedSeverity,
             status: selectedStatus,
-            assignedTo: selectedAssignedUser?.userId
+            assignedTo: selectedAssignedUser?.userId,
+            groupId: selectedGroup?.groupId,
+            queueId: selectedQueue?.queueId
         )
+
+        // Debug: Print what we're about to send
+        print("🔍 TicketFormView creating UpdateTicketRequest:")
+        print("   - Original ticket groupId: \(originalTicket.groupId.id) (\(originalTicket.groupId.name ?? "no name"))")
+        print("   - Original ticket queueId: \(originalTicket.queueId.id) (\(originalTicket.queueId.name ?? "no name"))")
+        print("   - Selected group: \(selectedGroup?.groupId ?? "nil") (\(selectedGroup?.groupName ?? "no name"))")
+        print("   - Selected queue: \(selectedQueue?.queueId ?? "nil") (\(selectedQueue?.queueName ?? "no name"))")
+        print("   - Request groupId: \(request.groupId ?? "nil")")
+        print("   - Request queueId: \(request.queueId ?? "nil")")
 
         // Use TicketSession to update the ticket so cache invalidation happens automatically
         let success = await ticketSession.updateTicket(ticketId: originalTicket.ticketId, request: request)

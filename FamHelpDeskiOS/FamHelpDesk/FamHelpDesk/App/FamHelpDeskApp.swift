@@ -182,9 +182,9 @@ enum AppStage {
 
     static var current: AppStage {
         #if DEBUG
-            return .testing  // Debug builds use testing environment
+            return .testing // Debug builds use testing environment
         #else
-            return .prod     // Release builds use production environment
+            return .prod // Release builds use production environment
         #endif
     }
 }

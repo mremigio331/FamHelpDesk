@@ -672,7 +672,9 @@ struct TicketDetailView: View {
                 description: nil,
                 severity: nil,
                 status: .resolved,
-                assignedTo: nil
+                assignedTo: nil,
+                groupId: nil,
+                queueId: nil
             )
 
             let updatedTicket = try await ticketService.updateTicket(request: request)
@@ -717,7 +719,9 @@ struct TicketDetailView: View {
                 description: nil,
                 severity: nil,
                 status: .open,
-                assignedTo: nil
+                assignedTo: nil,
+                groupId: nil,
+                queueId: nil
             )
 
             let updatedTicket = try await ticketService.updateTicket(request: request)
