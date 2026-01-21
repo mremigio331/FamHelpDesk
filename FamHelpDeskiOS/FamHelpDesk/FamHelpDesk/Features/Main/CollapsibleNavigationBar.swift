@@ -19,6 +19,9 @@ struct CollapsibleNavigationBar: View {
     /// Optional callback for ticket creation when in family context
     let onCreateTicket: (() -> Void)?
 
+    /// Optional callback for group creation when in family context
+    let onCreateGroup: (() -> Void)?
+
     /// Animation duration for show/hide
     private let animationDuration: Double = 0.2
 
@@ -30,6 +33,8 @@ struct CollapsibleNavigationBar: View {
     private var profileBackgroundColor: Color {
         profileColor
     }
+
+    @State private var showCreateGroupSheet = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -72,10 +77,17 @@ struct CollapsibleNavigationBar: View {
 
                     // Action buttons
                     HStack(spacing: 12) {
-                        // Create ticket button - only show when in family context
-                        if isInFamilyContext, let createTicketAction = onCreateTicket {
-                            Button {
-                                createTicketAction()
+                        // Plus button with options for creating ticket or group
+                        if isInFamilyContext {
+                            Menu {
+                                Button("Create Ticket") {
+                                    onCreateTicket?()
+                                }
+                                Button("Create Group") {
+                                    if let family = navigationContext.selectedFamily {
+                                        showCreateGroupSheet = true
+                                    }
+                                }
                             } label: {
                                 Circle()
                                     .fill(Color.blue.opacity(0.2))
@@ -85,6 +97,11 @@ struct CollapsibleNavigationBar: View {
                                             .font(.system(size: 16, weight: .medium))
                                             .foregroundColor(.blue)
                                     }
+                            }
+                            .sheet(isPresented: $showCreateGroupSheet) {
+                                if let family = navigationContext.selectedFamily {
+                                    CreateGroupView(family: family)
+                                }
                             }
                             .transition(.scale.combined(with: .opacity))
                         }
@@ -238,7 +255,8 @@ struct ScrollOffsetPreferenceKey: PreferenceKey {
             unreadCount: 3,
             isVisible: $isVisible,
             isInFamilyContext: false,
-            onCreateTicket: nil
+            onCreateTicket: nil,
+            onCreateGroup: nil
         )
 
         Spacer()

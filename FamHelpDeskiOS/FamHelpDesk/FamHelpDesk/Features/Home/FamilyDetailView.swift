@@ -61,6 +61,9 @@ struct FamilyDetailView: View {
                 isInFamilyContext: true,
                 onCreateTicket: canCreateTickets ? {
                     showCreateTicket = true
+                } : nil,
+                onCreateGroup: isAdmin ? {
+                    print("Create Group action triggered")
                 } : nil
             )
 

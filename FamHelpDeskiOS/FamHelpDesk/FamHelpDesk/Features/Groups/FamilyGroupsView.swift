@@ -11,6 +11,10 @@ struct FamilyGroupsView: View {
         groupSession.getGroupsForFamily(family.familyId)
     }
 
+    private func sortGroupsAlphabetically(_ groups: [FamilyGroup]) -> [FamilyGroup] {
+        groups.sorted { $0.groupName.localizedCaseInsensitiveCompare($1.groupName) == .orderedAscending }
+    }
+
     var body: some View {
         List {
             if groupSession.isFetching, groups.isEmpty {
@@ -45,7 +49,7 @@ struct FamilyGroupsView: View {
             } else {
                 // Groups list
                 Section("Groups (\(groups.count))") {
-                    ForEach(groups) { group in
+                    ForEach(sortGroupsAlphabetically(groups)) { group in
                         Button(action: {
                             NavigationContext.shared.navigateToGroup(group)
                         }) {

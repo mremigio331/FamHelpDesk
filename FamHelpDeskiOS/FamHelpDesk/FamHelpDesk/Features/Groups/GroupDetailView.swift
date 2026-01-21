@@ -87,7 +87,14 @@ struct GroupDetailView: View {
                 unreadCount: notificationSession.unreadCount,
                 isVisible: $navigationBarVisible,
                 isInFamilyContext: true,
-                onCreateTicket: nil
+                onCreateTicket: {
+                    // Action for creating a ticket
+                    print("Create Ticket action triggered")
+                },
+                onCreateGroup: {
+                    // Action for creating a group
+                    print("Create Group action triggered")
+                }
             )
 
             // Group Content
@@ -127,7 +134,7 @@ struct GroupDetailView: View {
                         case .members:
                             GroupMembersView(
                                 group: group,
-                                members: members,
+                                members: sortMembersAlphabetically(members),
                                 membershipRequests: membershipRequests,
                                 isLoadingMembers: isLoadingMembers,
                                 isLoadingRequests: isLoadingRequests,
@@ -270,6 +277,10 @@ struct GroupDetailView: View {
         displayFormatter.dateStyle = .medium
         displayFormatter.timeStyle = .none
         return displayFormatter.string(from: date)
+    }
+
+    private func sortMembersAlphabetically(_ members: [GroupMember]) -> [GroupMember] {
+        members.sorted { ($0.userDisplayName ?? "").localizedCaseInsensitiveCompare($1.userDisplayName ?? "") == .orderedAscending }
     }
 }
 

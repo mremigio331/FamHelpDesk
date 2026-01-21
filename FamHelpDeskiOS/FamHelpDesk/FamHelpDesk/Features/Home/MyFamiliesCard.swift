@@ -32,7 +32,7 @@ struct MyFamiliesCard: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 20)
             } else {
-                ForEach(familySession.familiesArray, id: \.family.id) { item in
+                ForEach(familySession.familiesArray.sorted { $0.family.familyName.localizedCaseInsensitiveCompare($1.family.familyName) == .orderedAscending }, id: \.family.id) { item in
                     NavigationLink(value: item.family) {
                         FamilyRow(family: item.family, membership: item.membership)
                     }

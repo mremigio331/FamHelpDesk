@@ -61,7 +61,10 @@ struct QueueDetailView: View {
                 unreadCount: notificationSession.unreadCount,
                 isVisible: $navigationBarVisible,
                 isInFamilyContext: true,
-                onCreateTicket: nil
+                onCreateTicket: nil,
+                onCreateGroup: {
+                    print("Create Group action triggered")
+                }
             )
 
             // Queue Content

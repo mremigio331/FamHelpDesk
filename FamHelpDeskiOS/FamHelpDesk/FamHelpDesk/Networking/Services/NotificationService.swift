@@ -52,21 +52,15 @@ final class NotificationService {
     /// - Parameter notificationId: The ID of the notification to acknowledge
     /// - Returns: AcknowledgeResponse indicating success
     /// - Throws: ServiceError with structured error information
-    func acknowledgeNotification(notificationId: String) async throws -> AcknowledgeResponse {
+    func acknowledgeNotification(notificationId: String) async throws {
         let request = AcknowledgeNotificationRequest(notificationId: notificationId)
 
         do {
-            // Get raw data for decoding
-            let rawData = try await networkManager.putRawData(
+            _ = try await networkManager.putRawData(
                 endpoint: APIEndpoint.acknowledgeNotification(notificationId: notificationId).path,
                 body: request
             )
-
-            // Decode the response
-            let decoder = JSONDecoder()
-            let response: AcknowledgeResponse = try decoder.decode(AcknowledgeResponse.self, from: rawData)
             print("📱 Acknowledged notification: \(notificationId)")
-            return response
         } catch {
             let serviceError = mapToServiceError(error)
             print("❌ Error acknowledging notification: \(serviceError)")
@@ -77,19 +71,13 @@ final class NotificationService {
     /// Acknowledges all notifications for the current user with enhanced error handling
     /// - Returns: AcknowledgeResponse indicating success
     /// - Throws: ServiceError with structured error information
-    func acknowledgeAllNotifications() async throws -> AcknowledgeResponse {
+    func acknowledgeAllNotifications() async throws {
         do {
-            // Get raw data for decoding
-            let rawData = try await networkManager.putRawData(
+            _ = try await networkManager.putRawData(
                 endpoint: APIEndpoint.acknowledgeAllNotifications.path,
                 body: EmptyRequest()
             )
-
-            // Decode the response
-            let decoder = JSONDecoder()
-            let response: AcknowledgeResponse = try decoder.decode(AcknowledgeResponse.self, from: rawData)
             print("📱 Acknowledged all notifications")
-            return response
         } catch {
             let serviceError = mapToServiceError(error)
             print("❌ Error acknowledging all notifications: \(serviceError)")

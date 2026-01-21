@@ -16,10 +16,21 @@ struct TicketListView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Navigation toolbar with create button
             HStack {
+                // Visible ticket count on the far left
+                Text("Visible: \(viewModel.tickets.count)")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+
+                Spacer()
+
+                // Search bar
                 HStack {
-                    NavigationToolbar(title: "Tickets")
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.secondary)
+                    TextField("Search tickets...", text: $viewModel.searchText)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .frame(maxWidth: 200)
                 }
 
                 Spacer()
@@ -28,9 +39,9 @@ struct TicketListView: View {
                 Button(action: {
                     showFilterView = true
                 }) {
-                    Image(systemName: hasActiveFilters ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                    Image(systemName: "line.3.horizontal.decrease.circle")
                         .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(hasActiveFilters ? .blue : .primary)
+                        .foregroundColor(.primary) // Keep color consistent
                 }
                 .buttonStyle(.borderedProminent)
                 .clipShape(Circle())
@@ -44,12 +55,9 @@ struct TicketListView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .clipShape(Circle())
-                .padding(.trailing)
             }
+            .padding(.horizontal)
             .frame(height: 44) // Standard navigation bar height
-
-            // Search bar
-            searchBar
 
             // Main content
             if viewModel.showLoadingState {
@@ -102,45 +110,6 @@ struct TicketListView: View {
                 }
             )
         }
-    }
-
-    // MARK: - Search Bar
-
-    private var searchBar: some View {
-        HStack {
-            HStack {
-                Image(systemName: "magnifyingglass")
-                    .foregroundColor(.secondary)
-                    .font(.system(size: 16))
-
-                TextField("Search tickets...", text: $viewModel.searchText)
-                    .textFieldStyle(.plain)
-                    .onChange(of: viewModel.searchText) { _, newValue in
-                        viewModel.updateSearchText(newValue)
-                    }
-
-                if !viewModel.searchText.isEmpty {
-                    Button(action: {
-                        viewModel.clearSearch()
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.secondary)
-                            .font(.system(size: 16))
-                    }
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Color(uiColor: .systemGray6))
-            .cornerRadius(10)
-
-            if viewModel.isSearching {
-                ProgressView()
-                    .scaleEffect(0.8)
-            }
-        }
-        .padding(.horizontal)
-        .padding(.vertical, 8)
     }
 
     // MARK: - Loading View
@@ -298,33 +267,6 @@ struct TicketListView: View {
                         Task {
                             await viewModel.loadMoreIfNeeded(ticket)
                         }
-                    }
-                }
-            } header: {
-                HStack {
-                    Text("Tickets (\(viewModel.tickets.count))")
-
-                    // Plus button next to Tickets title
-                    Button(action: {
-                        showCreateTicket = true
-                    }) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 16))
-                            .foregroundColor(.blue)
-                    }
-
-                    Spacer()
-
-                    if viewModel.isLoadingMore {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                    }
-
-                    // Show last refresh time if available
-                    if let lastRefresh = viewModel.lastRefreshDate {
-                        Text("Updated \(formatRelativeTime(lastRefresh))")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
                     }
                 }
             }
