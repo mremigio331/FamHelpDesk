@@ -6,6 +6,7 @@ struct QueueListView: View {
     @State private var userSession = UserSession.shared
     @State private var showingCreateQueue = false
     @State private var alertType: AlertType?
+    @State private var searchText = ""
 
     enum AlertType: Identifiable {
         case error(String)
@@ -18,7 +19,12 @@ struct QueueListView: View {
     }
 
     private var queues: [Queue] {
-        queueSession.getQueuesForGroup(group.groupId)
+        let allQueues = queueSession.getQueuesForGroup(group.groupId)
+        let filtered = searchText.isEmpty ? allQueues : allQueues.filter { queue in
+            queue.queueName.localizedCaseInsensitiveContains(searchText) ||
+                (queue.queueDescription ?? "").localizedCaseInsensitiveContains(searchText)
+        }
+        return filtered.sorted { $0.queueName.localizedCompare($1.queueName) == .orderedAscending }
     }
 
     // Check if current user is admin of the group (can create queues)
@@ -29,96 +35,92 @@ struct QueueListView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Navigation toolbar with back button
-            NavigationToolbar(title: "Queues")
+        List {
+            if queueSession.isFetching, queues.isEmpty {
+                // Loading state
+                Section {
+                    HStack {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                        Text("Loading queues...")
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 20)
+                }
+            } else if queues.isEmpty {
+                // Empty state - no queues exist for this group
+                Section {
+                    VStack(spacing: 12) {
+                        Image(systemName: "tray.2")
+                            .font(.largeTitle)
+                            .foregroundColor(.blue)
+                        Text("No Queues Yet")
+                            .font(.headline)
+                        Text("Create the first queue for this group to organize tickets.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
+                }
+            } else {
+                // Queues list
+                Section("Queues (\(queues.count))") {
+                    ForEach(queues) { queue in
+                        NavigationLink(destination: QueueDetailView(initialQueue: queue)) {
+                            QueueRowView(queue: queue)
+                        }
+                    }
+                }
+            }
 
-            List {
-                if queueSession.isFetching, queues.isEmpty {
-                    // Loading state
-                    Section {
+            // Create queue section - only show if user can create queues
+            if canCreateQueues {
+                Section {
+                    Button(action: {
+                        showingCreateQueue = true
+                    }) {
                         HStack {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                            Text("Loading queues...")
-                                .foregroundColor(.secondary)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, 20)
-                    }
-                } else if queues.isEmpty {
-                    // Empty state - no queues exist for this group
-                    Section {
-                        VStack(spacing: 12) {
-                            Image(systemName: "tray.2")
-                                .font(.largeTitle)
+                            Image(systemName: "plus.circle.fill")
                                 .foregroundColor(.blue)
-                            Text("No Queues Yet")
-                                .font(.headline)
-                            Text("Create the first queue for this group to organize tickets.")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 20)
-                    }
-                } else {
-                    // Queues list
-                    Section("Queues (\(queues.count))") {
-                        ForEach(queues) { queue in
-                            NavigationLink(destination: QueueDetailView(initialQueue: queue)) {
-                                QueueRowView(queue: queue)
-                            }
+                            Text("Create New Queue")
+                                .foregroundColor(.blue)
                         }
                     }
+                    .disabled(queueSession.isFetching)
                 }
-
-                // Create queue section - only show if user can create queues
-                if canCreateQueues {
-                    Section {
-                        Button(action: {
-                            showingCreateQueue = true
-                        }) {
-                            HStack {
-                                Image(systemName: "plus.circle.fill")
-                                    .foregroundColor(.blue)
-                                Text("Create New Queue")
-                                    .foregroundColor(.blue)
-                            }
-                        }
-                        .disabled(queueSession.isFetching)
+            }
+        }
+        .searchable(text: $searchText, prompt: "Search queues")
+        .refreshable {
+            await queueSession.refreshGroupQueues(familyId: group.familyId, groupId: group.groupId)
+        }
+        .task {
+            // Queues are already loaded by GroupDetailView, but load if empty
+            if queues.isEmpty {
+                await queueSession.fetchGroupQueues(familyId: group.familyId, groupId: group.groupId)
+            }
+        }
+        .sheet(isPresented: $showingCreateQueue) {
+            CreateQueueView(group: group)
+        }
+        .alert(item: $alertType) { alertType in
+            switch alertType {
+            case let .error(message):
+                Alert(
+                    title: Text("Error"),
+                    message: Text(message),
+                    dismissButton: .default(Text("OK")) {
+                        queueSession.clearError()
                     }
-                }
+                )
             }
-            .refreshable {
-                await queueSession.refreshGroupQueues(familyId: group.familyId, groupId: group.groupId)
-            }
-            .task {
-                // Queues are already loaded by GroupDetailView, but load if empty
-                if queues.isEmpty {
-                    await queueSession.fetchGroupQueues(familyId: group.familyId, groupId: group.groupId)
-                }
-            }
-            .sheet(isPresented: $showingCreateQueue) {
-                CreateQueueView(group: group)
-            }
-            .alert(item: $alertType) { alertType in
-                switch alertType {
-                case let .error(message):
-                    Alert(
-                        title: Text("Error"),
-                        message: Text(message),
-                        dismissButton: .default(Text("OK")) {
-                            queueSession.clearError()
-                        }
-                    )
-                }
-            }
-            .onChange(of: queueSession.errorMessage) { _, newValue in
-                if let errorMessage = newValue {
-                    alertType = .error(errorMessage)
-                }
+        }
+        .onChange(of: queueSession.errorMessage) { _, newValue in
+            if let errorMessage = newValue {
+                alertType = .error(errorMessage)
             }
         }
     }

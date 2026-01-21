@@ -121,16 +121,19 @@ struct CustomNavigationBar: View {
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 24, height: 24)
 
-                    Text("Fam Help Desk")
+                    Text("FamHelpDesk")
                         .font(.headline)
                         .foregroundColor(.primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
                 }
             }
             .buttonStyle(.plain) // Removes default button styling
             .scaleEffect(navigationContext.canNavigateBack ? 1.0 : 0.98) // Subtle visual feedback when navigable
             .opacity(navigationContext.canNavigateBack ? 1.0 : 0.8) // Slight opacity change when at root
+            .layoutPriority(1)
 
-            Spacer()
+            Spacer(minLength: 8)
 
             // Search button
             Button {

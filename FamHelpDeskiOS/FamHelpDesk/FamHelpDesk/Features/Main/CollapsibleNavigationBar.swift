@@ -35,39 +35,40 @@ struct CollapsibleNavigationBar: View {
         VStack(spacing: 0) {
             if isVisible {
                 HStack(spacing: 12) {
-                    // Back button - show when we're not at root
-                    if navigationContext.selectedFamily != nil || navigationContext.selectedGroup != nil {
-                        Button {
-                            dismiss()
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "chevron.left")
-                                    .font(.system(size: 16, weight: .medium))
-                                Text("Back")
-                                    .font(.system(size: 16, weight: .medium))
-                            }
-                            .foregroundColor(.blue)
-                        }
-                        .transition(.move(edge: .leading).combined(with: .opacity))
-                    }
-
-                    // Logo and title - tappable to go home
+                    // Logo with text - acts as back button when in family context, otherwise goes to root
                     Button {
-                        navigationContext.popToRoot()
+                        if navigationContext.selectedFamily != nil || navigationContext.selectedGroup != nil {
+                            // Inside family/group - go back
+                            dismiss()
+                        } else {
+                            // At root - go to root (no-op but keeps consistent behavior)
+                            navigationContext.popToRoot()
+                        }
                     } label: {
                         HStack(spacing: 8) {
-                            Image(systemName: "ticket.fill")
-                                .font(.title2)
-                                .foregroundColor(.blue)
+                            // Show back chevron when in family/group context
+                            if navigationContext.selectedFamily != nil || navigationContext.selectedGroup != nil {
+                                Image(systemName: "chevron.left")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(.blue)
+                            }
 
-                            Text("Fam Help Desk")
+                            Image("FamHelpDeskTransparent")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 24, height: 24)
+
+                            Text("FamHelpDesk")
                                 .font(.headline)
                                 .foregroundColor(.primary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.5)
                         }
                     }
                     .buttonStyle(.plain)
+                    .layoutPriority(1)
 
-                    Spacer()
+                    Spacer(minLength: 8)
 
                     // Action buttons
                     HStack(spacing: 12) {

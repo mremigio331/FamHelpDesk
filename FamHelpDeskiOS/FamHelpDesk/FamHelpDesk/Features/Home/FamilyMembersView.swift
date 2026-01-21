@@ -6,13 +6,24 @@ struct FamilyMembersView: View {
     @State private var familySession = FamilySession.shared
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var searchText = ""
 
     private var members: [FamilyMember] {
-        membershipSession.familyMembers[family.familyId] ?? []
+        let allMembers = membershipSession.familyMembers[family.familyId] ?? []
+        let filtered = searchText.isEmpty ? allMembers : allMembers.filter { member in
+            member.displayName.localizedCaseInsensitiveContains(searchText) ||
+                member.email.localizedCaseInsensitiveContains(searchText)
+        }
+        return filtered.sorted { $0.displayName.localizedCompare($1.displayName) == .orderedAscending }
     }
 
     private var membershipRequests: [MembershipRequest] {
-        membershipSession.membershipRequests[family.familyId] ?? []
+        let allRequests = membershipSession.membershipRequests[family.familyId] ?? []
+        let filtered = searchText.isEmpty ? allRequests : allRequests.filter { request in
+            request.displayName.localizedCaseInsensitiveContains(searchText) ||
+                request.email.localizedCaseInsensitiveContains(searchText)
+        }
+        return filtered.sorted { $0.displayName.localizedCompare($1.displayName) == .orderedAscending }
     }
 
     private var pendingRequests: [MembershipRequest] {
@@ -103,6 +114,20 @@ struct FamilyMembersView: View {
                 }
             }
         }
+        .navigationTitle("Family Members")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("Family Members")
+                    .font(.headline)
+            }
+        }
+        .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search by name or email")
+        .onChange(of: searchText) {
+            Task {
+                await loadMembers()
+            }
+        }
         .refreshable {
             await loadMembers(forceRefresh: true)
         }
@@ -166,88 +191,24 @@ struct MemberRowView: View {
                         .foregroundColor(.blue)
                 )
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(member.displayName)
-                        .font(.headline)
-                        .foregroundColor(.primary)
+            Text(member.displayName)
+                .font(.headline)
+                .foregroundColor(.primary)
 
-                    Spacer()
+            Spacer()
 
-                    // Admin badge
-                    if member.isAdmin {
-                        Text("Admin")
-                            .font(.caption)
-                            .fontWeight(.medium)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 2)
-                            .background(Color.blue.opacity(0.1))
-                            .foregroundColor(.blue)
-                            .clipShape(Capsule())
-                    }
-                }
-
-                Text(member.email)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-
-                HStack {
-                    // Status indicator
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(statusColor(for: member.status))
-                            .frame(width: 8, height: 8)
-                        Text(statusText(for: member.status))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-
-                    Spacer()
-
-                    // Join date
-                    if !member.joinedAt.isEmpty {
-                        Text("Joined \(formatJoinDate(member.joinedAt))")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
+            // Admin badge
+            if member.isAdmin {
+                Text("Admin")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 2)
+                    .background(Color.orange.opacity(0.2))
+                    .foregroundColor(.orange)
+                    .clipShape(Capsule())
             }
         }
-        .padding(.vertical, 4)
-    }
-
-    private func statusColor(for status: MembershipStatus) -> Color {
-        switch status {
-        case .member:
-            .green
-        case .pending:
-            .orange
-        case .rejected:
-            .red
-        }
-    }
-
-    private func statusText(for status: MembershipStatus) -> String {
-        switch status {
-        case .member:
-            "Active"
-        case .pending:
-            "Pending"
-        case .rejected:
-            "Rejected"
-        }
-    }
-
-    private func formatJoinDate(_ dateString: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        guard let date = formatter.date(from: dateString) else {
-            return dateString
-        }
-
-        let displayFormatter = DateFormatter()
-        displayFormatter.dateStyle = .short
-        displayFormatter.timeStyle = .none
-        return displayFormatter.string(from: date)
     }
 }
 

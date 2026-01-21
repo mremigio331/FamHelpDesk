@@ -12,9 +12,10 @@ struct WelcomeView: View {
             Spacer()
 
             VStack(spacing: 8) {
-                Image(systemName: "ticket")
-                    .font(.system(size: 56))
-                    .foregroundStyle(.tint)
+                Image("FamHelpDeskTransparent")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 120, height: 120)
 
                 Text("FamHelpDesk")
                     .font(.largeTitle)

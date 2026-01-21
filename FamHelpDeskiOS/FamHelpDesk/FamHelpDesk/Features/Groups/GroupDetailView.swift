@@ -443,6 +443,28 @@ struct GroupMembersView: View {
     @Binding var showingMembershipManagement: Bool
     let refreshMembershipData: () async -> Void
 
+    @State private var searchText = ""
+
+    private var filteredMembers: [GroupMember] {
+        let filtered = searchText.isEmpty ? members : members.filter { member in
+            (member.userDisplayName ?? "").localizedCaseInsensitiveContains(searchText) ||
+                (member.userEmail ?? "").localizedCaseInsensitiveContains(searchText)
+        }
+        return filtered.sorted {
+            ($0.userDisplayName ?? "").localizedCompare($1.userDisplayName ?? "") == .orderedAscending
+        }
+    }
+
+    private var filteredRequests: [GroupMembershipRequestItem] {
+        let filtered = searchText.isEmpty ? membershipRequests : membershipRequests.filter { request in
+            (request.userDisplayName ?? "").localizedCaseInsensitiveContains(searchText) ||
+                (request.userEmail ?? "").localizedCaseInsensitiveContains(searchText)
+        }
+        return filtered.sorted {
+            ($0.userDisplayName ?? "").localizedCompare($1.userDisplayName ?? "") == .orderedAscending
+        }
+    }
+
     var body: some View {
         List {
             // Members Section
@@ -490,14 +512,14 @@ struct GroupMembersView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 20)
                 } else {
-                    ForEach(members) { member in
+                    ForEach(filteredMembers) { member in
                         GroupMemberRow(member: member)
                     }
                 }
 
                 // Pending Membership Requests - Show for all users (no section header since PENDING tag is clear)
-                if !membershipRequests.isEmpty {
-                    ForEach(membershipRequests) { request in
+                if !filteredRequests.isEmpty {
+                    ForEach(filteredRequests) { request in
                         PendingMembershipRequestRow(request: request)
                     }
                 }
@@ -554,6 +576,7 @@ struct GroupMembersView: View {
                 }
             }
         }
+        .searchable(text: $searchText, prompt: "Search members")
         .refreshable {
             await refreshMembershipData()
         }
@@ -641,72 +664,34 @@ struct GroupMemberRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Member Avatar
+            // Avatar placeholder
             Circle()
                 .fill(Color.blue.opacity(0.1))
                 .frame(width: 40, height: 40)
                 .overlay(
-                    Text(memberInitials)
-                        .font(.system(size: 16, weight: .medium))
+                    Text(member.userDisplayName?.prefix(1).uppercased() ?? "?")
+                        .font(.headline)
                         .foregroundColor(.blue)
                 )
 
-            // Member Info
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(memberDisplayName)
-                        .font(.headline)
-                        .foregroundColor(.primary)
+            Text(member.userDisplayName ?? "Unknown")
+                .font(.headline)
+                .foregroundColor(.primary)
 
-                    if member.isAdmin {
-                        Text("ADMIN")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.orange.opacity(0.2))
-                            .foregroundColor(.orange)
-                            .cornerRadius(4)
-                    }
+            Spacer()
 
-                    Spacer()
-                }
-
-                if let email = member.userEmail {
-                    Text(email)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-
-                Text("Joined \(formatJoinDate())")
+            // Admin badge
+            if member.isAdmin {
+                Text("Admin")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .fontWeight(.medium)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 2)
+                    .background(Color.orange.opacity(0.2))
+                    .foregroundColor(.orange)
+                    .clipShape(Capsule())
             }
         }
-        .padding(.vertical, 4)
-    }
-
-    private var memberDisplayName: String {
-        member.userDisplayName ?? "Unknown User"
-    }
-
-    private var memberInitials: String {
-        let name = memberDisplayName
-        let components = name.split(separator: " ")
-        if components.count >= 2 {
-            return String(components[0].prefix(1) + components[1].prefix(1)).uppercased()
-        } else if let first = components.first {
-            return String(first.prefix(2)).uppercased()
-        }
-        return "?"
-    }
-
-    private func formatJoinDate() -> String {
-        let date = Date(timeIntervalSince1970: member.requestDate)
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
-        return formatter.string(from: date)
     }
 }
 
