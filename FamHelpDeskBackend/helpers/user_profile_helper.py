@@ -1,14 +1,18 @@
-from models.user_profile import UserProfile
+from models.user_profile import UserProfile, ProfileColorOptions
 from helpers.audit_helper import AuditHelper
-from helpers.notification_helper import NotificationHelper, ProfileColorOptions
+from helpers.notification_helper import NotificationHelper
 from helpers.notification_settings_helper import NotificationSettingsHelper
 from models.notification import NotificationType
 from models.audit import AuditActions, AuditEntityTypes
+from exceptions.user_exceptions import UserDeleteException
 
 from pynamodb.exceptions import DoesNotExist
 from aws_lambda_powertools import Logger
 from typing import Optional
 import random
+import os
+import json
+import boto3
 
 
 class UserProfileHelper:
@@ -146,3 +150,48 @@ class UserProfileHelper:
         )
 
         return profile
+
+    def invoke_user_delete_lambda(self, user_id: str) -> dict:
+        """
+        Invoke the user profile delete lambda function.
+
+        Args:
+            user_id: The ID of the user to delete
+
+        Returns:
+            The response from the lambda invocation
+
+        Raises:
+            ValueError: If USER_DELETE_LAMBDA environment variable is not set
+            UserDeleteException: If lambda invocation fails
+        """
+        user_delete_lambda_arn = os.environ.get("USER_DELETE_LAMBDA")
+
+        if not user_delete_lambda_arn:
+            raise ValueError("USER_DELETE_LAMBDA environment variable not set")
+
+        lambda_client = boto3.client("lambda")
+
+        payload = {"user_id": user_id, "request_id": self.request_id}
+
+        try:
+            response = lambda_client.invoke(
+                FunctionName=user_delete_lambda_arn,
+                InvocationType="Event",
+                Payload=json.dumps(payload),
+            )
+
+            self.logger.info(
+                f"Successfully invoked user delete lambda for {user_id}",
+                extra={"status_code": response["StatusCode"]},
+            )
+
+        except Exception as e:
+            error_msg = str(e)
+            self.logger.error(
+                f"Failed to invoke user delete lambda for {user_id}: {error_msg}"
+            )
+            raise UserDeleteException(
+                message=f"Failed to initiate user deletion for {user_id}.",
+                error_details=error_msg,
+            )

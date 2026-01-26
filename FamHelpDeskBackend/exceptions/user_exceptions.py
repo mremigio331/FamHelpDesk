@@ -26,3 +26,12 @@ class UserNameTooLong(Exception):
     def __init__(self, max_length):
         self.message = f"User name must be at most {max_length} characters."
         super().__init__(self.message)
+
+
+class UserDeleteException(Exception):
+    """Exception raised when user deletion fails."""
+
+    def __init__(self, message="Failed to initiate user deletion.", error_details=None):
+        self.message = message
+        self.error_details = error_details
+        super().__init__(self.message)

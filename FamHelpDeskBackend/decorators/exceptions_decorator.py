@@ -4,6 +4,7 @@ from exceptions.user_exceptions import (
     InvalidUserIdException,
     ProfileNotPublicOrDoesNotExist,
     UserNameTooLong,
+    UserDeleteException,
 )
 from exceptions.jwt_exeptions import (
     InvalidJWTException,
@@ -375,6 +376,21 @@ def exceptions_decorator(func):
                     }
                 },
                 status_code=401,
+            )
+
+        # User deletion exceptions (5XX)
+        except UserDeleteException as exc:
+            error_content = {
+                "error": {
+                    "code": "USER_DELETION_FAILED",
+                    "message": str(exc) or "Failed to initiate user deletion.",
+                }
+            }
+            if hasattr(exc, "error_details") and exc.error_details:
+                error_content["error"]["details"] = exc.error_details
+            return JSONResponse(
+                content=error_content,
+                status_code=500,
             )
 
         ### 5XX

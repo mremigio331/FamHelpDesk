@@ -1,5 +1,10 @@
 from api.endpoints.fam_help_desk import home
-from api.endpoints.user import get_requester, get_user_profile, update_user_profile
+from api.endpoints.user import (
+    get_requester,
+    get_user_profile,
+    update_user_profile,
+    delete_user_profile,
+)
 from api.endpoints.family import (
     create_family,
     get_all_families,
@@ -216,5 +221,6 @@ def get_all_routes(app: FastAPI) -> FastAPI:
     app.include_router(get_requester.router, prefix=USER_PATH, tags=[USER_TAG])
     app.include_router(get_user_profile.router, prefix=USER_PATH, tags=[USER_TAG])
     app.include_router(update_user_profile.router, prefix=USER_PATH, tags=[USER_TAG])
+    app.include_router(delete_user_profile.router, prefix=USER_PATH, tags=[USER_TAG])
 
     return app

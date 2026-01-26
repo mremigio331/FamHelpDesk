@@ -54,7 +54,7 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
         logger.error(error_msg)
         raise EnvironmentError(error_msg)
 
-    request_id = context.aws_request_id
+    request_id = event.get("request_id", context.aws_request_id)
     logger.info(f"Lambda request ID: {request_id}")
     all_items = []
 
