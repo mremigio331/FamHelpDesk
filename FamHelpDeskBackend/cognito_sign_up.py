@@ -11,7 +11,9 @@ logger = Logger(service="FamHelpDesk-Cognito-User-Creator")
 @logger.inject_lambda_context
 def handler(event: dict, context: LambdaContext) -> dict:
     logger.info("POST_CONFIRMATION Lambda triggered.")
-    stage = os.getenv("STAGE", "Testing")
+    stage = os.getenv("STAGE")
+
+    logger.info(f"Starting cognito signup for stage: {stage}")
 
     # Handle any PostConfirmation variant (AdminConfirmSignUp, ConfirmSignUp, etc.)
     if event.get("triggerSource", "").startswith("PostConfirmation_"):
@@ -24,7 +26,7 @@ def handler(event: dict, context: LambdaContext) -> dict:
         # Prefer standard 'name', then given_name; default to 'unknown'
         full_name = user_attrs.get("name") or user_attrs.get("given_name") or "unknown"
 
-        # Determine provider (Cognito or Google) robustly
+        # Determine provider (Cognito, Google, Apple, etc.) robustly
         provider = "Cognito"
         identities = user_attrs.get("identities")
         if identities:
@@ -36,7 +38,7 @@ def handler(event: dict, context: LambdaContext) -> dict:
             except Exception as e:
                 logger.warning(f"Failed to parse identities attribute: {e}")
         if provider == "Cognito":
-            # Fallback: usernames for federated users are often like 'Google_XXXXXXXX'
+            # Fallback: usernames for federated users are often like 'Google_XXXXXXXX' or 'Apple_XXXXXXXX'
             uname = event.get("userName") or ""
             if "_" in uname:
                 possible_provider = uname.split("_", 1)[0]

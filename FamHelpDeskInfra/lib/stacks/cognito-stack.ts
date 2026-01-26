@@ -13,6 +13,7 @@ import * as path from "path";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as sns from "aws-cdk-lib/aws-sns";
 import * as subs from "aws-cdk-lib/aws-sns-subscriptions";
+import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import { addCognitoMonitoring, CognitoMetrics } from "../monitoring/cognito-monitoring";
 import { famHelpDesk } from "../constants";
 
@@ -26,6 +27,12 @@ interface CognitoStackProps extends StackProps {
     client_id: string;
     client_secret: string;
   };
+  appleOauthKeys: {
+    client_id: string;
+    team_id: string;
+    key_id: string;
+    private_key_secret_name: string;
+  }
   notificationTopicArn: string;
 }
 
@@ -48,6 +55,7 @@ export class CognitoStack extends Stack {
       escalationEmail,
       escalationNumber,
       googleOathKeys,
+      appleOauthKeys,
       notificationTopicArn,
     } = props;
 
@@ -86,7 +94,7 @@ export class CognitoStack extends Stack {
           path.join(__dirname, "../../../FamHelpDeskBackend"),
         ),
         tracing: lambda.Tracing.ACTIVE,
-        timeout: Duration.seconds(90),
+        timeout: Duration.minutes(10),
         layers: [layer],
         environment: {
           TABLE_NAME: userTable.tableName,
@@ -126,13 +134,6 @@ export class CognitoStack extends Stack {
 
     this.cognitoMetrics = addCognitoMonitoring(this, logGroup, userEventLogger, stage);
 
-    // =========================
-    // USER POOL
-    // =========================
-    // Fixes:
-    // - email is mutable to support social federation updates
-    // - keep CDK-standard "fullname" attribute (CDK types do NOT use "name")
-    // - recommend fullname NOT required to avoid federation failures if profile lacks a name
     this.userPool = new cognito.UserPool(
       this,
       `${famHelpDesk}-UserPool-${stage}`,
@@ -141,8 +142,8 @@ export class CognitoStack extends Stack {
         selfSignUpEnabled: true,
         signInAliases: { email: true },
         standardAttributes: {
-          email: { required: true, mutable: true }, // CHANGED
-          fullname: { required: true, mutable: true }, // CHANGED (was required:true in your code)
+          email: { required: true, mutable: true }, 
+          fullname: { required: true, mutable: true },
           nickname: { required: false, mutable: true },
         },
         passwordPolicy: {
@@ -166,12 +167,6 @@ export class CognitoStack extends Stack {
       userEventLogger,
     );
 
-    // =========================
-    // GOOGLE IDENTITY PROVIDER
-    // =========================
-    // Note:
-    // - Google claim is "name"
-    // - Cognito/CDK standard attribute is "fullname"
     const googleProvider = new cognito.UserPoolIdentityProviderGoogle(
       this,
       `${famHelpDesk}-GoogleProvider-${stage}`,
@@ -187,11 +182,35 @@ export class CognitoStack extends Stack {
       },
     );
 
+    // Retrieve Apple private key from Secrets Manager
+    const applePrivateKeySecret = secretsmanager.Secret.fromSecretNameV2(
+      this,
+      `${famHelpDesk}-ApplePrivateKey-${stage}`,
+      appleOauthKeys.private_key_secret_name,
+    );
+
+    const appleProvider = new cognito.UserPoolIdentityProviderApple(
+      this,
+      `${famHelpDesk}-AppleProvider-${stage}`,
+      {
+        userPool: this.userPool,
+        clientId: appleOauthKeys.client_id,
+        teamId: appleOauthKeys.team_id,
+        keyId: appleOauthKeys.key_id,
+        privateKeyValue: applePrivateKeySecret.secretValue,
+        scopes: ["openid", "email", "name"],
+        attributeMapping: {
+          email: cognito.ProviderAttribute.other("email"),
+          fullname: cognito.ProviderAttribute.other("name"),
+        },
+      },
+    );
+
     // Explicit attribute permissions for app clients (prevents "Attribute cannot be updated")
     const clientReadAttrs =
       new cognito.ClientAttributes().withStandardAttributes({
         email: true,
-        fullname: true, // FIX: "name" does not exist in StandardAttributesMask
+        fullname: true,
         nickname: true,
       });
 
@@ -226,6 +245,7 @@ export class CognitoStack extends Stack {
         supportedIdentityProviders: [
           cognito.UserPoolClientIdentityProvider.COGNITO,
           cognito.UserPoolClientIdentityProvider.GOOGLE,
+          cognito.UserPoolClientIdentityProvider.APPLE,
         ],
         readAttributes: clientReadAttrs, // ADDED
         writeAttributes: clientWriteAttrs, // ADDED
@@ -235,12 +255,10 @@ export class CognitoStack extends Stack {
       },
     );
 
-    // Ensure client is created after the IdP
     this.userPoolClient.node.addDependency(googleProvider);
+    this.userPoolClient.node.addDependency(appleProvider);
 
-    // =========================
-    // iOS APP CLIENT
-    // =========================
+
     const iosCallback = "famHelpDesk://auth/callback";
     const iosLogout = "famHelpDesk://signout";
 
@@ -265,21 +283,19 @@ export class CognitoStack extends Stack {
         supportedIdentityProviders: [
           cognito.UserPoolClientIdentityProvider.COGNITO,
           cognito.UserPoolClientIdentityProvider.GOOGLE,
+          cognito.UserPoolClientIdentityProvider.APPLE,
         ],
-        readAttributes: clientReadAttrs, // ADDED
-        writeAttributes: clientWriteAttrs, // ADDED
+        readAttributes: clientReadAttrs,
+        writeAttributes: clientWriteAttrs,
         accessTokenValidity: Duration.hours(24),
         idTokenValidity: Duration.hours(24),
         refreshTokenValidity: Duration.days(3650),
       },
     );
 
-    // Ensure iOS client is created after the IdP
     this.userPoolClientIOS.node.addDependency(googleProvider);
+    this.userPoolClientIOS.node.addDependency(appleProvider);
 
-    // =========================
-    // DOMAIN (HOSTED UI)
-    // =========================
     this.userPoolDomain = new cognito.UserPoolDomain(
       this,
       `${famHelpDesk}-CognitoDomain-${stage}`,
@@ -291,9 +307,6 @@ export class CognitoStack extends Stack {
       },
     );
 
-    // =========================
-    // FEDERATED IDENTITY POOL
-    // =========================
     this.identityPool = new cognito.CfnIdentityPool(
       this,
       `${famHelpDesk}-IdentityPool-${stage}`,
@@ -312,9 +325,6 @@ export class CognitoStack extends Stack {
       },
     );
 
-    // =========================
-    // OUTPUTS
-    // =========================
     new CfnOutput(this, `${famHelpDesk}-UserPoolId-${stage}`, {
       value: this.userPool.userPoolId,
     });

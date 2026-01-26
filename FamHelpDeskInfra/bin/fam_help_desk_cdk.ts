@@ -8,6 +8,7 @@ import { ApiStack } from "../lib/stacks/api-stack";
 import { WebsiteStack } from "../lib/stacks/website-stack";
 import { DashboardStack } from "../lib/stacks/dashboard-stack";
 import { RumStack } from "../lib/stacks/rum-stack";
+import { UserProfileDeleteStack } from "../lib/stacks/user-profile-delete-stack";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -71,6 +72,7 @@ async function main() {
       escalationEmail,
       escalationNumber,
       googleOathKeys,
+      appleOauthKeys
     } = config;
 
     const databaseStack = new DatabaseStack(
@@ -105,6 +107,7 @@ async function main() {
         escalationEmail,
         escalationNumber,
         googleOathKeys,
+        appleOauthKeys,
         notificationTopicArn: notificationStack.notificationTopic.topicArn,
       },
     );
@@ -145,6 +148,20 @@ async function main() {
       cognitoMetrics: cognitoStack.cognitoMetrics,
       notificationMetrics: notificationStack.notificationMetrics,
     });
+
+    new UserProfileDeleteStack(
+      app,
+      `${famHelpDesk}-UserProfileDeleteStack-${stage}`,
+      {
+        env: awsEnv,
+        stage,
+        escalationEmail,
+        escalationNumber,
+        senderEmail: "noreply@famhelpdesk.com", 
+        cognitoUserPoolId: cognitoStack.userPool.userPoolId,
+        userTable: databaseStack.table,
+      }
+    );
   }
 }
 
