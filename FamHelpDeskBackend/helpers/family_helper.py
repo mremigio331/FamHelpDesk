@@ -23,7 +23,7 @@ class FamilyHelper:
         created_by: str,
         family_description: Optional[str] = None,
     ) -> FamilyModel:
-        family_id = FamilyModel.generate_uuid()
+        family_id = FamilyModel.generate_random_id(prefix="F")
         creation_date = FamilyModel.now_epoch()
 
         family = FamilyModel(

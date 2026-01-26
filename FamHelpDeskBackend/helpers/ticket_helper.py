@@ -87,8 +87,8 @@ class TicketHelper:
         Returns:
             TicketModel: The created ticket
         """
-        # Generate ticket_id using UUID
-        ticket_id = str(uuid.uuid4())
+        # Generate ticket_id using TicketModel's generate_random_id method
+        ticket_id = TicketModel.generate_random_id(prefix="T")
 
         # Set creation_date to current epoch - use the same timestamp for consistency
         current_time = int(time.time())

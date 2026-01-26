@@ -147,24 +147,20 @@ class GroupMembershipHelper:
     # List all group memberships by user across families/groups
     def get_all_memberships_by_user(self, user_id: str) -> List[dict]:
         items: List[dict] = []
-        # Fallback to scan since GSI might not exist in all environments
-        try:
-            # Try GSI first
-            for item in GroupMembershipModel.user_index.query(user_id):
+        for item in GroupMembershipModel.scan(GroupMembershipModel.user_id == user_id):
+            # Safety: ensure this is a membership record
+            if str(item.pk).startswith("FAMILY#") and str(item.sk).startswith("GROUP#"):
                 items.append(self._clean_membership(item))
-            self.logger.info(
-                f"Fetched {len(items)} group memberships for user {user_id} via GSI."
-            )
-        except Exception as e:
-            self.logger.warning(f"GSI query failed, falling back to scan: {str(e)}")
-            # Fallback to scan operation
-            for item in GroupMembershipModel.scan(
-                GroupMembershipModel.user_id == user_id
-            ):
-                items.append(self._clean_membership(item))
-            self.logger.info(
-                f"Fetched {len(items)} group memberships for user {user_id} via scan."
-            )
+        self.logger.info(f"Fetched {len(items)} group memberships for user {user_id}.")
+        return items
+
+    def get_all_memberships_by_user_raw(self, user_id: str) -> List[dict]:
+        items: List[dict] = []
+        for item in GroupMembershipModel.scan(GroupMembershipModel.user_id == user_id):
+            # Safety: ensure this is a membership record
+            if str(item.pk).startswith("FAMILY#") and str(item.sk).startswith("GROUP#"):
+                items.append(item)
+        self.logger.info(f"Fetched {len(items)} group memberships for user {user_id}.")
         return items
 
     # Get all pending membership requests for a group

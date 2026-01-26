@@ -1,6 +1,6 @@
 from models.user_profile import UserProfile
 from helpers.audit_helper import AuditHelper
-from helpers.notification_helper import NotificationHelper
+from helpers.notification_helper import NotificationHelper, ProfileColorOptions
 from helpers.notification_settings_helper import NotificationSettingsHelper
 from models.notification import NotificationType
 from models.audit import AuditActions, AuditEntityTypes
@@ -8,6 +8,7 @@ from models.audit import AuditActions, AuditEntityTypes
 from pynamodb.exceptions import DoesNotExist
 from aws_lambda_powertools import Logger
 from typing import Optional
+import random
 
 
 class UserProfileHelper:
@@ -41,6 +42,9 @@ class UserProfileHelper:
             )
             return existing_profile
 
+        colors = [c.value for c in ProfileColorOptions]
+        profile_color = random.choice(colors)
+
         profile = UserProfile(
             pk=UserProfile.create_pk(user_id),
             sk=UserProfile.create_sk(),
@@ -48,7 +52,7 @@ class UserProfileHelper:
             display_name=display_name,
             provider=provider,
             email=email,
-            profile_color=UserProfile.profile_color.default,
+            profile_color=profile_color,
             dark_mode=False,
         )
 

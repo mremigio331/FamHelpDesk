@@ -32,3 +32,24 @@ class GroupMembershipModel(FamHelpDeskBaseModel):
     @staticmethod
     def create_sk(group_id: str, user_id: str) -> str:
         return f"GROUP#{group_id}#MEMBER#{user_id}"
+
+    @classmethod
+    def prepare_delete_all_memberships(cls, user_id: str):
+        """
+        Prepare delete operations for all memberships associated with the given user ID.
+        """
+        # Query all memberships for the user
+        memberships = cls.query(user_id, index=cls.user_index.Meta.index_name)
+
+        # Generate delete operations for each membership
+        delete_operations = []
+        for membership in memberships:
+            delete_operations.append(
+                {
+                    "Delete": {
+                        "TableName": cls.Meta.table_name,
+                        "Key": {"pk": membership.pk, "sk": membership.sk},
+                    }
+                }
+            )
+        return delete_operations

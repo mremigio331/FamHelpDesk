@@ -262,3 +262,30 @@ class AuditHelper:
         except DoesNotExist:
             self.logger.info(f"No user audit records found for user {user_id}")
             return [], None
+
+    def get_all_user_audits(self, user_id: str) -> List[AuditModel]:
+        """
+        Get all audit records for a user profile without manual pagination handling.
+
+        Args:
+            user_id: The user ID to get audit records for
+
+        Returns:
+            List[AuditModel]: All audit records for the user
+        """
+        all_records = []
+        last_evaluated_key = None
+
+        while True:
+            records, last_evaluated_key = self.get_all_user_audit_records(
+                user_id, last_evaluated_key=last_evaluated_key
+            )
+            all_records.extend(records)
+
+            if not last_evaluated_key:
+                break
+
+        self.logger.info(
+            f"Retrieved all {len(all_records)} audit records for user {user_id}"
+        )
+        return all_records

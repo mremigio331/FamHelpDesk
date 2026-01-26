@@ -23,7 +23,7 @@ class QueueHelper:
         created_by: str,
         queue_description: Optional[str] = None,
     ) -> QueueModel:
-        queue_id = QueueModel.generate_uuid()
+        queue_id = QueueModel.generate_random_id(prefix="Q")
         creation_date = QueueModel.now_epoch()
 
         queue = QueueModel(

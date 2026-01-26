@@ -68,7 +68,15 @@ def update_ticket(request: Request, body: UpdateTicketRequest):
         helper = TicketHelper(request_id=request.state.request_id)
 
         if any(
-            [body.title, body.description, body.severity, body.status, body.assigned_to, body.group_id, body.queue_id]
+            [
+                body.title,
+                body.description,
+                body.severity,
+                body.status,
+                body.assigned_to,
+                body.group_id,
+                body.queue_id,
+            ]
         ):
             updated_ticket = helper.update_ticket_by_id(
                 ticket_id=body.ticket_id,

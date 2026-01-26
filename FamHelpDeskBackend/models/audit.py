@@ -36,7 +36,7 @@ class AuditModel(FamHelpDeskBaseModel):
 
     @staticmethod
     def create_user_profile_pk(user_id: str) -> str:
-        return f"USER#{user_id}"
+        return f"USER_PROFILE#{user_id}"
 
     @staticmethod
     def create_sk(entity_type: str, entity_id: str, timestamp: int, action: str) -> str:

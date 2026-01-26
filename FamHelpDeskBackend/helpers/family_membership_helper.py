@@ -158,6 +158,19 @@ class FamilyMembershipHelper:
         self.logger.info(f"Fetched {len(items)} memberships for user {user_id}.")
         return items
 
+    def get_all_memberships_by_user_raw(self, user_id: str) -> List[dict]:
+        items: List[dict] = []
+        for item in FamilyMembershipModel.scan(
+            FamilyMembershipModel.user_id == user_id
+        ):
+            # Safety: ensure this is a membership record
+            if str(item.pk).startswith("FAMILY#") and str(item.sk).startswith(
+                "MEMBER#"
+            ):
+                items.append(item)
+        self.logger.info(f"Fetched {len(items)} memberships for user {user_id}.")
+        return items
+
     # Get all pending membership requests for a family
     def get_pending_membership_requests(self, family_id: str) -> List[dict]:
         """Get all pending membership requests for a family."""

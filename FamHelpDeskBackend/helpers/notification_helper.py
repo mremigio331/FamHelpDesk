@@ -109,6 +109,7 @@ class NotificationHelper:
         viewed: Optional[bool] = None,
         limit: int = 50,
         last_evaluated_key: Optional[dict] = None,
+        raw=False,
     ) -> dict:
         """
         Get notifications for a user with pagination support.
@@ -148,6 +149,8 @@ class NotificationHelper:
 
             notifications.append(
                 NotificationModel.clean_returned_notification(notification)
+                if not raw
+                else notification
             )
 
             # Stop if we've reached the limit
@@ -159,7 +162,8 @@ class NotificationHelper:
             next_key = result_iterator.last_evaluated_key
 
         # Sort by timestamp, newest first
-        notifications.sort(key=lambda x: x["timestamp"], reverse=True)
+        if not raw:
+            notifications.sort(key=lambda x: x["timestamp"], reverse=True)
 
         self.logger.info(
             f"Retrieved {len(notifications)} notifications for user {user_id}",

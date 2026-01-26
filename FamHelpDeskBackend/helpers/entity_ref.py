@@ -10,7 +10,7 @@ class EntityRef:
     """
 
     id: str
-    name: Optional[str] = None
+    name: Optional[str] = "Deleted Entity"
 
     def to_dict(self) -> dict:
         return {"id": self.id, "name": self.name}

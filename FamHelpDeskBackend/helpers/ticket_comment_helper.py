@@ -76,7 +76,7 @@ class TicketCommentHelper:
         )
 
         # Generate comment_id using UUID
-        comment_id = TicketCommentModel.generate_uuid()
+        comment_id = TicketCommentModel.generate_random_id(prefix="C")
 
         # Set comment_date and last_update to current epoch
         current_time = TicketCommentModel.now_epoch()

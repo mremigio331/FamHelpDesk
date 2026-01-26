@@ -27,7 +27,7 @@ class GroupHelper:
         created_by: str,
         group_description: Optional[str] = None,
     ) -> GroupModel:
-        group_id = GroupModel.generate_uuid()
+        group_id = GroupModel.generate_random_id(prefix="G")
         creation_date = GroupModel.now_epoch()
 
         group = GroupModel(
