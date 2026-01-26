@@ -213,11 +213,16 @@ final class AuthManager: ObservableObject {
                     await checkAuthStatus()
                 }
             case .userAction(_, _), .fallback(_, _), .failed:
-                await MainActor.run {
-                    self.isAuthenticated = false
-                    self.userDisplayName = nil
-                    self.authError = authError
-                    self.authenticationState = .error(authError)
+                // Check if this is a token-related failure that requires sign-out
+                if shouldSignOutOnError(authError) {
+                    await signOut()
+                } else {
+                    await MainActor.run {
+                        self.isAuthenticated = false
+                        self.userDisplayName = nil
+                        self.authError = authError
+                        self.authenticationState = .error(authError)
+                    }
                 }
             }
         }
@@ -284,7 +289,10 @@ final class AuthManager: ObservableObject {
                 } catch {
                     logger.logAuthenticationStateChange(.userAttributesFailure(error: error))
                     displayName = currentUser.username
-                    print("⚠️ ID token extraction failed, using username as fallback")
+                    print("⚠️ ID token extraction failed, using username as fallback - will sign out")
+                    // Token refresh failed, sign out the user
+                    await signOut()
+                    return
                 }
             }
 
@@ -588,6 +596,24 @@ final class AuthManager: ObservableObject {
             return .configurationError(error.localizedDescription)
         } else {
             return .unknownError(error)
+        }
+    }
+
+    /// Determine if an authentication error should trigger automatic sign-out
+    private func shouldSignOutOnError(_ authError: AuthError) -> Bool {
+        switch authError {
+        case .tokenExpired:
+            return true
+        case let .unknownError(error):
+            let errorDescription = error.localizedDescription.lowercased()
+            // Sign out if error indicates deleted account, revoked token, or invalid credentials
+            return errorDescription.contains("unauthorized") ||
+                errorDescription.contains("invalid_grant") ||
+                errorDescription.contains("token_revoked") ||
+                errorDescription.contains("user_not_found") ||
+                errorDescription.contains("user_disabled")
+        default:
+            return false
         }
     }
 }

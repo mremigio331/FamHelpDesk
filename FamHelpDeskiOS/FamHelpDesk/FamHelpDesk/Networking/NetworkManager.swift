@@ -419,8 +419,11 @@ final class NetworkManager {
                 // Handle specific error types before retry
                 switch networkError {
                 case .unauthorized:
-                    // Clear any cached tokens and force refresh
+                    // Token is invalid/expired - clear tokens and sign out user
+                    logger.logNetworkOperation(.requestFailure(method: method, endpoint: url.absoluteString, error: NetworkError.unauthorized))
                     await AuthSessionManager.shared.clearTokens()
+                    // Don't retry on 401 - sign the user out instead
+                    throw NetworkError.authenticationFailure(NSError(domain: "NetworkManager", code: 401, userInfo: [NSLocalizedDescriptionKey: "Token refresh failed - user has been signed out"]))
                 case .networkTimeout, .noConnection:
                     // Check if connection is restored before retry
                     if !hasNetworkConnection {
@@ -477,6 +480,8 @@ final class NetworkManager {
             return
         case 401:
             logger.logNetworkOperation(.unauthorizedResponse(endpoint: url.absoluteString))
+            // Handle 401 Unauthorized - token is invalid/expired
+            // This will trigger sign-out in performRequestWithRetry
             throw NetworkError.unauthorized
         case 408, 504:
             logger.logNetworkOperation(.requestFailure(method: method, endpoint: url.absoluteString, error: NetworkError.networkTimeout))

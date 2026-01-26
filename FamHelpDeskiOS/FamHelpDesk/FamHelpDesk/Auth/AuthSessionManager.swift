@@ -68,10 +68,14 @@ final class AuthSessionManager {
             case let .recovered(_, token):
                 return token
             case .userAction(_, _), .fallback(_, _), .failed:
+                // Sign out on token errors
+                await handleTokenRefreshError(error)
                 throw error
             }
         } catch {
             logger.logTokenOperation(.tokenRefreshFailure(error: error, type: "id_token"))
+            // Sign out on any token retrieval failure
+            await handleTokenRefreshError(error)
             throw TokenError.tokenRetrievalFailed(error)
         }
     }
@@ -124,10 +128,14 @@ final class AuthSessionManager {
             case let .recovered(_, token):
                 return token
             case .userAction(_, _), .fallback(_, _), .failed:
+                // Sign out on token errors
+                await handleTokenRefreshError(error)
                 throw error
             }
         } catch {
             logger.logTokenOperation(.tokenRefreshFailure(error: error, type: "access_token"))
+            // Sign out on any token retrieval failure
+            await handleTokenRefreshError(error)
             throw TokenError.tokenRetrievalFailed(error)
         }
     }
@@ -251,22 +259,23 @@ final class AuthSessionManager {
     private func handleTokenRefreshError(_ error: Error) async {
         logger.logTokenOperation(.tokenRefreshFailure(error: error, type: "refresh_error_handler"))
 
-        // Clear tokens on authentication failures
-        if case TokenError.userNotSignedIn = error {
-            await clearTokens()
-        } else if case TokenError.authenticationFailure = error {
-            await clearTokens()
-        } else {
-            // For any other authentication-related errors, clear tokens as a safety measure
-            let errorDescription = String(describing: error).lowercased()
-            if errorDescription.contains("unauthorized") ||
-                errorDescription.contains("expired") ||
-                errorDescription.contains("invalid") ||
-                errorDescription.contains("signedout")
-            {
-                logger.logTokenOperation(.tokenCleared)
-                await clearTokens()
-            }
-        }
+        // Sign out user on token refresh failures
+        await signOutUserOnTokenRefreshFailure(error: error)
+    }
+
+    /// Sign out user when token refresh fails (account deleted, revoked, or invalid)
+    private func signOutUserOnTokenRefreshFailure(error: Error) async {
+        logger.logTokenOperation(.tokenCleared)
+
+        // Clear tokens from Amplify - this will trigger auth state changes
+        await clearTokens()
+
+        // Additionally clear tokens to prevent any retry attempts
+        _ = await Amplify.Auth.signOut(options: .init(globalSignOut: true))
+
+        logger.logTokenOperation(.tokenRefreshFailure(
+            error: error,
+            type: "user_signed_out_due_to_token_failure"
+        ))
     }
 }

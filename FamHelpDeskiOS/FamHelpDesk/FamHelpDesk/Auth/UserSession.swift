@@ -1,3 +1,4 @@
+import Amplify
 import Foundation
 import SwiftUI
 
@@ -69,8 +70,8 @@ final class UserSession {
 
                 // Only sign out on unauthorized, not other errors
                 if case .unauthorized = error {
-                    print("❌ Unauthorized error - signing out")
-                    signOut()
+                    print("❌ Unauthorized error - signing out via Amplify")
+                    await handleUnauthorizedError()
                     isFetching = false
                     isLoading = false
                     return
@@ -110,6 +111,27 @@ final class UserSession {
 
         isFetching = false
         isLoading = false
+    }
+
+    /// Handle unauthorized errors by signing out
+    private func handleUnauthorizedError() async {
+        // Clear local state
+        currentUser = nil
+        errorMessage = nil
+
+        // Clear network manager tokens
+        NetworkManager.shared.clearAccessToken()
+        APIClient.shared.clearAccessToken()
+
+        // Sign out from Amplify to trigger auth state change
+        do {
+            _ = await Amplify.Auth.signOut()
+            print("✅ Successfully signed out from Amplify")
+        } catch {
+            print("⚠️ Error during Amplify sign out: \(error)")
+            // Force clear tokens anyway
+            await AuthSessionManager.shared.clearTokens()
+        }
     }
 
     /// Sign out and clear all user data
