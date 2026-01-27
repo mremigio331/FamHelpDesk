@@ -157,7 +157,7 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
     deleted_count = 0
     for idx, item in enumerate(all_items, 1):
         try:
-            # item.delete()
+            item.delete()
             deleted_count += 1
             logger.debug(f"Deleted item {idx}/{len(all_items)} for user_id: {user_id}")
         except Exception as e:
@@ -176,10 +176,8 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
             f"Deleting Cognito user for user_id: {user_id} in user pool: {user_pool_id}"
         )
         cognito_client = boto3.client("cognito-idp", region_name=region)
-        # cognito_client.admin_delete_user(UserPoolId=user_pool_id, Username=user_id)
-        logger.info(
-            f"Cognito user {user_id} deletion initiated (commented out for testing)"
-        )
+        cognito_client.admin_delete_user(UserPoolId=user_pool_id, Username=user_id)
+        logger.info(f"Cognito user {user_id} deletion completed")
     except Exception as e:
         logger.error(
             f"Failed to delete Cognito user {user_id}. Error: {e}", exc_info=True
