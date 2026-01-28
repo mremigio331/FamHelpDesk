@@ -23,6 +23,7 @@ def get_all_families(request: Request):
 
     helper = FamilyHelper(request_id=request.state.request_id)
     families = helper.get_all_families()
+    families = [f for f in families if not f.private]
 
     return JSONResponse(
         content={"families": [FamilyModel.clean_returned_family(f) for f in families]},

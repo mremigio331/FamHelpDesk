@@ -18,7 +18,12 @@ export COGNITO_CLIENT_ID=$(aws cognito-idp list-user-pools --max-results 60 --re
     --query "UserPoolClients[?contains(ClientName, 'FamHelpDeskUserPoolClientTesting')].ClientId" \
     --output text
 )
+export USER_DELETE_LAMBDA=$(
+    aws lambda get-function --function-name "FamHelpDesk-UserDeleteLambda-Testing" --region us-west-2 \
+    --query 'Configuration.FunctionArn' --output text
+)
 export COGNITO_REGION="us-west-2"
+export TABLE_NAME="FamHelpDesk-Testing"
 
 export COGNITO_DOMAIN="https://famhelpdesk-testing.auth.us-west-2.amazoncognito.com"
 export API_URL="https://api.testing.famhelpdesk.com"

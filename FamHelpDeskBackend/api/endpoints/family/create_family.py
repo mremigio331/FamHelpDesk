@@ -17,6 +17,7 @@ router = APIRouter()
 class CreateFamilyRequest(BaseModel):
     family_name: str
     family_description: Optional[str] = None
+    private: Optional[bool] = False
 
 
 @router.post(
@@ -39,6 +40,7 @@ def create_family(request: Request, body: CreateFamilyRequest):
         family_name=body.family_name,
         family_description=body.family_description,
         created_by=token_user_id,
+        private=body.private,
     )
 
     return JSONResponse(

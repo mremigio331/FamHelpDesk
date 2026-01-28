@@ -1,6 +1,6 @@
 from models.base import FamHelpDeskBaseModel
 from models.entity_lookup import EntityLookupIndex
-from pynamodb.attributes import UnicodeAttribute, NumberAttribute
+from pynamodb.attributes import UnicodeAttribute, NumberAttribute, BooleanAttribute
 
 
 class FamilyModel(FamHelpDeskBaseModel):
@@ -9,6 +9,7 @@ class FamilyModel(FamHelpDeskBaseModel):
     family_description = UnicodeAttribute(null=True)
     creation_date = NumberAttribute()
     created_by = UnicodeAttribute()
+    private = BooleanAttribute(default=False)
 
     # GSI attributes (need to be populated when creating/updating)
     entity_uuid = UnicodeAttribute(null=True)
@@ -32,6 +33,7 @@ class FamilyModel(FamHelpDeskBaseModel):
             "family_name": family.family_name,
             "creation_date": family.creation_date,
             "created_by": family.created_by,
+            "private": family.private,
         }
         if family.family_description is not None:
             data["family_description"] = family.family_description

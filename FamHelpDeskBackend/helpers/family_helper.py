@@ -22,6 +22,7 @@ class FamilyHelper:
         family_name: str,
         created_by: str,
         family_description: Optional[str] = None,
+        private: bool = False,
     ) -> FamilyModel:
         family_id = FamilyModel.generate_random_id(prefix="F")
         creation_date = FamilyModel.now_epoch()
@@ -33,6 +34,7 @@ class FamilyHelper:
             family_name=family_name,
             created_by=created_by,
             creation_date=creation_date,
+            private=private,
         )
 
         if family_description is not None:
