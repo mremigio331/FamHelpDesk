@@ -9,6 +9,7 @@ enum APIEndpoint {
     // Family endpoints
     case getAllFamilies
     case getMyFamilies
+    case getFamilyById(familyId: String)
     case createFamily
     case updateFamily(familyId: String)
     case getFamilyMembers(familyId: String)
@@ -77,6 +78,8 @@ enum APIEndpoint {
             "/family"
         case .getMyFamilies:
             "/family/mine"
+        case let .getFamilyById(familyId):
+            "/family/\(familyId)"
         case .createFamily:
             "/family"
         case let .updateFamily(familyId):

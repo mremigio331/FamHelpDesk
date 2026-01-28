@@ -2,10 +2,12 @@ import SwiftUI
 
 struct FamilySearchView: View {
     @State private var searchText = ""
+    @State private var familyIdText = ""
     @State private var families: [Family] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var showError = false
+    @State private var showJoinByIdSheet = false
 
     private let searchService = SearchService()
     private let membershipService = MembershipService()
@@ -17,6 +19,26 @@ struct FamilySearchView: View {
                 // Search Bar
                 SearchBar(text: $searchText, onSearchButtonClicked: performSearch)
                     .padding()
+
+                // Join by Family ID Button
+                Button(action: {
+                    showJoinByIdSheet = true
+                }) {
+                    HStack {
+                        Image(systemName: "number.circle.fill")
+                            .foregroundColor(.blue)
+                        Text("Join by Family ID")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.blue)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(10)
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 8)
 
                 // Content
                 if isLoading {
@@ -37,6 +59,9 @@ struct FamilySearchView: View {
                 Button("OK") {}
             } message: {
                 Text(errorMessage ?? "An unknown error occurred")
+            }
+            .sheet(isPresented: $showJoinByIdSheet) {
+                JoinByFamilyIdView()
             }
         }
         .task {
@@ -533,4 +558,310 @@ struct InitialSearchView: View {
 
 #Preview {
     FamilySearchView()
+}
+
+// MARK: - Join by Family ID View
+
+struct JoinByFamilyIdView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var familyIdText = ""
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+    @State private var showError = false
+    @State private var foundFamily: Family?
+    @State private var isRequestingMembership = false
+
+    private let familyService = FamilyService()
+    private let membershipService = MembershipService()
+    @State private var familySession = FamilySession.shared
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                // Header
+                HStack {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundColor(.blue)
+
+                    Spacer()
+
+                    Text("Join by Family ID")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+
+                    Spacer()
+
+                    // Placeholder for symmetry
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundColor(.blue)
+                    .opacity(0)
+                    .disabled(true)
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 12)
+                .background(Color(uiColor: .systemBackground))
+                .overlay(
+                    Rectangle()
+                        .frame(height: 0.5)
+                        .foregroundColor(Color(uiColor: .separator)),
+                    alignment: .bottom
+                )
+
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Info Section
+                        VStack(spacing: 12) {
+                            Image(systemName: "number.circle.fill")
+                                .font(.system(size: 48))
+                                .foregroundColor(.blue)
+
+                            Text("Enter Family ID")
+                                .font(.title3)
+                                .fontWeight(.semibold)
+
+                            Text("Ask a family admin for the Family ID to request membership")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+                        }
+                        .padding(.top, 32)
+
+                        // Input Section
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Family ID")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(.secondary)
+
+                            TextField("Enter Family ID (e.g., F1234567890)", text: $familyIdText)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .autocapitalization(.allCharacters)
+                                .disableAutocorrection(true)
+                                .disabled(isLoading)
+
+                            Text("Family IDs start with 'F' followed by numbers")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal)
+
+                        // Find Button
+                        Button(action: findFamily) {
+                            HStack {
+                                if isLoading {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        .scaleEffect(0.9)
+                                } else {
+                                    Text("Find Family")
+                                        .fontWeight(.semibold)
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(familyIdText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoading ? Color.gray : Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                        }
+                        .disabled(familyIdText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoading)
+                        .padding(.horizontal)
+
+                        // Found Family Display
+                        if let family = foundFamily {
+                            VStack(spacing: 16) {
+                                Divider()
+                                    .padding(.horizontal)
+
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("Family Found")
+                                        .font(.headline)
+                                        .foregroundColor(.green)
+
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        HStack {
+                                            Text("Name:")
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                            Text(family.familyName)
+                                                .font(.subheadline)
+                                                .fontWeight(.medium)
+                                        }
+
+                                        if let description = family.familyDescription, !description.isEmpty {
+                                            HStack(alignment: .top) {
+                                                Text("Description:")
+                                                    .font(.subheadline)
+                                                    .foregroundColor(.secondary)
+                                                Text(description)
+                                                    .font(.subheadline)
+                                            }
+                                        }
+
+                                        if family.isPrivate {
+                                            HStack {
+                                                Image(systemName: "lock.fill")
+                                                    .font(.caption)
+                                                    .foregroundColor(.purple)
+                                                Text("Private Family")
+                                                    .font(.caption)
+                                                    .foregroundColor(.purple)
+                                            }
+                                        }
+                                    }
+                                    .padding()
+                                    .background(Color(.systemGray6))
+                                    .cornerRadius(10)
+
+                                    // Membership Action
+                                    membershipActionView(for: family)
+                                }
+                                .padding(.horizontal)
+                            }
+                        }
+
+                        Spacer()
+                    }
+                }
+            }
+            .navigationBarHidden(true)
+            .alert("Error", isPresented: $showError) {
+                Button("OK") {}
+            } message: {
+                Text(errorMessage ?? "An unknown error occurred")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func membershipActionView(for family: Family) -> some View {
+        if let myFamily = familySession.myFamilies[family.familyId] {
+            let status = myFamily.membership.status
+            switch status {
+            case "MEMBER":
+                HStack {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                    Text("You're already a member of this family")
+                        .font(.subheadline)
+                        .foregroundColor(.green)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color.green.opacity(0.1))
+                .cornerRadius(10)
+
+            case "AWAITING":
+                HStack {
+                    Image(systemName: "clock.circle.fill")
+                        .foregroundColor(.orange)
+                    Text("Membership request pending")
+                        .font(.subheadline)
+                        .foregroundColor(.orange)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color.orange.opacity(0.1))
+                .cornerRadius(10)
+
+            default:
+                Button(action: { requestMembership(for: family) }) {
+                    HStack {
+                        if isRequestingMembership {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(0.9)
+                        } else {
+                            Text("Request to Join")
+                                .fontWeight(.semibold)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(isRequestingMembership ? Color.gray : Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                }
+                .disabled(isRequestingMembership)
+            }
+        } else {
+            Button(action: { requestMembership(for: family) }) {
+                HStack {
+                    if isRequestingMembership {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(0.9)
+                    } else {
+                        Text("Request to Join")
+                            .fontWeight(.semibold)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(isRequestingMembership ? Color.gray : Color.blue)
+                .foregroundColor(.white)
+                .cornerRadius(10)
+            }
+            .disabled(isRequestingMembership)
+        }
+    }
+
+    private func findFamily() {
+        Task {
+            await performFindFamily()
+        }
+    }
+
+    @MainActor
+    private func performFindFamily() async {
+        let trimmedId = familyIdText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedId.isEmpty else { return }
+
+        isLoading = true
+        foundFamily = nil
+        errorMessage = nil
+
+        do {
+            // TODO: Add getFamilyById endpoint to backend
+            // For now, we'll need to add this endpoint: GET /family/{familyId}
+            let family = try await familyService.getFamilyById(familyId: trimmedId)
+            foundFamily = family
+
+            // Refresh family session to check membership status
+            await familySession.fetchMyFamilies()
+        } catch {
+            errorMessage = "Family not found. Please check the Family ID and try again."
+            showError = true
+        }
+
+        isLoading = false
+    }
+
+    private func requestMembership(for family: Family) {
+        Task {
+            await performMembershipRequest(for: family)
+        }
+    }
+
+    @MainActor
+    private func performMembershipRequest(for family: Family) async {
+        isRequestingMembership = true
+        do {
+            try await membershipService.requestFamilyMembership(familyId: family.familyId)
+            // Refresh family data to update membership status
+            await familySession.fetchMyFamilies()
+        } catch {
+            errorMessage = "Failed to request membership: \(error.localizedDescription)"
+            showError = true
+        }
+        isRequestingMembership = false
+    }
+}
+
+#Preview("Join by Family ID") {
+    JoinByFamilyIdView()
 }

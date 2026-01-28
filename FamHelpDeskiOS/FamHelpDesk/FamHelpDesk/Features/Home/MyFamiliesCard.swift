@@ -89,13 +89,24 @@ struct FamilyRow: View {
                 Text(family.familyName)
                     .font(.headline)
                 Spacer()
-                Text(statusText)
-                    .font(.caption)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(statusColor.opacity(0.2))
-                    .foregroundColor(statusColor)
-                    .cornerRadius(4)
+                HStack(spacing: 6) {
+                    if family.isPrivate {
+                        Text("Private")
+                            .font(.caption)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.purple.opacity(0.2))
+                            .foregroundColor(.purple)
+                            .cornerRadius(4)
+                    }
+                    Text(statusText)
+                        .font(.caption)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(statusColor.opacity(0.2))
+                        .foregroundColor(statusColor)
+                        .cornerRadius(4)
+                }
             }
 
             if let description = family.familyDescription, !description.isEmpty {

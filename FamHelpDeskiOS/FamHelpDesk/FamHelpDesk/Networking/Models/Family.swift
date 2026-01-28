@@ -6,6 +6,7 @@ struct Family: Codable, Identifiable, Hashable {
     let familyDescription: String?
     let createdBy: String
     let creationDate: TimeInterval
+    let isPrivate: Bool
 
     var id: String { familyId }
 
@@ -21,6 +22,7 @@ struct Family: Codable, Identifiable, Hashable {
         case familyDescription = "family_description"
         case createdBy = "created_by"
         case creationDate = "creation_date"
+        case isPrivate = "private"
     }
 
     func hash(into hasher: inout Hasher) {
@@ -67,13 +69,19 @@ struct GetMyFamiliesResponse: Codable {
     let families: [String: MyFamilyItem]
 }
 
+struct GetFamilyByIdResponse: Codable {
+    let family: Family
+}
+
 struct CreateFamilyRequest: Codable {
     let familyName: String
     let familyDescription: String?
+    let isPrivate: Bool
 
     enum CodingKeys: String, CodingKey {
         case familyName = "family_name"
         case familyDescription = "family_description"
+        case isPrivate = "private"
     }
 }
 
@@ -84,10 +92,12 @@ struct CreateFamilyResponse: Codable {
 struct UpdateFamilyRequest: Codable {
     let familyName: String
     let familyDescription: String?
+    let isPrivate: Bool
 
     enum CodingKeys: String, CodingKey {
         case familyName = "family_name"
         case familyDescription = "family_description"
+        case isPrivate = "private"
     }
 }
 

@@ -4,6 +4,7 @@ struct CreateFamilyView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var familyName = ""
     @State private var familyDescription = ""
+    @State private var isPrivate = false
     @State private var isCreating = false
     @State private var errorMessage: String?
     @State private var showError = false
@@ -95,6 +96,17 @@ struct CreateFamilyView: View {
                     .foregroundColor(.secondary)
                 }
 
+                Section {
+                    Toggle("Private Family", isOn: $isPrivate)
+                        .disabled(isCreating)
+                } header: {
+                    Text("Privacy")
+                } footer: {
+                    Text("Private families are only visible to members.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
                 if let errorMessage {
                     Section {
                         Text(errorMessage)
@@ -141,7 +153,8 @@ struct CreateFamilyView: View {
 
                 let _ = try await familyService.createFamily(
                     name: trimmedName,
-                    description: finalDescription
+                    description: finalDescription,
+                    isPrivate: isPrivate
                 )
 
                 // Refresh families list

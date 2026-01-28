@@ -5,6 +5,7 @@ struct EditFamilyView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var familyName: String
     @State private var familyDescription: String
+    @State private var isPrivate: Bool
     @State private var isUpdating = false
     @State private var errorMessage: String?
     @State private var showError = false
@@ -16,6 +17,7 @@ struct EditFamilyView: View {
         self.family = family
         _familyName = State(initialValue: family.familyName)
         _familyDescription = State(initialValue: family.familyDescription ?? "")
+        _isPrivate = State(initialValue: family.isPrivate)
     }
 
     private var isFormValid: Bool {
@@ -32,7 +34,8 @@ struct EditFamilyView: View {
         let originalDescription = family.familyDescription ?? ""
 
         return trimmedName != family.familyName ||
-            trimmedDescription != originalDescription
+            trimmedDescription != originalDescription ||
+            isPrivate != family.isPrivate
     }
 
     var body: some View {
@@ -115,6 +118,17 @@ struct EditFamilyView: View {
                 }
 
                 Section {
+                    Toggle("Private Family", isOn: $isPrivate)
+                        .disabled(isUpdating)
+                } header: {
+                    Text("Privacy")
+                } footer: {
+                    Text("Private families are only visible to members.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Section {
                     HStack {
                         Text("Family ID")
                             .foregroundColor(.secondary)
@@ -123,6 +137,14 @@ struct EditFamilyView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .textSelection(.enabled)
+
+                        Button(action: {
+                            UIPasteboard.general.string = family.familyId
+                        }) {
+                            Image(systemName: "doc.on.doc")
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                        }
                     }
 
                     HStack {
@@ -182,7 +204,8 @@ struct EditFamilyView: View {
             let updatedFamily = try await familyService.updateFamily(
                 familyId: family.familyId,
                 name: trimmedName,
-                description: finalDescription
+                description: finalDescription,
+                isPrivate: isPrivate
             )
 
             // Update the family in cache for immediate UI update
@@ -217,7 +240,8 @@ struct EditFamilyView: View {
             familyName: "Smith Family",
             familyDescription: "Our family group for managing household tasks and activities",
             createdBy: "user123",
-            creationDate: Date().timeIntervalSince1970
+            creationDate: Date().timeIntervalSince1970,
+            isPrivate: false
         )
     )
 }

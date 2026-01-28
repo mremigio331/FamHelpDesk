@@ -42,20 +42,40 @@ final class FamilyService {
         }
     }
 
+    /// Fetches a specific family by ID
+    /// - Parameter familyId: The ID of the family to fetch
+    /// - Returns: Family object
+    /// - Throws: ServiceError with structured error information
+    func getFamilyById(familyId: String) async throws -> Family {
+        do {
+            let response: GetFamilyByIdResponse = try await networkManager.get(
+                endpoint: APIEndpoint.getFamilyById(familyId: familyId).path
+            )
+            print("📱 Get Family By ID Response: \(response.family.familyName)")
+            return response.family
+        } catch {
+            let serviceError = mapToServiceError(error)
+            print("❌ Error fetching family by ID: \(serviceError)")
+            throw serviceError
+        }
+    }
+
     /// Creates a new family with input validation and enhanced error handling
     /// - Parameters:
     ///   - name: The name of the family
     ///   - description: Optional description
+    ///   - isPrivate: Whether the family is private
     /// - Returns: The created Family object
     /// - Throws: ServiceError for validation errors or network failures
-    func createFamily(name: String, description: String?) async throws -> Family {
+    func createFamily(name: String, description: String?, isPrivate: Bool) async throws -> Family {
         // Validate input before making API call
         try validateFamilyInput(name: name, description: description)
 
         do {
             let request = CreateFamilyRequest(
                 familyName: name,
-                familyDescription: description
+                familyDescription: description,
+                isPrivate: isPrivate
             )
             let response: CreateFamilyResponse = try await networkManager.post(
                 endpoint: APIEndpoint.createFamily.path,
@@ -75,16 +95,18 @@ final class FamilyService {
     ///   - familyId: The ID of the family to update
     ///   - name: The new name of the family
     ///   - description: Optional new description
+    ///   - isPrivate: Whether the family is private
     /// - Returns: The updated Family object
     /// - Throws: ServiceError for validation errors or network failures
-    func updateFamily(familyId: String, name: String, description: String?) async throws -> Family {
+    func updateFamily(familyId: String, name: String, description: String?, isPrivate: Bool) async throws -> Family {
         // Validate input before making API call
         try validateFamilyInput(name: name, description: description)
 
         do {
             let request = UpdateFamilyRequest(
                 familyName: name,
-                familyDescription: description
+                familyDescription: description,
+                isPrivate: isPrivate
             )
             let response: UpdateFamilyResponse = try await networkManager.put(
                 endpoint: APIEndpoint.updateFamily(familyId: familyId).path,

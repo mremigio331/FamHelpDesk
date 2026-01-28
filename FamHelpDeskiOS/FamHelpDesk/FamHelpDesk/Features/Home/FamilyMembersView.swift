@@ -346,7 +346,8 @@ struct MembershipRequestRowView: View {
                 familyName: "Smith Family",
                 familyDescription: "Our family group",
                 createdBy: "user123",
-                creationDate: Date().timeIntervalSince1970
+                creationDate: Date().timeIntervalSince1970,
+                isPrivate: false
             )
         )
     }

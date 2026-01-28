@@ -306,6 +306,14 @@ struct FamilyDetailView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .textSelection(.enabled)
+
+                        Button(action: {
+                            UIPasteboard.general.string = family.familyId
+                        }) {
+                            Image(systemName: "doc.on.doc")
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                        }
                     }
                 }
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
@@ -372,7 +380,8 @@ struct FamilyDetailView: View {
                 familyName: "Smith Family",
                 familyDescription: "Our family group",
                 createdBy: "user123",
-                creationDate: Date().timeIntervalSince1970
+                creationDate: Date().timeIntervalSince1970,
+                isPrivate: false
             )
         )
     }
