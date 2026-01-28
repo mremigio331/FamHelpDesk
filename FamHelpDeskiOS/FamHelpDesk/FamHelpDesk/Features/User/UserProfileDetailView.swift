@@ -6,6 +6,13 @@ struct UserProfileDetailView: View {
 
     @State private var userSession = UserSession.shared
     @State private var showEditProfile = false
+    @StateObject private var deletionViewModel: ProfileDeletionViewModel
+    @State private var showDeletionAlert = false
+
+    init() {
+        let deletionService = ProfileDeletionService(authManager: AuthManager())
+        _deletionViewModel = StateObject(wrappedValue: ProfileDeletionViewModel(deletionService: deletionService))
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -15,7 +22,8 @@ struct UserProfileDetailView: View {
             })
 
             List {
-                if userSession.isFetching {
+                if userSession.isFetching, userSession.currentUser == nil {
+                    // Only show loading if profile is not loaded yet
                     Section {
                         ProgressView()
                             .frame(maxWidth: .infinity, alignment: .center)
@@ -83,6 +91,23 @@ struct UserProfileDetailView: View {
                                 Spacer()
                             }
                         }
+
+                        Button(role: .destructive) {
+                            showDeletionAlert = true
+                        } label: {
+                            HStack {
+                                Spacer()
+                                if deletionViewModel.isLoading {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                        .padding(.trailing, 8)
+                                }
+                                Image(systemName: "trash")
+                                Text("Delete Profile")
+                                Spacer()
+                            }
+                        }
+                        .disabled(deletionViewModel.isLoading)
 
                         // Testing Helper (Debug builds only)
                         #if DEBUG
@@ -158,11 +183,62 @@ struct UserProfileDetailView: View {
                     // do it by wrapping in Task { ... } inside that view or inside the callback.
                 }
             }
-            // Optional: auto-load on appear
-            .task {
-                if userSession.currentUser == nil, !userSession.isFetching {
-                    await userSession.refreshProfile()
+            .alert("Delete Profile", isPresented: $showDeletionAlert) {
+                Button("Cancel", role: .cancel) {}
+                Button("Delete", role: .destructive) {
+                    Task {
+                        await deletionViewModel.initiateProfileDeletion()
+                    }
                 }
+            } message: {
+                Text("Are you sure you want to delete your profile? This action cannot be undone. You will receive an email once the deletion is completed.")
+            }
+            .alert("Deletion Failed", isPresented: .constant(deletionViewModel.errorMessage != nil)) {
+                Button("OK", role: .cancel) {
+                    deletionViewModel.errorMessage = nil
+                }
+                Button("Retry") {
+                    Task {
+                        await deletionViewModel.retryDeletion()
+                    }
+                }
+            } message: {
+                if let errorMessage = deletionViewModel.errorMessage {
+                    Text(errorMessage)
+                }
+            }
+            .fullScreenCover(isPresented: $deletionViewModel.showDeletionConfirmation) {
+                DeletionConfirmationView(onBackToHome: {
+                    // Perform minimal sign-out when user taps "Back to Home"
+                    Task {
+                        print("🗑️ [CONFIRMATION VIEW] User tapped Back to Home")
+                        print("🗑️ [CONFIRMATION VIEW] Clearing local state only...")
+
+                        await MainActor.run {
+                            // Clear auth state ONLY - don't touch Amplify
+                            auth.isAuthenticated = false
+                            auth.userDisplayName = nil
+                            auth.authError = nil
+                            auth.authenticationState = .unauthenticated
+
+                            // Clear network managers
+                            APIClient.shared.clearAccessToken()
+                            NetworkManager.shared.clearAccessToken()
+
+                            // Clear user session
+                            UserSession.shared.signOut()
+
+                            print("🗑️ [CONFIRMATION VIEW] Local state cleared")
+
+                            // Dismiss the confirmation view
+                            deletionViewModel.showDeletionConfirmation = false
+
+                            print("🗑️ [CONFIRMATION VIEW] Confirmation view dismissed")
+                        }
+                    }
+                })
+                .environmentObject(auth)
+                .interactiveDismissDisabled(true) // Prevent swipe to dismiss
             }
         }
     }

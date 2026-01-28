@@ -53,16 +53,25 @@ struct FamHelpDeskApp: App {
                 }
             }
             .task {
-                // Load user profile when authentication state changes to authenticated
-                if case .authenticated = auth.authenticationState, userSession.currentUser == nil {
+                // Load user profile ONCE when app starts and user is authenticated
+                if case .authenticated = auth.authenticationState, userSession.currentUser == nil, !userSession.isLoading {
+                    print("📱 [APP] Initial profile load on app start")
                     await userSession.loadUserProfile()
                 }
             }
-            .onChange(of: auth.authenticationState) { _, newState in
+            .onChange(of: auth.authenticationState) { oldState, newState in
                 Task {
-                    if case .authenticated = newState, userSession.currentUser == nil {
+                    // Only load profile if transitioning TO authenticated from a different state
+                    // AND profile is not already loaded
+                    if case .authenticated = newState,
+                       !matches(oldState, newState),
+                       userSession.currentUser == nil,
+                       !userSession.isLoading
+                    {
+                        print("📱 [APP] Auth state changed to authenticated, loading profile")
                         await userSession.loadUserProfile()
                     } else if case .unauthenticated = newState {
+                        print("📱 [APP] Auth state changed to unauthenticated, clearing session")
                         userSession.signOut()
                         showErrorAfterDelay = false
                     }
@@ -85,6 +94,22 @@ struct FamHelpDeskApp: App {
                     showErrorAfterDelay = false
                 }
             }
+        }
+    }
+
+    // Helper function to check if two auth states are the same
+    private func matches(_ state1: AuthenticationState, _ state2: AuthenticationState) -> Bool {
+        switch (state1, state2) {
+        case (.unknown, .unknown):
+            true
+        case (.unauthenticated, .unauthenticated):
+            true
+        case let (.authenticated(user1), .authenticated(user2)):
+            user1.userId == user2.userId
+        case let (.error(error1), .error(error2)):
+            error1 == error2
+        default:
+            false
         }
     }
 

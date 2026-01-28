@@ -170,9 +170,11 @@ final class AuthSessionManager {
     }
 
     /// Ensure proper token clearing on authentication failures
+    /// This performs a local-only sign-out to avoid triggering Cognito web views
     func clearTokens() async {
         logger.logTokenOperation(.tokenCleared)
-        _ = await Amplify.Auth.signOut()
+        // Use global sign-out option to clear tokens without web view
+        _ = await Amplify.Auth.signOut(options: .init(globalSignOut: true))
     }
 
     // MARK: - Private Token Validation Methods

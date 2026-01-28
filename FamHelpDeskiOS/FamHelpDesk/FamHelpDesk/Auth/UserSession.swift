@@ -68,13 +68,24 @@ final class UserSession {
             } catch let error as NetworkError {
                 print("🔄 Attempt \(attempt)/3 failed with network error: \(error)")
 
-                // Only sign out on unauthorized, not other errors
+                // Sign out on unauthorized or user not found errors
                 if case .unauthorized = error {
                     print("❌ Unauthorized error - signing out via Amplify")
                     await handleUnauthorizedError()
                     isFetching = false
                     isLoading = false
                     return
+                }
+
+                // Handle 404 USER_NOT_FOUND - user was deleted
+                if case let .serverError(statusCode, message) = error, statusCode == 404 {
+                    if let message, message.contains("USER_NOT_FOUND") {
+                        print("❌ User not found (404) - user was deleted, signing out")
+                        await handleUnauthorizedError()
+                        isFetching = false
+                        isLoading = false
+                        return
+                    }
                 }
 
                 // For other errors, retry unless it's the last attempt
@@ -115,23 +126,30 @@ final class UserSession {
 
     /// Handle unauthorized errors by signing out
     private func handleUnauthorizedError() async {
-        // Clear local state
-        currentUser = nil
-        errorMessage = nil
+        print("🔓 Performing local sign-out due to unauthorized/user not found error")
+
+        // Clear local state FIRST
+        await MainActor.run {
+            currentUser = nil
+            errorMessage = nil
+            isLoading = false
+            isFetching = false
+        }
 
         // Clear network manager tokens
         NetworkManager.shared.clearAccessToken()
         APIClient.shared.clearAccessToken()
 
-        // Sign out from Amplify to trigger auth state change
-        do {
-            _ = await Amplify.Auth.signOut()
-            print("✅ Successfully signed out from Amplify")
-        } catch {
-            print("⚠️ Error during Amplify sign out: \(error)")
-            // Force clear tokens anyway
-            await AuthSessionManager.shared.clearTokens()
+        // Post notification to trigger manual sign-out in AuthManager
+        // This bypasses Amplify's web view issue
+        await MainActor.run {
+            NotificationCenter.default.post(
+                name: NSNotification.Name("ForceSignOutDueToDeletedUser"),
+                object: nil
+            )
         }
+
+        print("✅ Local sign-out notification posted")
     }
 
     /// Sign out and clear all user data

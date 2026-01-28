@@ -109,6 +109,9 @@ final class AuthManager: ObservableObject {
 
         // Listen for authentication state changes
         setupAuthStateListener()
+
+        // Listen for force sign-out notifications (e.g., when user is deleted)
+        setupForceSignOutListener()
     }
 
     // MARK: - Authentication State Management
@@ -120,6 +123,54 @@ final class AuthManager: ObservableObject {
                 await handleAuthStateChange(authState)
             }
         }
+    }
+
+    private func setupForceSignOutListener() {
+        // Listen for force sign-out notifications (e.g., when user profile is deleted)
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("ForceSignOutDueToDeletedUser"),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            print("🔔 Received force sign-out notification")
+            Task {
+                await self.forceLocalSignOut()
+            }
+        }
+    }
+
+    /// Force a local sign-out without calling Amplify.Auth.signOut()
+    /// This is used when the user's profile has been deleted and we need to clear state
+    /// without triggering Cognito's web view
+    @MainActor
+    private func forceLocalSignOut() async {
+        print("🔓 Force local sign-out started")
+
+        // Clear all local state FIRST
+        isAuthenticated = false
+        userDisplayName = nil
+        authError = nil
+        authenticationState = .unauthenticated
+
+        // Clear network managers
+        APIClient.shared.clearAccessToken()
+        NetworkManager.shared.clearAccessToken()
+
+        // Clear user session
+        UserSession.shared.signOut()
+
+        // Now clear Amplify's internal state
+        // Use globalSignOut: false to avoid web view, but still clear local Amplify state
+        do {
+            let options = AuthSignOutRequest.Options(globalSignOut: false)
+            _ = await Amplify.Auth.signOut(options: options)
+            print("🔓 Amplify internal state cleared")
+        } catch {
+            print("⚠️ Error clearing Amplify state (continuing anyway): \(error)")
+        }
+
+        print("🔓 Force local sign-out complete")
     }
 
     @MainActor
@@ -385,8 +436,28 @@ final class AuthManager: ObservableObject {
         } catch {
             logger.logAuthenticationStateChange(.signInFailure(error: error, method: "hosted_ui"))
 
-            // Check if error is due to user already being signed in
+            // Check if user cancelled - if so, just stay unauthenticated
+            print("🔐 [AUTH] Sign-in error: \(error)")
+            print("🔐 [AUTH] Error type: \(type(of: error))")
+            print("🔐 [AUTH] Error description: \(error.localizedDescription)")
+
             let errorDescription = error.localizedDescription.lowercased()
+            let errorString = "\(error)".lowercased()
+
+            if errorDescription.contains("user cancelled") ||
+                errorDescription.contains("usercancelled") ||
+                errorString.contains("usercancelled")
+            {
+                print("🔐 [AUTH] User cancelled sign-in, staying unauthenticated")
+                await MainActor.run {
+                    self.authenticationState = .unauthenticated
+                    self.authError = nil
+                }
+                // Don't throw - just return, keeping state as unauthenticated
+                return
+            }
+
+            // Check if error is due to user already being signed in
             if errorDescription.contains("already a user in signedin state") {
                 logger.logAuthenticationStateChange(.signOutStarted)
                 await forceSignOut()
@@ -402,7 +473,7 @@ final class AuthManager: ObservableObject {
                 return try await signInWithHostedUI()
             }
 
-            // Attempt error recovery
+            // Attempt error recovery for other errors
             let authError = mapAmplifyError(error)
             let context = AuthContext(operation: "sign_in_hosted_ui", attempt: 1, userInitiated: true)
             let recoveryResult = await errorRecovery.recoverFromAuthenticationError(authError, context: context)
