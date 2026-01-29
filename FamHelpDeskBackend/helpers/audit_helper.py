@@ -6,10 +6,13 @@ import time
 
 
 class AuditHelper:
-    def __init__(self, request_id: str = None):
+    def __init__(
+        self, request_id: str = None, stage: str = None, table_name: str = None
+    ):
         self.logger = Logger()
         if request_id:
             self.logger.append_keys(request_id=request_id)
+        AuditModel.set_stage_and_table(stage, table_name)
 
     # Family-based audit methods
     def create_family_audit_record(

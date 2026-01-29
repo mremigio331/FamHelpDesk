@@ -10,12 +10,17 @@ from models.audit import AuditActions, AuditEntityTypes
 
 
 class FamilyHelper:
-    def __init__(self, request_id: str = None):
+    def __init__(
+        self, request_id: str = None, stage: str = None, table_name: str = None
+    ):
         self.logger = Logger()
         if request_id:
             self.logger.append_keys(request_id=request_id)
         self.request_id = request_id
-        self.audit_helper = AuditHelper(request_id=request_id)
+        FamilyModel.set_stage_and_table(stage, table_name)
+        self.audit_helper = AuditHelper(
+            request_id=request_id, stage=stage, table_name=table_name
+        )
 
     def create_family(
         self,

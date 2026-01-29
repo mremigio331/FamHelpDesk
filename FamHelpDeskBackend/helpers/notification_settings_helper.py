@@ -8,17 +8,22 @@ from models.notification import NotificationType
 
 
 class NotificationSettingsHelper:
-    def __init__(self, request_id: str = None):
+    def __init__(
+        self, request_id: str = None, stage: str = None, table_name: str = None
+    ):
         """
         Initialize NotificationSettingsHelper with logger and request_id support.
 
         Args:
             request_id: Optional request ID for logging correlation
+            stage: Optional stage to override model configuration
+            table_name: Optional table name to override model configuration
         """
         self.logger = Logger()
         if request_id:
             self.logger.append_keys(request_id=request_id)
         self.request_id = request_id
+        NotificationSettingsModel.set_stage_and_table(stage, table_name)
 
     def create_default_settings(self, user_id: str) -> NotificationSettingsModel:
         """

@@ -17,6 +17,7 @@ router = APIRouter()
 class UpdateFamilyRequest(BaseModel):
     family_name: Optional[str] = None
     family_description: Optional[str] = None
+    private: Optional[bool] = None
 
 
 @router.put(
@@ -46,6 +47,8 @@ def update_family(
         update_kwargs["family_name"] = body.family_name
     if body.family_description is not None:
         update_kwargs["family_description"] = body.family_description
+    if body.private is not None:
+        update_kwargs["private"] = body.private
 
     if not update_kwargs:
         return JSONResponse(

@@ -41,3 +41,18 @@ class FamHelpDeskBaseModel(Model):
     @staticmethod
     def now_epoch() -> int:
         return int(time.time())
+
+    @classmethod
+    def set_stage_and_table(cls, stage: str = None, table_name: str = None):
+        """
+        Update stage and table_name for this model if provided.
+        If None, uses existing values (from environment or defaults).
+
+        Args:
+            stage: Optional stage name (e.g., "Testing", "Production")
+            table_name: Optional DynamoDB table name
+        """
+        if stage is not None:
+            cls.Meta.stage = stage
+        if table_name is not None:
+            cls.Meta.table_name = table_name

@@ -10,11 +10,21 @@ import boto3
 
 
 class NotificationHelper:
-    def __init__(self, request_id: str):
+    def __init__(
+        self,
+        request_id: str = None,
+        stage: str = None,
+        table_name: str = None,
+        notification_topic_arn: str = None,
+    ):
         self.logger = Logger()
-        self.logger.append_keys(request_id=request_id)
+        if request_id:
+            self.logger.append_keys(request_id=request_id)
+        NotificationModel.set_stage_and_table(stage, table_name)
         self.sns_client = boto3.client("sns")
-        self.notification_topic_arn = os.environ.get("NOTIFICATION_TOPIC_ARN")
+        self.notification_topic_arn = notification_topic_arn or os.environ.get(
+            "NOTIFICATION_TOPIC_ARN"
+        )
 
     def create_notification(
         self,

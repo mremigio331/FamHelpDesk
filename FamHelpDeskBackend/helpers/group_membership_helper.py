@@ -20,12 +20,19 @@ from exceptions.membership_exceptions import (
 
 
 class GroupMembershipHelper:
-    def __init__(self, request_id: str = None):
+    def __init__(
+        self, request_id: str = None, stage: str = None, table_name: str = None, notification_topic_arn: str = None
+    ):
         self.logger = Logger()
         if request_id:
             self.logger.append_keys(request_id=request_id)
-        self.audit_helper = AuditHelper(request_id=request_id)
-        self.notification_helper = NotificationHelper(request_id=request_id)
+        GroupMembershipModel.set_stage_and_table(stage, table_name)
+        self.audit_helper = AuditHelper(
+            request_id=request_id, stage=stage, table_name=table_name
+        )
+        self.notification_helper = NotificationHelper(
+            request_id=request_id, stage=stage, table_name=table_name, notification_topic_arn=notification_topic_arn
+        )
 
     # Core getters
     def get_membership(
