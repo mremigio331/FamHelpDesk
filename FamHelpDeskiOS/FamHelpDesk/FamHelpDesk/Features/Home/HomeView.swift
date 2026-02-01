@@ -5,6 +5,7 @@ struct HomeView: View {
     @State private var userSession = UserSession.shared
     @State private var familySession = FamilySession.shared
     @State private var showCreateFamily = false
+    @State private var showSearch = false
 
     var body: some View {
         List {
@@ -18,7 +19,9 @@ struct HomeView: View {
                 }
             }
 
-            MyFamiliesCard(showCreateFamily: $showCreateFamily)
+            MyFamiliesCard(showCreateFamily: $showCreateFamily, onFindFamilies: {
+                showSearch = true
+            })
         }
         .refreshable {
             await refreshHomeData()
@@ -26,6 +29,9 @@ struct HomeView: View {
         .sheet(isPresented: $showCreateFamily) {
             CreateFamilyView()
                 .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $showSearch) {
+            FamilySearchView()
         }
     }
 

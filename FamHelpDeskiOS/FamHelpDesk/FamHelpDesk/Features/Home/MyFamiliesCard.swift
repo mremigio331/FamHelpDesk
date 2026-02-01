@@ -3,6 +3,7 @@ import SwiftUI
 struct MyFamiliesCard: View {
     @State private var familySession = FamilySession.shared
     @Binding var showCreateFamily: Bool
+    var onFindFamilies: (() -> Void)?
 
     var body: some View {
         Section {
@@ -21,14 +22,9 @@ struct MyFamiliesCard: View {
                         .foregroundColor(.secondary)
                 }
             } else if familySession.familiesArray.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "person.3")
-                        .font(.largeTitle)
-                        .foregroundColor(.secondary)
-                    Text("You are not part of any families yet")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
+                EmptyFamiliesView(onFindFamilies: {
+                    onFindFamilies?()
+                })
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 20)
             } else {
@@ -139,7 +135,9 @@ struct FamilyRow: View {
 #Preview {
     NavigationStack {
         List {
-            MyFamiliesCard(showCreateFamily: .constant(false))
+            MyFamiliesCard(showCreateFamily: .constant(false), onFindFamilies: {
+                print("Find families tapped")
+            })
         }
     }
     .environmentObject(AuthManager())

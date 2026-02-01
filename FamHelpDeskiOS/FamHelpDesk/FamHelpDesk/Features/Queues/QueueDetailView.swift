@@ -6,6 +6,7 @@ struct QueueDetailView: View {
     @State private var queueSession = QueueSession.shared
     @State private var userSession = UserSession.shared
     @State private var notificationSession = NotificationSession.shared
+    @State private var ticketSession = TicketSession.shared
     @State private var selectedTab: QueueDetailTab = .overview
     @State private var showProfile = false
     @State private var showNotifications = false
@@ -14,6 +15,17 @@ struct QueueDetailView: View {
 
     @State private var showingEditQueue = false
     @State private var alertType: AlertType?
+
+    // Ticket loading state
+    @State private var isLoadingTickets = false
+    @State private var ticketsError: String?
+
+    // Filtered tickets for this queue
+    private var queueTickets: [Ticket] {
+        ticketSession.tickets.filter { ticket in
+            ticket.queueId.id == initialQueue.queueId
+        }
+    }
 
     // Get the current queue from session, fallback to initial queue
     private var queue: Queue {
@@ -87,6 +99,9 @@ struct QueueDetailView: View {
                         case .overview:
                             QueueOverviewView(
                                 queue: queue,
+                                queueTickets: queueTickets,
+                                isLoadingTickets: isLoadingTickets,
+                                ticketsError: ticketsError,
                                 canEditQueue: canEditQueue,
                                 showingEditQueue: $showingEditQueue,
                                 onDeleteTapped: {
@@ -94,7 +109,13 @@ struct QueueDetailView: View {
                                 }
                             )
                         case .tickets:
-                            QueueTicketsView(queue: queue)
+                            QueueTicketsView(
+                                queue: queue,
+                                queueTickets: queueTickets,
+                                isLoadingTickets: isLoadingTickets,
+                                ticketsError: ticketsError,
+                                onRefresh: loadTickets
+                            )
                         }
                     }
                     .frame(minHeight: UIScreen.main.bounds.height - 200) // Ensure scrollable content
@@ -112,11 +133,18 @@ struct QueueDetailView: View {
             FamilySearchView()
         }
         .refreshable {
-            // No need to refresh members since queues don't have their own members
+            await loadTickets()
         }
         .task {
-            // Load notifications to get unread count
-            await notificationSession.fetchNotifications(refresh: false)
+            // Load tickets and notifications when view appears
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask {
+                    await loadTickets()
+                }
+                group.addTask {
+                    await notificationSession.fetchNotifications(refresh: false)
+                }
+            }
         }
         .sheet(isPresented: $showingEditQueue) {
             EditQueueView(queue: queue)
@@ -152,6 +180,25 @@ struct QueueDetailView: View {
     }
 
     @MainActor
+    private func loadTickets() async {
+        isLoadingTickets = true
+        ticketsError = nil
+
+        // Load all tickets for the group
+        await ticketSession.loadTickets(
+            familyId: initialQueue.familyId,
+            filters: TicketFilters(groupId: initialQueue.groupId),
+            refresh: true
+        )
+
+        if let error = ticketSession.errorMessage {
+            ticketsError = error
+        }
+
+        isLoadingTickets = false
+    }
+
+    @MainActor
     private func deleteQueue() async {
         let success = await queueSession.deleteQueue(
             familyId: initialQueue.familyId,
@@ -172,6 +219,9 @@ struct QueueDetailView: View {
 
 struct QueueOverviewView: View {
     let queue: Queue
+    let queueTickets: [Ticket]
+    let isLoadingTickets: Bool
+    let ticketsError: String?
     let canEditQueue: Bool
     @Binding var showingEditQueue: Bool
     let onDeleteTapped: () -> Void
@@ -240,10 +290,15 @@ struct QueueOverviewView: View {
                         Text("Tickets")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
-                        Text("0") // TODO: Replace with actual ticket count when tickets are implemented
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.green)
+                        if isLoadingTickets {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        } else {
+                            Text("\(queueTickets.count)")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.green)
+                        }
                     }
                 }
                 .padding(.vertical, 8)
@@ -303,9 +358,75 @@ struct QueueOverviewView: View {
 
 struct QueueTicketsView: View {
     let queue: Queue
+    let queueTickets: [Ticket]
+    let isLoadingTickets: Bool
+    let ticketsError: String?
+    let onRefresh: () async -> Void
 
     var body: some View {
-        TicketListView(familyId: queue.familyId, filters: TicketFilters(queueId: queue.queueId))
+        VStack {
+            if isLoadingTickets, queueTickets.isEmpty {
+                VStack(spacing: 16) {
+                    ProgressView()
+                        .scaleEffect(1.2)
+                    Text("Loading tickets...")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let error = ticketsError {
+                VStack(spacing: 20) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 60))
+                        .foregroundColor(.orange)
+                    Text("Error Loading Tickets")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    Text(error)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                    Button("Retry") {
+                        Task {
+                            await onRefresh()
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if queueTickets.isEmpty {
+                VStack(spacing: 20) {
+                    Image(systemName: "ticket")
+                        .font(.system(size: 60))
+                        .foregroundColor(.blue)
+                    Text("No Tickets")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    Text("There are no tickets in this queue yet.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List {
+                    Section {
+                        ForEach(queueTickets) { ticket in
+                            NavigationLink(destination: TicketDetailView(ticket: ticket)) {
+                                TicketRowView(ticket: ticket, isSelected: false, searchQuery: nil)
+                            }
+                        }
+                    } header: {
+                        Text("\(queueTickets.count) ticket\(queueTickets.count == 1 ? "" : "s")")
+                    }
+                }
+                .listStyle(.insetGrouped)
+            }
+        }
+        .refreshable {
+            await onRefresh()
+        }
     }
 }
 

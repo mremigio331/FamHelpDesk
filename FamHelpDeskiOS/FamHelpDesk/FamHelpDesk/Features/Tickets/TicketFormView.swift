@@ -100,19 +100,7 @@ struct TicketFormView: View {
                         Text("Severity")
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        Picker("Severity", selection: $selectedSeverity) {
-                            ForEach(TicketSeverity.allCases, id: \.self) { severity in
-                                HStack {
-                                    Circle()
-                                        .fill(severityColor(for: severity))
-                                        .frame(width: 12, height: 12)
-                                    Text(severity.displayName)
-                                }
-                                .tag(severity)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .disabled(isSubmitting)
+                        SeverityPickerWithInfo(selectedSeverity: $selectedSeverity)
                     }
 
                     VStack(alignment: .leading, spacing: 4) {
@@ -347,21 +335,6 @@ struct TicketFormView: View {
             }
         case .closed:
             return "Closed tickets cannot be reopened or changed"
-        }
-    }
-
-    // MARK: - Helper Methods
-
-    private func severityColor(for severity: TicketSeverity) -> Color {
-        switch severity {
-        case .sev1:
-            .red
-        case .sev2, .sev2_5:
-            .orange
-        case .sev3:
-            .yellow
-        case .sev4, .sev5:
-            .green
         }
     }
 

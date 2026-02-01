@@ -175,21 +175,36 @@ struct GroupDetailView: View {
             await refreshMembershipData()
         }
         .task {
-            // Load group members when view appears
-            await loadGroupMembers()
-            await loadMembershipRequests()
+            // Load all data concurrently
+            await withTaskGroup(of: Void.self) { group in
+                // Load group members
+                group.addTask {
+                    await loadGroupMembers()
+                }
 
-            // Load queues for this group
-            await loadGroupQueues()
+                // Load membership requests
+                group.addTask {
+                    await loadMembershipRequests()
+                }
 
-            // Ensure user session is loaded for membership check
-            if userSession.currentUser == nil, !userSession.isFetching, !userSession.isLoading {
-                print("🔄 Loading user profile for membership check...")
-                await userSession.loadUserProfile()
+                // Load queues for this group
+                group.addTask {
+                    await loadGroupQueues()
+                }
+
+                // Ensure user session is loaded for membership check
+                if userSession.currentUser == nil, !userSession.isFetching, !userSession.isLoading {
+                    group.addTask {
+                        print("🔄 Loading user profile for membership check...")
+                        await userSession.loadUserProfile()
+                    }
+                }
+
+                // Load notifications to get unread count
+                group.addTask {
+                    await notificationSession.fetchNotifications(refresh: false)
+                }
             }
-
-            // Load notifications to get unread count
-            await notificationSession.fetchNotifications(refresh: false)
         }
         .onAppear {
             // Update navigation context when this view appears
@@ -358,10 +373,15 @@ struct GroupOverviewView: View {
                         Text("Members")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
-                        Text("\(members.count)")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.blue)
+                        if isLoadingMembers {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        } else {
+                            Text("\(members.count)")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.blue)
+                        }
                     }
 
                     Spacer()
@@ -370,10 +390,15 @@ struct GroupOverviewView: View {
                         Text("Queues")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
-                        Text("\(queues.count)")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.green)
+                        if queueSession.isFetching {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        } else {
+                            Text("\(queues.count)")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.green)
+                        }
                     }
 
                     Spacer()
@@ -382,10 +407,15 @@ struct GroupOverviewView: View {
                         Text("Pending Requests")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
-                        Text("\(membershipRequests.count)")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.orange)
+                        if isLoadingRequests {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        } else {
+                            Text("\(membershipRequests.count)")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.orange)
+                        }
                     }
                 }
                 .padding(.vertical, 8)
@@ -411,10 +441,6 @@ struct GroupOverviewView: View {
                         }
 
                         Spacer()
-
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
                     }
                     .padding(.vertical, 8)
                 }
@@ -529,7 +555,20 @@ struct GroupMembersView: View {
                 }
 
                 // Pending Membership Requests - Show for all users (no section header since PENDING tag is clear)
-                if !filteredRequests.isEmpty {
+                if isLoadingRequests {
+                    HStack {
+                        Spacer()
+                        VStack(spacing: 8) {
+                            ProgressView()
+                                .scaleEffect(1.0)
+                            Text("Loading pending requests...")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .padding(.vertical, 12)
+                } else if !filteredRequests.isEmpty {
                     ForEach(filteredRequests) { request in
                         PendingMembershipRequestRow(request: request)
                     }

@@ -5,12 +5,16 @@ struct FamilyDetailView: View {
     @State private var familySession = FamilySession.shared
     @State private var navigationContext = NavigationContext.shared
     @State private var notificationSession = NotificationSession.shared
+    @State private var groupSession = GroupSession.shared
+    @State private var membershipSession = MembershipSession.shared
+    @State private var ticketSession = TicketSession.shared
     @State private var showProfile = false
     @State private var showNotifications = false
     @State private var showSearch = false
     @State private var showCreateTicket = false
     @State private var showEditFamily = false
     @State private var navigationBarVisible = true
+    @State private var currentFamilyId: String?
 
     enum Tab: String, CaseIterable {
         case overview = "Overview"
@@ -142,9 +146,15 @@ struct FamilyDetailView: View {
             EditFamilyView(family: family)
         }
         .onAppear {
-            // Load notifications to get unread count
+            // Preload all family data when view appears
             Task {
-                await notificationSession.fetchNotifications(refresh: false)
+                await preloadFamilyData()
+            }
+        }
+        .onChange(of: family.familyId) { oldValue, newValue in
+            // Clear and reload data when family changes
+            Task {
+                await handleFamilyChange(from: oldValue, to: newValue)
             }
         }
     }
@@ -318,6 +328,36 @@ struct FamilyDetailView: View {
                 }
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
 
+                // Severity Levels Guide Section
+                Section("Severity Levels Guide") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(SeverityInfo.allSeverities) { severity in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(severity.name)
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.primary)
+
+                                Text(severity.description)
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+
+                                Text(severity.scope)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .italic()
+                            }
+
+                            if severity.id != SeverityInfo.allSeverities.last?.id {
+                                Divider()
+                                    .padding(.vertical, 4)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 8)
+                }
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+
                 // Add some extra content to make scrolling more apparent
                 Section("Additional Information") {
                     VStack(alignment: .leading, spacing: 12) {
@@ -369,6 +409,88 @@ struct FamilyDetailView: View {
         displayFormatter.dateStyle = .medium
         displayFormatter.timeStyle = .none
         return displayFormatter.string(from: date)
+    }
+
+    // MARK: - Data Preloading
+
+    /// Handles family context change by clearing old data and loading new data
+    @MainActor
+    private func handleFamilyChange(from oldFamilyId: String?, to newFamilyId: String) async {
+        guard oldFamilyId != newFamilyId else { return }
+
+        print("🔄 Family changed from \(oldFamilyId ?? "nil") to \(newFamilyId)")
+
+        // Clear old family data
+        if let oldId = oldFamilyId {
+            membershipSession.clearFamilyData(familyId: oldId)
+            print("🧹 Cleared data for old family: \(oldId)")
+        }
+
+        // Clear ticket session completely since it tracks current family
+        ticketSession.clearData()
+
+        // Load new family data
+        await preloadFamilyData()
+    }
+
+    /// Preloads all family data (members, groups, tickets) when family is selected
+    /// This ensures data is ready when users navigate to different tabs
+    @MainActor
+    private func preloadFamilyData() async {
+        print("🚀 Preloading data for family: \(family.familyId)")
+
+        // Track current family
+        currentFamilyId = family.familyId
+
+        // Only preload if user is a member
+        guard let familyItem, familyItem.membership.status == "MEMBER" else {
+            print("⏭️ Skipping preload - user is not a member")
+            return
+        }
+
+        // Preload all data concurrently
+        async let membersTask: () = preloadMembers()
+        async let groupsTask: () = preloadGroups()
+        async let ticketsTask: () = preloadTickets()
+        async let notificationsTask: () = preloadNotifications()
+
+        // Wait for all tasks to complete
+        _ = await (membersTask, groupsTask, ticketsTask, notificationsTask)
+
+        print("✅ Preload complete for family: \(family.familyId)")
+    }
+
+    @MainActor
+    private func preloadMembers() async {
+        do {
+            try await membershipSession.fetchFamilyMembers(familyId: family.familyId)
+            print("✅ Preloaded family members")
+        } catch {
+            print("⚠️ Failed to preload members: \(error)")
+        }
+    }
+
+    @MainActor
+    private func preloadGroups() async {
+        await groupSession.fetchFamilyGroups(familyId: family.familyId)
+        print("✅ Preloaded family groups")
+    }
+
+    @MainActor
+    private func preloadTickets() async {
+        // Load tickets with default filters (open tickets)
+        await ticketSession.loadTickets(
+            familyId: family.familyId,
+            filters: TicketFilters(statuses: [.open]),
+            refresh: true
+        )
+        print("✅ Preloaded family tickets")
+    }
+
+    @MainActor
+    private func preloadNotifications() async {
+        await notificationSession.fetchNotifications(refresh: false)
+        print("✅ Preloaded notifications")
     }
 }
 
