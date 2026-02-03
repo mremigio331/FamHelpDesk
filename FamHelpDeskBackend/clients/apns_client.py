@@ -7,15 +7,30 @@ import boto3
 import httpx
 import jwt
 from aws_lambda_powertools import Logger
+from aws_lambda_powertools.metrics import Metrics, MetricUnit
 from cryptography.hazmat.primitives import serialization
 
+from constants.metrics import (
+    API_METRICS_NAMESPACE,
+    APNS_SEND_NOTIFICATION,
+    APNS_SUCCESS,
+    APNS_EXCEPTION,
+    ENVIRONMENT_DIMENSION,
+)
+from constants.services import APNS_SERVICE
 from models.apns_response import APNsResponse
 
 
 class APNsClient:
     """Client for sending push notifications via Apple Push Notification Service"""
 
-    def __init__(self, environment: str, stage: str = None, request_id: str = None):
+    def __init__(
+        self,
+        environment: str,
+        stage: str = None,
+        request_id: str = None,
+        service: str = None,
+    ):
         """
         Initialize APNs client
 
@@ -24,8 +39,11 @@ class APNsClient:
             stage: Optional stage name (e.g., "Testing", "Production").
                    If not provided, uses STAGE environment variable or defaults to "Testing"
             request_id: Optional request ID for logging correlation
+            service: Optional service name for metrics/logging.
+                     If not provided, uses APNS_SERVICE constant
         """
-        self.logger = Logger()
+        self.service = service or APNS_SERVICE
+        self.logger = Logger(service=self.service)
         if request_id:
             self.logger.append_keys(request_id=request_id)
 
@@ -33,6 +51,11 @@ class APNsClient:
         self.stage = stage or os.getenv("STAGE", "Testing")
         self.apns_host = self._get_apns_host()
         self.credentials = self._load_credentials()
+
+        self.metrics = Metrics(
+            namespace=API_METRICS_NAMESPACE,
+            service=self.service,
+        )
 
         self.logger.info(
             f"APNsClient initialized for {environment} environment",
@@ -150,6 +173,12 @@ class APNsClient:
         Returns:
             APNsResponse with status and error details
         """
+        # Add metrics dimensions and count
+        self.metrics.add_dimension(name=ENVIRONMENT_DIMENSION, value=self.environment)
+        self.metrics.add_metric(
+            name=APNS_SEND_NOTIFICATION, unit=MetricUnit.Count, value=1
+        )
+
         # Generate fresh JWT token for this request
         jwt_token = self._generate_jwt_token()
 
@@ -189,6 +218,10 @@ class APNsClient:
                         "apns_id": response.headers.get("apns-id"),
                     },
                 )
+                self.metrics.add_metric(
+                    name=APNS_SUCCESS, unit=MetricUnit.Count, value=1
+                )
+                self.metrics.flush_metrics()
                 return APNsResponse(
                     success=True,
                     status_code=response.status_code,
@@ -206,6 +239,10 @@ class APNsClient:
                         "apns_id": response.headers.get("apns-id"),
                     },
                 )
+                self.metrics.add_metric(
+                    name=APNS_EXCEPTION, unit=MetricUnit.Count, value=1
+                )
+                self.metrics.flush_metrics()
                 return APNsResponse(
                     success=False,
                     status_code=response.status_code,
@@ -220,6 +257,8 @@ class APNsClient:
                 f"Failed to send push notification: {str(e)}",
                 extra={"device_token_prefix": device_token[:8], "error": str(e)},
             )
+            self.metrics.add_metric(name=APNS_EXCEPTION, unit=MetricUnit.Count, value=1)
+            self.metrics.flush_metrics()
             return APNsResponse(
                 success=False,
                 status_code=0,
