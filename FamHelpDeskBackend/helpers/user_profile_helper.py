@@ -17,7 +17,11 @@ import boto3
 
 class UserProfileHelper:
     def __init__(
-        self, request_id: str = None, stage: str = None, table_name: str = None, notification_topic_arn=None
+        self,
+        request_id: str = None,
+        stage: str = None,
+        table_name: str = None,
+        notification_topic_arn=None,
     ):
         self.logger = Logger()
         self.request_id = request_id
@@ -29,7 +33,10 @@ class UserProfileHelper:
             request_id=request_id, stage=stage, table_name=table_name
         )
         self.notification_helper = NotificationHelper(
-            request_id=request_id, stage=stage, table_name=table_name, notification_topic_arn=notification_topic_arn
+            request_id=request_id,
+            stage=stage,
+            table_name=table_name,
+            notification_topic_arn=notification_topic_arn,
         )
 
     def create_profile(

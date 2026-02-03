@@ -21,7 +21,11 @@ from exceptions.membership_exceptions import (
 
 class FamilyMembershipHelper:
     def __init__(
-        self, request_id: str = None, stage: str = None, table_name: str = None, notification_topic_arn: str = None
+        self,
+        request_id: str = None,
+        stage: str = None,
+        table_name: str = None,
+        notification_topic_arn: str = None,
     ):
         self.logger = Logger()
         if request_id:
@@ -31,7 +35,10 @@ class FamilyMembershipHelper:
             request_id=request_id, stage=stage, table_name=table_name
         )
         self.notification_helper = NotificationHelper(
-            request_id=request_id, stage=stage, table_name=table_name, notification_topic_arn=notification_topic_arn
+            request_id=request_id,
+            stage=stage,
+            table_name=table_name,
+            notification_topic_arn=notification_topic_arn,
         )
 
     # Core getters

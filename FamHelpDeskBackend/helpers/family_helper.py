@@ -110,7 +110,7 @@ class FamilyHelper:
         old_family_data = self._clean_family(family)
 
         # Only allow updates to specific fields
-        allowed_fields = {"family_name", "family_description"}
+        allowed_fields = {"family_name", "family_description", "private"}
         for key, value in kwargs.items():
             if key in allowed_fields and hasattr(family, key):
                 setattr(family, key, value)
