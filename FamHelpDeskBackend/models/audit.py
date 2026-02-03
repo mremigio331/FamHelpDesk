@@ -17,6 +17,7 @@ class AuditEntityTypes(str, Enum):
     TICKET = "TICKET"
     COMMENT = "COMMENT"
     USER_PROFILE = "USER_PROFILE"
+    IOS_DEVICE = "IOS_DEVICE"
 
 
 class AuditModel(FamHelpDeskBaseModel):

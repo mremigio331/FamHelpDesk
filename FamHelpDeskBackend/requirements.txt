@@ -1,9 +1,10 @@
 aws_lambda_powertools
 cryptography<42
 fastapi
-httpx
+httpx[http2]
 mangum
 pydantic[email]
+PyJWT
 requests
 uvicorn
 fpdf

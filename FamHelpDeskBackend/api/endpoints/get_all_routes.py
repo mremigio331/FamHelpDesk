@@ -59,7 +59,12 @@ from api.endpoints.notifications import (
 )
 from api.endpoints.notifications.get_settings import router as get_settings_router
 from api.endpoints.notifications.update_settings import router as update_settings_router
+from api.endpoints.devices.register_device import router as register_device_router
+from api.endpoints.devices.unregister_device import router as unregister_device_router
+from api.endpoints.devices.get_device import router as get_device_router
 from constants.api import (
+    DEVICES_PATH,
+    DEVICES_TAG,
     FAMILY_MEMBERSHIP_TAG,
     FAMILY_PATH,
     FAMILY_TAG,
@@ -222,5 +227,12 @@ def get_all_routes(app: FastAPI) -> FastAPI:
     app.include_router(get_user_profile.router, prefix=USER_PATH, tags=[USER_TAG])
     app.include_router(update_user_profile.router, prefix=USER_PATH, tags=[USER_TAG])
     app.include_router(delete_user_profile.router, prefix=USER_PATH, tags=[USER_TAG])
+
+    # Devices routes
+    app.include_router(register_device_router, prefix=DEVICES_PATH, tags=[DEVICES_TAG])
+    app.include_router(
+        unregister_device_router, prefix=DEVICES_PATH, tags=[DEVICES_TAG]
+    )
+    app.include_router(get_device_router, prefix=DEVICES_PATH, tags=[DEVICES_TAG])
 
     return app

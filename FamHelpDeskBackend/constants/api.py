@@ -24,3 +24,6 @@ MEMBERSHIP_PATH = "/membership"
 
 NOTIFICATIONS_TAG = "Notifications"
 NOTIFICATIONS_PATH = "/notifications"
+
+DEVICES_TAG = "Devices"
+DEVICES_PATH = "/devices"
