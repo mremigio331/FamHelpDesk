@@ -3,8 +3,10 @@ from pynamodb.exceptions import DoesNotExist
 from aws_lambda_powertools import Logger
 import time
 
-from models.family_notification_settings import FamilyNotificationSettings
-from models.notification import NotificationType
+from models.family_notification_settings import (
+    FamilyNotificationSettings,
+    FamliyNotificationType,
+)
 
 
 class FamilyNotificationSettingsHelper:
@@ -233,12 +235,26 @@ class FamilyNotificationSettingsHelper:
 
         # Map NotificationType enum values to corresponding boolean fields
         notification_mapping = {
-            NotificationType.WELCOME_TO_FAMILY: settings.welcome_to_family_enabled,
-            NotificationType.MEMBERSHIP_REQUEST: settings.membership_request_enabled,
-            NotificationType.TICKET_CREATION: settings.ticket_creation_enabled,
-            NotificationType.TICKET_ASSIGNED: settings.ticket_assigned_enabled,
-            NotificationType.TICKET_COMMENT: settings.ticket_comment_enabled,
-            NotificationType.TICKET_STATUS_CHANGED: settings.ticket_status_changed_enabled,
+            # Faimly
+            FamliyNotificationType.FAMILY_MEMBERSHIP_APPROVED: settings.family_membership_approved,
+            FamliyNotificationType.FAMILY_MEMBERSHIP_DENIED: settings.family_membership_denied,
+            FamliyNotificationType.FAMILY_MEMBERSHIP_INVITATION: settings.family_membership_invitation,
+            FamliyNotificationType.FAMILY_MEMBER_JOINED: settings.family_membership_joined,
+            FamliyNotificationType.FAMILY_MEMBERSHIP_LEFT: settings.family_membership_left,
+            FamliyNotificationType.FAMILY_MEMBERSHIP_REQUEST: settings.family_membership_request,
+            # Group Membership
+            FamliyNotificationType.GROUP_MEMBERSHIP_APPROVED: settings.group_membership_approved,
+            FamliyNotificationType.GROUP_MEMBERSHIP_DENIED: settings.group_membership_denied,
+            FamliyNotificationType.GROUP_MEMBERSHIP_INVITATION: settings.group_membership_invitation,
+            FamliyNotificationType.GROUP_MEMBER_JOINED: settings.group_membership_joined,
+            FamliyNotificationType.GROUP_MEMBERSHIP_LEFT: settings.group_membership_left,
+            FamliyNotificationType.GROUP_MEMBERSHIP_REQUEST: settings.group_membership_request,
+            # Tickets
+            FamliyNotificationType.TICKET_CREATION_FAMILY: settings.ticket_creation_family,
+            FamliyNotificationType.TICKET_CREATION_GROUP: settings.ticket_creation_group,
+            FamliyNotificationType.TICKET_ASSIGNED: settings.ticket_assigned,
+            FamliyNotificationType.TICKET_COMMENT: settings.ticket_comment,
+            FamliyNotificationType.TICKET_STATUS_CHANGED: settings.ticket_satatus_change,
         }
 
         is_enabled = notification_mapping.get(notification_type, True)

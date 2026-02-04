@@ -1,0 +1,175 @@
+from helpers.notification_helper import NotificationHelper
+from helpers.family_notification_settings_helper import FamilyNotificationSettingsHelper
+from helpers.family_membership_helper import FamilyMembershipHelper
+from models.family_notification_settings import FamliyNotificationType
+
+
+class FamilyMembershipNotificationHelper:
+    def __init__(
+        self,
+        request_id: str = None,
+        stage: str = None,
+        table_name: str = None,
+        notification_topic_arn: str = None,
+    ):
+        self.notification_helper = NotificationHelper(
+            request_id=request_id,
+            stage=stage,
+            table_name=table_name,
+            notification_topic_arn=notification_topic_arn,
+        )
+        self.family_settings_helper = FamilyNotificationSettingsHelper(
+            request_id=request_id,
+            stage=stage,
+            table_name=table_name,
+            notification_topic_arn=notification_topic_arn,
+        )
+        self.family_membership_helper = FamilyMembershipHelper(
+            request_id=request_id,
+            stage=stage,
+            table_name=table_name,
+            notification_topic_arn=notification_topic_arn,
+        )
+
+    def process_notification(self, notification_type: FamliyNotificationType, **kwargs):
+
+        try:
+            if notification_type == FamliyNotificationType.NEW_FAMILY_CREATION:
+                self._process_welcome_to_family(kwargs["user_id"], kwargs["family_id"])
+            elif notification_type == FamliyNotificationType.MEMBERSHIP_REQUEST:
+                self._process_new_member_request(kwargs["user_id"], kwargs["family_id"])
+            elif notification_type == FamliyNotificationType.MEMBERSHIP_APPROVED:
+                self._process_membeship_approved(
+                    (kwargs["user_id"], kwargs["admin_user"], kwargs["family_id"])
+                )
+            elif notification_type == FamliyNotificationType.FAMILY_MEMBERSHIP_DENIED:
+                self._process_member_denied_request(
+                    (kwargs["user_id"], kwargs["admin_user"], kwargs["family_id"])
+                )
+
+        except KeyError:
+            raise
+
+    def _process_new_family_creation(self, user_id, family_id):
+        self.notification_helper.create_notification_async(
+            user_id=user_id,
+            notification_type=FamliyNotificationType.NEW_FAMILY_CREATION,
+            family_id=family_id,
+            message=f"You have created the new family {family_id}. Go to the family now to start creating tickets!",
+        )
+
+    def _process_welcome_to_family(self, user_id, family_id):
+
+        self.notification_helper.create_notification_async(
+            user_id=user_id,
+            message=f"Welcome to family {family_id}!",
+            notification_type=FamliyNotificationType.WELCOME_TO_FAMILY,
+            family_id=family_id,
+        )
+
+    def _process_new_member_to_family(self, new_member, family_id):
+        all_family_members = self.family_membership_helper.get_all_members(
+            family_id=family_id
+        )
+
+        self._process_welcome_to_family(new_member, family_id)
+
+        for member in all_family_members:
+            is_notification_enabled = (
+                self.family_settings_helper.is_notification_enabled(
+                    user_id=member["user_id"],
+                    family_id=family_id,
+                    notification_type=FamliyNotificationType.NEW_FAMILY_MEMEBER,
+                )
+            )
+
+            if is_notification_enabled:
+                self.notification_helper.create_notification_async(
+                    user_id=member["user_id"],
+                    message=f"Welcome {new_member} to the family {family_id}!",
+                    notification_type=FamliyNotificationType.NEW_FAMILY_MEMEBER,
+                    family_id=family_id,
+                )
+
+    def _process_new_member_request(self, new_member, family_id):
+        admins = self.family_membership_helper.get_all_admins(family_id=family_id)
+
+        for admin_id in admins:
+            is_notification_enabled = (
+                self.family_settings_helper.is_notification_enabled(
+                    user_id=admin_id,
+                    family_id=family_id,
+                    notification_type=FamliyNotificationType.FAMILY_MEMBERSHIP_REQUEST,
+                )
+            )
+
+            if is_notification_enabled:
+                self.notification_helper.create_notification_async(
+                    user_id=admin_id,
+                    message=f"{new_member} is requesting to join the family {family_id}!",
+                    notification_type=FamliyNotificationType.FAMILY_MEMBERSHIP_REQUEST,
+                    family_id=family_id,
+                )
+
+    def _process_membeship_approved(self, new_member, admin_user, family_id):
+        self._process_welcome_to_family(new_member, family_id)
+
+        all_members = self.family_membership_helper.get_all_members(family_id)
+
+        for member in all_members:
+
+            if member["is_admin"]:
+                if member == admin_user:
+                    pass
+
+                is_notification_enabled = self.family_settings_helper.is_notification_enabled(
+                    user_id=member["user_id"],
+                    family_id=family_id,
+                    notification_type=FamliyNotificationType.FAMILY_MEMBERSHIP_REQUEST,
+                )
+                if is_notification_enabled:
+                    self.notification_helper.create_notification_async(
+                        user_id=member["user_id"],
+                        message=f"{admin_user} approved the memebership request for {new_member} in {family_id}",
+                        notification_type=FamliyNotificationType.FAMILY_MEMBERSHIP_APPROVED,
+                        family_id=family_id,
+                    )
+
+            else:
+                is_notification_enabled = (
+                    self.family_settings_helper.is_notification_enabled(
+                        user_id=member["user_id"],
+                        family_id=family_id,
+                        notification_type=FamliyNotificationType.NEW_FAMILY_MEMEBER,
+                    )
+                )
+                if is_notification_enabled:
+                    self.notification_helper.create_notification_async(
+                        user_id=member["user_id"],
+                        message=f"{new_member} has joined {family_id}!",
+                        notification_type=FamliyNotificationType.FAMILY_MEMBERSHIP_APPROVED,
+                        family_id=family_id,
+                    )
+
+    def _process_member_denied_request(self, new_member, admin_user, family_id):
+        admins = self.family_membership_helper.get_all_admins(family_id=family_id)
+
+        for admin_id in admins:
+            if admin_user == admin_id:
+                continue
+
+            is_notification_enabled = (
+                self.family_settings_helper.is_notification_enabled(
+                    user_id=admin_id,
+                    family_id=family_id,
+                    notification_type=FamliyNotificationType.FAMILY_MEMBERSHIP_DENIED,
+                )
+            )
+
+            if is_notification_enabled:
+                self.notification_helper.create_notification_async(
+                    user_id=admin_id,
+                    message=f"{admin_user} approved the memebership request for {new_member} in {family_id}",
+                    notification_type=FamliyNotificationType.FAMILY_MEMBERSHIP_DENIED,
+                    family_id=family_id,
+                )

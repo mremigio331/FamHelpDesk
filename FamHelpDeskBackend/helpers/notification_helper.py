@@ -5,6 +5,7 @@ import os
 from typing import Optional, List, Dict
 from aws_lambda_powertools import Logger
 from models.notification import NotificationModel, NotificationType
+from exceptions.notification_exceptions import MissingNotificationArn
 from pynamodb.exceptions import DoesNotExist
 import boto3
 
@@ -268,7 +269,7 @@ class NotificationHelper:
         return updated_count
 
     def create_notification_async(
-        self, message: str, notification_type: NotificationType, **kwargs
+        self, notification_type: NotificationType, **kwargs
     ) -> bool:
         """
         Create a notification asynchronously by publishing to SNS.
@@ -276,7 +277,6 @@ class NotificationHelper:
         notification creation happens in the background via Lambda.
 
         Args:
-            message: The notification message
             notification_type: Type of notification (NotificationType enum)
             **kwargs: Optional parameters like user_id, family_id, ticket_id, group_id, queue_id, etc.
 
@@ -287,14 +287,13 @@ class NotificationHelper:
             self.logger.warning(
                 "NOTIFICATION_TOPIC_ARN not configured, skipping async notification"
             )
-            return False
+            raise MissingNotificationArn()
 
         try:
             # Create the notification payload
             notification_payload = {
-                "message": message,
                 "notification_type": notification_type.value,
-                **kwargs,  # Unpack any additional parameters
+                **kwargs,
             }
 
             # Publish to SNS topic
@@ -305,7 +304,7 @@ class NotificationHelper:
             )
 
             self.logger.info(
-                f"Published notification: {message} [{notification_type.value}]",
+                f"Published notification:[{notification_type.value}]",
                 extra={
                     "notification_type": notification_type.value,
                     "message_id": response.get("MessageId"),
@@ -320,7 +319,7 @@ class NotificationHelper:
                 f"Failed to publish notification to SNS: {str(e)}",
                 extra={
                     "notification_type": notification_type.value,
-                    "extra": **kwargs
+                    **kwargs,
                     "error": str(e),
                 },
             )

@@ -6,7 +6,7 @@ from models.family_membership import FamilyMembershipModel
 from models.base import MembershipStatus
 from helpers.audit_helper import AuditHelper
 from helpers.notification_helper import NotificationHelper
-from models.notification import NotificationType
+from models.family_notification_settings import FamliyNotificationType
 from models.audit import AuditActions, AuditEntityTypes
 from exceptions.membership_exceptions import (
     MembershipNotFound,
@@ -104,15 +104,11 @@ class FamilyMembershipHelper:
             after=after,
         )
 
-        # Notify all admins about the membership request
-        admin_ids = self.get_all_admins(family_id)
-        for admin_id in admin_ids:
-            self.notification_helper.create_notification_async(
-                user_id=admin_id,
-                message=f"User {user_id} has requested to join family {family_id}.",
-                notification_type=NotificationType.MEMBERSHIP_REQUEST,
-                family_id=family_id,
-            )
+        self.notification_helper.create_notification_async(
+            user_id=user_id,
+            notification_type=FamliyNotificationType.FAMILY_MEMBERSHIP_REQUEST,
+            family_id=family_id,
+        )
 
         return after
 
@@ -149,12 +145,10 @@ class FamilyMembershipHelper:
             after=after,
         )
 
-        # Welcome user to the family (async for better performance)
         if not is_admin:
             self.notification_helper.create_notification_async(
                 user_id=user_id,
-                message=f"Welcome to family {family_id}!",
-                notification_type=NotificationType.WELCOME_TO_FAMILY,
+                notification_type=FamliyNotificationType.WELCOME_TO_FAMILY,
                 family_id=family_id,
             )
 
@@ -338,113 +332,18 @@ class FamilyMembershipHelper:
         if approve:
             self.notification_helper.create_notification_async(
                 user_id=target_user_id,
-                message=f"Your request to join family {family_id} has been approved.",
-                notification_type=NotificationType.MEMBERSHIP_APPROVED,
+                admin_user=admin_user_id,
+                notification_type=FamliyNotificationType.MEMBERSHIP_APPROVED,
                 family_id=family_id,
             )
         else:
             self.notification_helper.create_notification_async(
                 user_id=target_user_id,
-                message=f"Your request to join family {family_id} has been denied.",
-                notification_type=NotificationType.MEMBERSHIP_DENIED,
+                admin_user=admin_user_id,
+                notification_type=FamliyNotificationType.FAMILY_MEMBERSHIP_DENIED,
                 family_id=family_id,
             )
 
-        return after
-
-    def grant_access(
-        self,
-        family_id: str,
-        granter_user_id: str,
-        target_user_id: str,
-        make_admin: bool = False,
-    ) -> dict:
-        """
-        Grant membership access to target_user_id.
-        - Any current MEMBER can grant non-admin access.
-        - Only an ADMIN can grant admin access.
-        Returns cleaned membership dict for the target user.
-        """
-        # Verify granter is a member
-        try:
-            granter = FamilyMembershipModel.get(
-                FamilyMembershipModel.create_pk(family_id),
-                FamilyMembershipModel.create_sk(granter_user_id),
-            )
-        except DoesNotExist:
-            raise MemberPrivilegesRequired()
-
-        if granter.status != MembershipStatus.MEMBER.value:
-            raise MemberPrivilegesRequired()
-        if make_admin and not granter.is_admin:
-            raise AdminPrivilegesRequired()
-
-        # Load or create target membership
-        try:
-            target = FamilyMembershipModel.get(
-                FamilyMembershipModel.create_pk(family_id),
-                FamilyMembershipModel.create_sk(target_user_id),
-            )
-            is_new = False
-        except DoesNotExist:
-            target = None
-            is_new = True
-
-        if is_new:
-            target = FamilyMembershipModel(
-                pk=FamilyMembershipModel.create_pk(family_id),
-                sk=FamilyMembershipModel.create_sk(target_user_id),
-                family_id=family_id,
-                user_id=target_user_id,
-                status=MembershipStatus.MEMBER.value,
-                is_admin=bool(make_admin),
-                request_date=FamilyMembershipModel.now_epoch(),
-            )
-            target.save()
-            after = self._clean_membership(target)
-            # Audit create
-            self.audit_helper.create_family_audit_record(
-                family_id=family_id,
-                entity_type=AuditEntityTypes.MEMBER,
-                entity_id=target_user_id,
-                action=AuditActions.CREATE,
-                actor_user_id=granter_user_id,
-                after=after,
-            )
-            self.logger.info(
-                f"Granted {'admin ' if make_admin else ''}access to user {target_user_id} in family {family_id} by {granter_user_id}."
-            )
-            return after
-
-        # Update existing membership
-        before = self._clean_membership(target)
-        # If pending/declined, promote to member
-        if target.status in (
-            MembershipStatus.AWAITING.value,
-            MembershipStatus.DECLINED.value,
-        ):
-            target.status = MembershipStatus.MEMBER.value
-        # Admin flag change only if requested and permitted
-        if make_admin and not target.is_admin:
-            target.is_admin = True
-        elif not make_admin and target.is_admin:
-            # Do not downgrade admin via grant_access; keep admin as-is
-            pass
-
-        target.save()
-        after = self._clean_membership(target)
-        self.audit_helper.create_family_audit_record(
-            family_id=family_id,
-            entity_type=AuditEntityTypes.MEMBER,
-            entity_id=target_user_id,
-            action=AuditActions.UPDATE,
-            actor_user_id=granter_user_id,
-            before=before,
-            after=after,
-        )
-        self.logger.info(
-            f"Updated access for user {target_user_id} in family {family_id} by {granter_user_id} (admin_grant={make_admin})."
-        )
         return after
 
     @staticmethod
