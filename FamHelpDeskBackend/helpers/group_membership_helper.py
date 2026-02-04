@@ -115,7 +115,7 @@ class GroupMembershipHelper:
         for admin_id in admin_ids:
             self.notification_helper.create_notification_async(
                 user_id=admin_id,
-                message=f"User {user_id} has requested to join the group.",
+                message=f"User {user_id} has requested to join group {group_id}.",
                 notification_type=NotificationType.MEMBERSHIP_REQUEST,
                 family_id=family_id,
                 group_id=group_id,
@@ -335,7 +335,7 @@ class GroupMembershipHelper:
         if approve:
             self.notification_helper.create_notification_async(
                 user_id=target_user_id,
-                message=f"Your request to join the group has been approved.",
+                message=f"Your request to join group {group_id} has been approved.",
                 notification_type=NotificationType.MEMBERSHIP_APPROVED,
                 family_id=family_id,
                 group_id=group_id,
@@ -343,7 +343,7 @@ class GroupMembershipHelper:
         else:
             self.notification_helper.create_notification_async(
                 user_id=target_user_id,
-                message=f"Your request to join the group has been denied.",
+                message=f"Your request to join group {group_id} has been denied.",
                 notification_type=NotificationType.MEMBERSHIP_DENIED,
                 family_id=family_id,
                 group_id=group_id,

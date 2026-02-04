@@ -107,7 +107,7 @@ class FamilyMembershipHelper:
         for admin_id in admin_ids:
             self.notification_helper.create_notification_async(
                 user_id=admin_id,
-                message=f"User {user_id} has requested to join the family.",
+                message=f"User {user_id} has requested to join family {family_id}.",
                 notification_type=NotificationType.MEMBERSHIP_REQUEST,
                 family_id=family_id,
             )
@@ -151,7 +151,7 @@ class FamilyMembershipHelper:
         if not is_admin:
             self.notification_helper.create_notification_async(
                 user_id=user_id,
-                message="Welcome to the family!",
+                message=f"Welcome to family {family_id}!",
                 notification_type=NotificationType.WELCOME_TO_FAMILY,
                 family_id=family_id,
             )
@@ -336,14 +336,14 @@ class FamilyMembershipHelper:
         if approve:
             self.notification_helper.create_notification_async(
                 user_id=target_user_id,
-                message=f"Your request to join the family has been approved.",
+                message=f"Your request to join family {family_id} has been approved.",
                 notification_type=NotificationType.MEMBERSHIP_APPROVED,
                 family_id=family_id,
             )
         else:
             self.notification_helper.create_notification_async(
                 user_id=target_user_id,
-                message=f"Your request to join the family has been denied.",
+                message=f"Your request to join family {family_id} has been denied.",
                 notification_type=NotificationType.MEMBERSHIP_DENIED,
                 family_id=family_id,
             )

@@ -1,5 +1,6 @@
 from dataclasses import dataclass, asdict
 from typing import Optional, List, Dict, Any
+import re
 from models.base import FamHelpDeskBaseModel
 
 
@@ -20,6 +21,74 @@ class EntityRefHelper:
     """
     Helper class for enriching EntityRef objects with names from the GSI
     """
+
+    @staticmethod
+    def extract_uuids_from_text(text: str) -> List[str]:
+        """
+        Extract all UUIDs and entity IDs from text using regex patterns.
+        Returns list of unique IDs found in the text.
+
+        Supports:
+        - Standard UUIDs: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+        - Family IDs: F followed by digits (e.g., F3627302529)
+        - Group IDs: G followed by digits (e.g., G654564843)
+
+        Args:
+            text: The text to extract IDs from
+
+        Returns:
+            List of unique ID strings found in the text
+        """
+        # Standard UUID pattern
+        uuid_pattern = r"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+
+        # Family ID pattern: F followed by digits
+        family_id_pattern = r"F\d+"
+
+        # Group ID pattern: G followed by digits
+        group_id_pattern = r"G\d+"
+
+        # Find all matches
+        all_ids = []
+        all_ids.extend(re.findall(uuid_pattern, text, re.IGNORECASE))
+        all_ids.extend(re.findall(family_id_pattern, text))
+        all_ids.extend(re.findall(group_id_pattern, text))
+
+        # Return unique IDs
+        return list(set(all_ids))
+
+    @staticmethod
+    def resolve_uuids_in_text(text: str, entity_lookup: Dict[str, str]) -> str:
+        """
+        Replace UUIDs and entity IDs in text with entity names from lookup dict.
+
+        Supports:
+        - Standard UUIDs: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+        - Family IDs: F followed by digits (e.g., F3627302529)
+        - Group IDs: G followed by digits (e.g., G654564843)
+
+        Args:
+            text: The text containing UUIDs/IDs
+            entity_lookup: Dict mapping UUID/ID -> display_name
+
+        Returns:
+            Text with UUIDs/IDs replaced by display names where available
+        """
+        # Create a combined pattern that matches all ID types
+        combined_pattern = (
+            r"([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}|F\d+|G\d+)"
+        )
+
+        def replace_id(match):
+            entity_id = match.group(0)
+            # Check if this ID should be resolved
+            if entity_id in entity_lookup:
+                return entity_lookup[entity_id]
+            else:
+                # Don't resolve - could be a ticket ID or unknown entity
+                return entity_id
+
+        return re.sub(combined_pattern, replace_id, text, flags=re.IGNORECASE)
 
     @staticmethod
     def enrich_entity_refs(data: Any) -> Any:

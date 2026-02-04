@@ -45,6 +45,17 @@ class NotificationModel(FamHelpDeskBaseModel):
 
     @staticmethod
     def clean_returned_notification(notification: "NotificationModel") -> dict:
+        """
+        Return clean dict representation of notification.
+
+        Note: Entity resolution is handled by NotificationHelper.get_notifications()
+
+        Args:
+            notification: The notification model instance
+
+        Returns:
+            Dict representation of the notification
+        """
         data = {
             "notification_id": notification.notification_id,
             "user_id": notification.user_id,

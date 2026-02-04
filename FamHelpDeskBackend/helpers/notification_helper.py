@@ -2,7 +2,7 @@ import time
 import uuid
 import json
 import os
-from typing import Optional
+from typing import Optional, List, Dict
 from aws_lambda_powertools import Logger
 from models.notification import NotificationModel, NotificationType
 from pynamodb.exceptions import DoesNotExist
@@ -120,15 +120,18 @@ class NotificationHelper:
         limit: int = 50,
         last_evaluated_key: Optional[dict] = None,
         raw=False,
+        resolve_entities: bool = True,
     ) -> dict:
         """
-        Get notifications for a user with pagination support.
+        Get notifications for a user with pagination support and optional entity resolution.
 
         Args:
             user_id: The user to get notifications for
             viewed: Optional filter - True for viewed only, False for unviewed only, None for all
             limit: Maximum number of notifications to return (default: 50)
             last_evaluated_key: Pagination token from previous request
+            raw: If True, return raw NotificationModel objects instead of dicts
+            resolve_entities: If True, resolve UUIDs to display names (default: True)
 
         Returns:
             Dict containing:
@@ -150,6 +153,7 @@ class NotificationHelper:
         result_iterator = NotificationModel.query(**query_kwargs)
 
         notifications = []
+        notification_models = []
         next_key = None
 
         for notification in result_iterator:
@@ -157,22 +161,40 @@ class NotificationHelper:
             if viewed is not None and notification.viewed != viewed:
                 continue
 
-            notifications.append(
-                NotificationModel.clean_returned_notification(notification)
-                if not raw
-                else notification
-            )
+            if raw:
+                notifications.append(notification)
+            else:
+                notification_models.append(notification)
 
             # Stop if we've reached the limit
-            if len(notifications) >= limit:
+            if len(notifications) >= limit or len(notification_models) >= limit:
                 break
 
         # Get the last evaluated key for pagination
         if hasattr(result_iterator, "last_evaluated_key"):
             next_key = result_iterator.last_evaluated_key
 
-        # Sort by timestamp, newest first
+        # Resolve entities if requested and not raw
         if not raw:
+            if resolve_entities and notification_models:
+                from helpers.entity_ref import EntityRefHelper
+
+                entity_lookup = self._batch_lookup_entities(notification_models)
+                notifications = []
+                for n in notification_models:
+                    notif_dict = NotificationModel.clean_returned_notification(n)
+                    # Resolve UUIDs in the message
+                    notif_dict["message"] = EntityRefHelper.resolve_uuids_in_text(
+                        notif_dict["message"], entity_lookup
+                    )
+                    notifications.append(notif_dict)
+            else:
+                notifications = [
+                    NotificationModel.clean_returned_notification(n)
+                    for n in notification_models
+                ]
+
+            # Sort by timestamp, newest first
             notifications.sort(key=lambda x: x["timestamp"], reverse=True)
 
         self.logger.info(
@@ -182,6 +204,7 @@ class NotificationHelper:
                 "notification_count": len(notifications),
                 "viewed_filter": viewed,
                 "has_more": next_key is not None,
+                "resolve_entities": resolve_entities,
             },
         )
 
@@ -308,3 +331,40 @@ class NotificationHelper:
                 },
             )
             return False
+
+    def _batch_lookup_entities(
+        self, notifications: List[NotificationModel]
+    ) -> Dict[str, str]:
+        """
+        Batch lookup entity names using entity_lookup_index GSI.
+
+        Process:
+        1. Extract all UUIDs from all notification messages
+        2. Use EntityRefHelper._batch_lookup_names to resolve UUIDs to names
+        3. Return mapping for use in resolve_message
+
+        Args:
+            notifications: List of NotificationModel instances
+
+        Returns:
+            Dict mapping UUID -> display_name
+        """
+        from helpers.entity_ref import EntityRefHelper
+
+        # Extract all UUIDs from all messages
+        all_uuids = set()
+        for notification in notifications:
+            uuids = EntityRefHelper.extract_uuids_from_text(notification.message)
+            all_uuids.update(uuids)
+
+        # Filter out ticket_ids (stored separately, not resolved)
+        ticket_ids = {n.ticket_id for n in notifications if n.ticket_id}
+        entity_uuids = [uuid for uuid in all_uuids if uuid not in ticket_ids]
+
+        if not entity_uuids:
+            return {}
+
+        # Use EntityRefHelper's batch lookup
+        entity_lookup = EntityRefHelper._batch_lookup_names(entity_uuids)
+
+        return entity_lookup
