@@ -6,7 +6,9 @@ from models.family import FamilyModel
 from helpers.audit_helper import AuditHelper
 from helpers.family_membership_helper import FamilyMembershipHelper
 from helpers.group_helper import GroupHelper
+from helpers.notification_helper import NotificationHelper
 from models.audit import AuditActions, AuditEntityTypes
+from models.notification import NotificationType
 
 
 class FamilyHelper:
@@ -23,6 +25,12 @@ class FamilyHelper:
         self.request_id = request_id
         FamilyModel.set_stage_and_table(stage, table_name, notification_topic_arn)
         self.audit_helper = AuditHelper(
+            request_id=request_id,
+            stage=stage,
+            table_name=table_name,
+            notification_topic_arn=notification_topic_arn,
+        )
+        self.notification_helper = NotificationHelper(
             request_id=request_id,
             stage=stage,
             table_name=table_name,
@@ -82,6 +90,12 @@ class FamilyHelper:
             group_description="Default group for the family",
         )
         self.logger.info(f"Created default group for family {family_id}")
+
+        self.notification_helper.create_notification_async(
+            user_id=created_by,
+            notification_type=NotificationType.NEW_FAMILY_CREATION,
+            family_id=family_id,
+        )
 
         return family
 

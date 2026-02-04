@@ -7,7 +7,11 @@ import time
 
 class AuditHelper:
     def __init__(
-        self, request_id: str = None, stage: str = None, table_name: str = None
+        self,
+        request_id: str = None,
+        stage: str = None,
+        table_name: str = None,
+        notification_topic_arn: str = None,
     ):
         self.logger = Logger()
         if request_id:

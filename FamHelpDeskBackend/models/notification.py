@@ -5,15 +5,24 @@ from enum import Enum
 
 class NotificationType(Enum):
     WELCOME = "Welcome"
+
+    # Family
+    NEW_FAMILY_CREATION = "New Family Created"
     WELCOME_TO_FAMILY = "Welcome to Family"
+
+    # Membership
+    GROUP_INVITATION = "Group Invitation"
     MEMBERSHIP_REQUEST = "Membership Request"
     MEMBERSHIP_APPROVED = "Membership Approved"
     MEMBERSHIP_DENIED = "Membership Denied"
+
+    NEW_FAMILY_MEMEBER = "New Family Member"
+
+    # Ticket
     TICKET_CREATION = "Ticket Creation"
     TICKET_ASSIGNED = "Ticket Assigned"
     TICKET_COMMENT = "Ticket Comment"
     TICKET_STATUS_CHANGED = "Ticket Status Changed"
-    GROUP_INVITATION = "Group Invitation"
 
 
 class NotificationModel(FamHelpDeskBaseModel):
