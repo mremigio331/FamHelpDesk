@@ -21,16 +21,19 @@ class UserProfileHelper:
         request_id: str = None,
         stage: str = None,
         table_name: str = None,
-        notification_topic_arn=None,
+        notification_topic_arn: str = None,
     ):
         self.logger = Logger()
         self.request_id = request_id
         if request_id:
             self.logger.append_keys(request_id=request_id)
 
-        UserProfile.set_stage_and_table(stage, table_name)
+        UserProfile.set_stage_and_table(stage, table_name, notification_topic_arn)
         self.audit_helper = AuditHelper(
-            request_id=request_id, stage=stage, table_name=table_name
+            request_id=request_id,
+            stage=stage,
+            table_name=table_name,
+            notification_topic_arn=notification_topic_arn,
         )
         self.notification_helper = NotificationHelper(
             request_id=request_id,

@@ -20,11 +20,8 @@ class NotificationHelper:
         self.logger = Logger()
         if request_id:
             self.logger.append_keys(request_id=request_id)
-        NotificationModel.set_stage_and_table(stage, table_name)
+        NotificationModel.set_stage_and_table(stage, table_name, notification_topic_arn)
         self.sns_client = boto3.client("sns")
-        self.notification_topic_arn = notification_topic_arn or os.environ.get(
-            "NOTIFICATION_TOPIC_ARN"
-        )
 
     def create_notification(
         self,
@@ -271,7 +268,7 @@ class NotificationHelper:
         return updated_count
 
     def create_notification_async(
-        self, user_id: str, message: str, notification_type: NotificationType, **kwargs
+        self, message: str, notification_type: NotificationType, **kwargs
     ) -> bool:
         """
         Create a notification asynchronously by publishing to SNS.
@@ -279,10 +276,9 @@ class NotificationHelper:
         notification creation happens in the background via Lambda.
 
         Args:
-            user_id: The user to notify
             message: The notification message
             notification_type: Type of notification (NotificationType enum)
-            **kwargs: Optional parameters like family_id, ticket_id, group_id, queue_id, etc.
+            **kwargs: Optional parameters like user_id, family_id, ticket_id, group_id, queue_id, etc.
 
         Returns:
             bool: True if successfully published to SNS, False otherwise
@@ -296,7 +292,6 @@ class NotificationHelper:
         try:
             # Create the notification payload
             notification_payload = {
-                "user_id": user_id,
                 "message": message,
                 "notification_type": notification_type.value,
                 **kwargs,  # Unpack any additional parameters
@@ -310,9 +305,8 @@ class NotificationHelper:
             )
 
             self.logger.info(
-                f"Published notification to SNS for user {user_id}: {message} [{notification_type.value}]",
+                f"Published notification: {message} [{notification_type.value}]",
                 extra={
-                    "user_id": user_id,
                     "notification_type": notification_type.value,
                     "message_id": response.get("MessageId"),
                     "topic_arn": self.notification_topic_arn,
@@ -325,8 +319,8 @@ class NotificationHelper:
             self.logger.error(
                 f"Failed to publish notification to SNS: {str(e)}",
                 extra={
-                    "user_id": user_id,
                     "notification_type": notification_type.value,
+                    "extra": **kwargs
                     "error": str(e),
                 },
             )

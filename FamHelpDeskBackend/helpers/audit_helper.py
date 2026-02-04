@@ -12,7 +12,7 @@ class AuditHelper:
         self.logger = Logger()
         if request_id:
             self.logger.append_keys(request_id=request_id)
-        AuditModel.set_stage_and_table(stage, table_name)
+        AuditModel.set_stage_and_table(stage, table_name, notification_topic_arn)
 
     # Family-based audit methods
     def create_family_audit_record(
@@ -292,3 +292,40 @@ class AuditHelper:
             f"Retrieved all {len(all_records)} audit records for user {user_id}"
         )
         return all_records
+
+    def get_users_from_ticket_audit(self, family_id: str, ticket_id: str) -> List[str]:
+        """
+        Get all unique user IDs who have interacted with a ticket based on audit records.
+        Returns deduplicated list of user IDs.
+
+        Args:
+            family_id: The family ID
+            ticket_id: The ticket ID to query audit records for
+
+        Returns:
+            List[str]: Deduplicated list of user IDs who have audit records for the ticket
+        """
+        pk = AuditModel.create_pk(family_id)
+        sk_prefix = f"AUDIT#TICKET#{ticket_id}#"
+
+        user_ids = set()
+
+        try:
+            for audit in AuditModel.query(pk, AuditModel.sk.startswith(sk_prefix)):
+                user_ids.add(audit.actor_user_id)
+
+            if not user_ids:
+                self.logger.warning(
+                    f"No audit records found for ticket {ticket_id} in family {family_id}"
+                )
+            else:
+                self.logger.info(
+                    f"Found {len(user_ids)} unique users with audit records for ticket {ticket_id}"
+                )
+        except Exception as e:
+            self.logger.error(
+                f"Error querying audit records for ticket {ticket_id} in family {family_id}: {str(e)}"
+            )
+            raise
+
+        return list(user_ids)

@@ -32,9 +32,12 @@ class TicketHelper:
         if request_id:
             self.logger.append_keys(request_id=request_id)
         self.request_id = request_id
-        TicketModel.set_stage_and_table(stage, table_name)
+        TicketModel.set_stage_and_table(stage, table_name, notification_topic_arn)
         self.audit_helper = AuditHelper(
-            request_id=request_id, stage=stage, table_name=table_name
+            request_id=request_id,
+            stage=stage,
+            table_name=table_name,
+            notification_topic_arn=notification_topic_arn,
         )
         self.notification_helper = NotificationHelper(
             request_id=request_id,
@@ -43,7 +46,10 @@ class TicketHelper:
             notification_topic_arn=notification_topic_arn,
         )
         self.notification_settings_helper = NotificationSettingsHelper(
-            request_id=request_id
+            request_id=request_id,
+            stage=stage,
+            table_name=table_name,
+            notification_topic_arn=notification_topic_arn,
         )
 
     def update_last_update(self, family_id: str, ticket_id: str) -> bool:
