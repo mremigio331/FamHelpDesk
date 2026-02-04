@@ -5,9 +5,11 @@ from aws_lambda_powertools import Logger
 from models.group import GroupModel
 from helpers.audit_helper import AuditHelper
 from helpers.queue_helper import QueueHelper
+from helpers.notification_helper import NotificationHelper
 from helpers.group_membership_helper import GroupMembershipHelper
 from models.audit import AuditActions, AuditEntityTypes
 from exceptions.group_exceptions import GroupNotFound
+from models.family_notification_settings import FamliyNotificationType
 
 
 class GroupHelper:
@@ -36,6 +38,12 @@ class GroupHelper:
             notification_topic_arn=notification_topic_arn,
         )
         self.group_membership_helper = GroupMembershipHelper(
+            request_id=request_id,
+            stage=stage,
+            table_name=table_name,
+            notification_topic_arn=notification_topic_arn,
+        )
+        self.notification_helper = NotificationHelper(
             request_id=request_id,
             stage=stage,
             table_name=table_name,
@@ -98,6 +106,13 @@ class GroupHelper:
         )
         self.logger.info(
             f"Added creator {created_by} as admin member of group {group_id}"
+        )
+
+        self.notification_helper.create_notification_async(
+            user_id=created_by,
+            notification_type=FamliyNotificationType.NEW_GROUP_CREATION,
+            family_id=family_id,
+            group_id=group_id,
         )
 
         return group

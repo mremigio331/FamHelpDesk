@@ -21,10 +21,11 @@ class FamliyNotificationType(Enum):
     # Group Membership
     GROUP_MEMBERSHIP_APPROVED = "Group Membership Approved"
     GROUP_MEMBERSHIP_DENIED = "Group Membership Denied"
-    GROUP_MEMBERSHIP_INVITATION = "Group Membership Invitation"
+    GROUP_MEMBERSHIP_ADDED = "Group Membership Added"
     GROUP_MEMBER_JOINED = "Group Membership Accepted"
     GROUP_MEMBERSHIP_LEFT = "Group Member left"
     GROUP_MEMBERSHIP_REQUEST = "Group Membership Request"
+    NEW_GROUP_CREATION = "New Group Creation"
 
     # Ticket
     TICKET_CREATION_FAMILY = "Family Ticket Creation"
@@ -69,10 +70,11 @@ class FamilyNotificationSettings(FamHelpDeskBaseModel):
     # Group Membership
     group_membership_approved = BooleanAttribute(defaults=False)
     group_membership_denied = BooleanAttribute(default=False)
-    group_membership_invitation = BooleanAttribute(default=False)
+    group_membership_added = BooleanAttribute(default=False)
     group_membership_joined = BooleanAttribute(default=False)
     group_membership_left = BooleanAttribute(default=False)
     group_membership_request = BooleanAttribute(default=False)
+    new_group_creation = BooleanAttribute(default=False)
 
     # Tickets
     ticket_creation_family = BooleanAttribute(default=False)
@@ -116,10 +118,11 @@ class FamilyNotificationSettings(FamHelpDeskBaseModel):
             # Group Membership
             "group_membership_approved": settings.group_membership_approved,
             "group_membership_denied": settings.group_membership_denied,
-            "group_membership_invitation": settings.group_membership_invitation,
+            "group_membership_added": settings.group_membership_added,
             "group_membership_joined": settings.group_membership_joined,
             "group_membership_left": settings.group_membership_left,
             "group_membership_request": settings.group_membership_request,
+            "new_group_creation": settings.new_group_creation,
             # Tickets
             "ticket_creation_family": settings.ticket_creation_family,
             "ticket_creation_group": settings.ticket_creation_group,

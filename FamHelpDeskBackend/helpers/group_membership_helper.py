@@ -17,6 +17,7 @@ from exceptions.membership_exceptions import (
     AdminPrivilegesRequired,
     MemberPrivilegesRequired,
 )
+from models.family_notification_settings import FamliyNotificationType
 
 
 class GroupMembershipHelper:
@@ -115,16 +116,11 @@ class GroupMembershipHelper:
             after=after,
         )
 
-        # Notify all group admins about the membership request
-        admin_ids = self.get_all_admins(family_id, group_id)
-        for admin_id in admin_ids:
-            self.notification_helper.create_notification_async(
-                user_id=admin_id,
-                message=f"User {user_id} has requested to join group {group_id}.",
-                notification_type=NotificationType.MEMBERSHIP_REQUEST,
-                family_id=family_id,
-                group_id=group_id,
-            )
+        self.notification_helper.create_notification_async(
+            user_id=user_id,
+            notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_REQUEST,
+            family_id=family_id,
+        )
 
         return after
 
@@ -161,6 +157,7 @@ class GroupMembershipHelper:
             actor_user_id=user_id,
             after=after,
         )
+
         return after
 
     # List all group memberships by user across families/groups
@@ -336,20 +333,19 @@ class GroupMembershipHelper:
             after=after,
         )
 
-        # Notify the target user about approval/denial
         if approve:
             self.notification_helper.create_notification_async(
                 user_id=target_user_id,
-                message=f"Your request to join group {group_id} has been approved.",
-                notification_type=NotificationType.MEMBERSHIP_APPROVED,
+                admin_user=admin_user_id,
+                notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_APPROVED,
                 family_id=family_id,
                 group_id=group_id,
             )
         else:
             self.notification_helper.create_notification_async(
                 user_id=target_user_id,
-                message=f"Your request to join group {group_id} has been denied.",
-                notification_type=NotificationType.MEMBERSHIP_DENIED,
+                admin_user=admin_user_id,
+                notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_DENIED,
                 family_id=family_id,
                 group_id=group_id,
             )
@@ -419,6 +415,13 @@ class GroupMembershipHelper:
             )
             self.logger.info(
                 f"Granted {'admin ' if make_admin else ''}group access to user {target_user_id} in family {family_id}, group {group_id} by {granter_user_id}."
+            )
+            self.notification_helper.create_notification_async(
+                user_id=target_user_id,
+                admin_id=granter_user_id,
+                notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_ADDED,
+                family_id=family_id,
+                group_id=group_id,
             )
             return after
 

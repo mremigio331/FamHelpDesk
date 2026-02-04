@@ -245,10 +245,11 @@ class FamilyNotificationSettingsHelper:
             # Group Membership
             FamliyNotificationType.GROUP_MEMBERSHIP_APPROVED: settings.group_membership_approved,
             FamliyNotificationType.GROUP_MEMBERSHIP_DENIED: settings.group_membership_denied,
-            FamliyNotificationType.GROUP_MEMBERSHIP_INVITATION: settings.group_membership_invitation,
+            FamliyNotificationType.GROUP_MEMBERSHIP_ADDED: settings.group_membership_added,
             FamliyNotificationType.GROUP_MEMBER_JOINED: settings.group_membership_joined,
             FamliyNotificationType.GROUP_MEMBERSHIP_LEFT: settings.group_membership_left,
             FamliyNotificationType.GROUP_MEMBERSHIP_REQUEST: settings.group_membership_request,
+            FamliyNotificationType.NEW_GROUP_CREATION: settings.new_group_creation,
             # Tickets
             FamliyNotificationType.TICKET_CREATION_FAMILY: settings.ticket_creation_family,
             FamliyNotificationType.TICKET_CREATION_GROUP: settings.ticket_creation_group,

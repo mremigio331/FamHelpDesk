@@ -333,7 +333,7 @@ class FamilyMembershipHelper:
             self.notification_helper.create_notification_async(
                 user_id=target_user_id,
                 admin_user=admin_user_id,
-                notification_type=FamliyNotificationType.MEMBERSHIP_APPROVED,
+                notification_type=FamliyNotificationType.FAMILY_MEMBERSHIP_APPROVED,
                 family_id=family_id,
             )
         else:
