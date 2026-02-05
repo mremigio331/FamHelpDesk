@@ -47,18 +47,19 @@ class FamilyMembershipNotificationHelper:
             raise
 
     def _process_new_family_creation(self, user_id, family_id):
+        message = f"You have created the new family {family_id}. Go to the family now to start creating tickets!"
         self.notification_helper.create_notification(
             user_id=user_id,
+            message=message,
             notification_type=FamliyNotificationType.NEW_FAMILY_CREATION,
             family_id=family_id,
-            message=f"You have created the new family {family_id}. Go to the family now to start creating tickets!",
         )
 
     def _process_welcome_to_family(self, user_id, family_id):
-
+        message = f"Welcome to family {family_id}!"
         self.notification_helper.create_notification(
             user_id=user_id,
-            message=f"Welcome to family {family_id}!",
+            message=message,
             notification_type=FamliyNotificationType.WELCOME_TO_FAMILY,
             family_id=family_id,
         )
@@ -80,9 +81,10 @@ class FamilyMembershipNotificationHelper:
             )
 
             if is_notification_enabled:
+                message = f"Welcome {user_id} to the family {family_id}!"
                 self.notification_helper.create_notification(
                     user_id=member["user_id"],
-                    message=f"Welcome {user_id} to the family {family_id}!",
+                    message=message,
                     notification_type=FamliyNotificationType.NEW_FAMILY_MEMEBER,
                     family_id=family_id,
                 )
@@ -100,9 +102,10 @@ class FamilyMembershipNotificationHelper:
             )
 
             if is_notification_enabled:
+                message = f"{user_id} is requesting to join the family {family_id}!"
                 self.notification_helper.create_notification(
                     user_id=admin_id,
-                    message=f"{user_id} is requesting to join the family {family_id}!",
+                    message=message,
                     notification_type=FamliyNotificationType.FAMILY_MEMBERSHIP_REQUEST,
                     family_id=family_id,
                 )
@@ -127,9 +130,10 @@ class FamilyMembershipNotificationHelper:
                     notification_type=FamliyNotificationType.FAMILY_MEMBERSHIP_REQUEST,
                 )
                 if is_notification_enabled:
+                    message = f"{admin_user} approved the membership request for {user_id} in {family_id}"
                     self.notification_helper.create_notification(
                         user_id=member["user_id"],
-                        message=f"{admin_user} approved the memebership request for {new_member} in {family_id}",
+                        message=message,
                         notification_type=FamliyNotificationType.FAMILY_MEMBERSHIP_APPROVED,
                         family_id=family_id,
                     )
@@ -143,9 +147,10 @@ class FamilyMembershipNotificationHelper:
                     )
                 )
                 if is_notification_enabled:
+                    message = f"{user_id} has joined {family_id}!"
                     self.notification_helper.create_notification(
                         user_id=member["user_id"],
-                        message=f"{user_id} has joined {family_id}!",
+                        message=message,
                         notification_type=FamliyNotificationType.FAMILY_MEMBERSHIP_APPROVED,
                         family_id=family_id,
                     )
@@ -166,9 +171,10 @@ class FamilyMembershipNotificationHelper:
             )
 
             if is_notification_enabled:
+                message = f"{admin_user} approved the membership request for {user_id} in {family_id}"
                 self.notification_helper.create_notification(
                     user_id=admin_id,
-                    message=f"{admin_user} approved the memebership request for {user_id} in {family_id}",
+                    message=message,
                     notification_type=FamliyNotificationType.FAMILY_MEMBERSHIP_DENIED,
                     family_id=family_id,
                 )

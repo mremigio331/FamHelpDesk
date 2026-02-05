@@ -16,13 +16,14 @@ class NotificationHelper:
         request_id: str = None,
         stage: str = None,
         table_name: str = None,
-        notification_topic_arn: str = None,
+        notification_queue_url: str = None,
     ):
         self.logger = Logger()
         if request_id:
             self.logger.append_keys(request_id=request_id)
-        NotificationModel.set_stage_and_table(stage, table_name, notification_topic_arn)
-        self.sns_client = boto3.client("sns")
+        self.notification_queue_url = notification_queue_url
+        NotificationModel.set_stage_and_table(stage, table_name)
+        self.sqs_client = boto3.client("sqs")
 
     def create_notification(
         self,
@@ -272,7 +273,7 @@ class NotificationHelper:
         self, notification_type: NotificationType, **kwargs
     ) -> bool:
         """
-        Create a notification asynchronously by publishing to SNS.
+        Create a notification asynchronously by publishing to SQS.
         This method is lightweight and returns immediately while the actual
         notification creation happens in the background via Lambda.
 
@@ -281,11 +282,11 @@ class NotificationHelper:
             **kwargs: Optional parameters like user_id, family_id, ticket_id, group_id, queue_id, etc.
 
         Returns:
-            bool: True if successfully published to SNS, False otherwise
+            bool: True if successfully published to SQS, False otherwise
         """
-        if not self.notification_topic_arn:
+        if not self.notification_queue_url:
             self.logger.warning(
-                "NOTIFICATION_TOPIC_ARN not configured, skipping async notification"
+                "NOTIFICATION_QUEUE_URL not configured, skipping async notification"
             )
             raise MissingNotificationArn()
 
@@ -296,19 +297,24 @@ class NotificationHelper:
                 **kwargs,
             }
 
-            # Publish to SNS topic
-            response = self.sns_client.publish(
-                TopicArn=self.notification_topic_arn,
-                Message=json.dumps(notification_payload),
-                Subject=f"Notification: {notification_type.value}",
+            # Send message to SQS queue
+            response = self.sqs_client.send_message(
+                QueueUrl=self.notification_queue_url,
+                MessageBody=json.dumps(notification_payload),
+                MessageAttributes={
+                    "notification_type": {
+                        "StringValue": notification_type.value,
+                        "DataType": "String",
+                    }
+                },
             )
 
             self.logger.info(
-                f"Published notification:[{notification_type.value}]",
+                f"Sent notification to SQS: [{notification_type.value}]",
                 extra={
                     "notification_type": notification_type.value,
                     "message_id": response.get("MessageId"),
-                    "topic_arn": self.notification_topic_arn,
+                    "queue_url": self.notification_queue_url,
                 },
             )
 
@@ -316,7 +322,7 @@ class NotificationHelper:
 
         except Exception as e:
             self.logger.error(
-                f"Failed to publish notification to SNS: {str(e)}",
+                f"Failed to send notification to SQS: {str(e)}",
                 extra={
                     "notification_type": notification_type.value,
                     **kwargs,

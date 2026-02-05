@@ -64,11 +64,11 @@ class FamilyNotificationSettings(FamHelpDeskBaseModel):
     family_membership_denied = BooleanAttribute(default=False)
     family_membership_invitation = BooleanAttribute(default=False)
     family_membership_joined = BooleanAttribute(default=True)
-    family_membership_left = BooleanAttribute(defaults=True)
-    family_membership_request = BooleanAttribute(defaults=True)
+    family_membership_left = BooleanAttribute(default=True)
+    family_membership_request = BooleanAttribute(default=True)
 
     # Group Membership
-    group_membership_approved = BooleanAttribute(defaults=False)
+    group_membership_approved = BooleanAttribute(default=False)
     group_membership_denied = BooleanAttribute(default=False)
     group_membership_added = BooleanAttribute(default=False)
     group_membership_joined = BooleanAttribute(default=False)

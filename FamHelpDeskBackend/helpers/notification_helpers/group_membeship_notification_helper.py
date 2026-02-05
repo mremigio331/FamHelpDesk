@@ -52,13 +52,14 @@ class GroupMembershipNotificationHelper:
             self._process_group_member_added(**kwargs)
 
     def _process_new_group_creation(self, user_id, family_id, group_id):
-        all_members = self.group.get_all_members(family_id)
+        all_members = self.family_membership_helper.get_all_members(family_id)
 
         for member in all_members:
-            if member == user_id:
+            if member["user_id"] == user_id:
+                message = f"You successfully created the new group {group_id} in {family_id}. Add some unique queues now!"
                 self.notification_helper.create_notification(
                     user_id=member["user_id"],
-                    message=f"You successfully created the new group {group_id} in {family_id}. Add some unique queues now!",
+                    message=message,
                     notification_type=FamliyNotificationType.NEW_GROUP_CREATION,
                     family_id=family_id,
                 )
@@ -71,9 +72,10 @@ class GroupMembershipNotificationHelper:
                 )
             )
             if is_notification_enabled:
+                message = f"{user_id} created a new group {group_id} in {family_id}!"
                 self.notification_helper.create_notification(
                     user_id=member["user_id"],
-                    message=f"{user_id} created a new group {group_id} in {family_id}!",
+                    message=message,
                     notification_type=FamliyNotificationType.NEW_GROUP_CREATION,
                     family_id=family_id,
                 )
@@ -93,9 +95,10 @@ class GroupMembershipNotificationHelper:
             )
 
             if is_notification_enabled:
+                message = f"{user_id} is requesting to join the group {group_id} in {family_id}!"
                 self.notification_helper.create_notification(
                     user_id=admin_id,
-                    message=f"{user_id} is requesting to join the group {group_id} in {family_id}!",
+                    message=message,
                     notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_REQUEST,
                     family_id=family_id,
                 )
@@ -111,9 +114,10 @@ class GroupMembershipNotificationHelper:
         for member in all_members:
 
             if member["user_id"] == user_id:
+                message = f"Your request to join the group {group_id} in {family_id} has been approved."
                 self.notification_helper.create_notification(
                     user_id=member["user_id"],
-                    message=f"Your request to join the group {group_id} in {family_id} has been approved.",
+                    message=message,
                     notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_APPROVED,
                     family_id=family_id,
                 )
@@ -128,9 +132,7 @@ class GroupMembershipNotificationHelper:
                     notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_APPROVED,
                 )
                 if is_notification_enabled:
-                    message = (
-                        f"{admin_user} approved the memebership request for {user_id} in for the group {group_id} in the family {family_id}",
-                    )
+                    message = f"{admin_user} approved the membership request for {user_id} for the group {group_id} in the family {family_id}"
 
                     self.notification_helper.create_notification(
                         user_id=member["user_id"],
@@ -146,9 +148,10 @@ class GroupMembershipNotificationHelper:
                     notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_APPROVED,
                 )
                 if is_notification_enabled:
+                    message = f"{user_id} has joined {family_id}!"
                     self.notification_helper.create_notification(
                         user_id=member["user_id"],
-                        message=f"{user_id} has joined {family_id}!",
+                        message=message,
                         notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_APPROVED,
                         family_id=family_id,
                     )
@@ -173,9 +176,10 @@ class GroupMembershipNotificationHelper:
             )
 
             if is_notification_enabled:
+                message = f"{admin_user} denied {user_id}'s membership request for group {group_id} in {family_id}"
                 self.notification_helper.create_notification(
                     user_id=admin_id,
-                    message=f"{admin_user} denied {user_id}'s memebership request for for group {group_id} in {family_id}",
+                    message=message,
                     notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_DENIED,
                     family_id=family_id,
                 )
@@ -188,9 +192,12 @@ class GroupMembershipNotificationHelper:
         for member in all_members:
 
             if member["user_id"] == user_id:
+                message = (
+                    f"{admin_user} added you to the group {group_id} in {family_id}"
+                )
                 self.notification_helper.create_notification(
                     user_id=member["user_id"],
-                    message=f"{admin_user} added you to the group {group_id} in {family_id}",
+                    message=message,
                     notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_ADDED,
                     family_id=family_id,
                 )
@@ -225,9 +232,10 @@ class GroupMembershipNotificationHelper:
                     )
                 )
                 if is_notification_enabled:
+                    message = f"{user_id} has been added to group {group_id} in family {family_id}!"
                     self.notification_helper.create_notification(
                         user_id=member["user_id"],
-                        message=f"{user_id} has been added to group {group_id} in family {family_id}!",
+                        message=message,
                         notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_ADDED,
                         family_id=family_id,
                     )
