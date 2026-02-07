@@ -36,10 +36,10 @@ class FamilyMembershipNotificationHelper:
         try:
             if notification_type == FamliyNotificationType.NEW_FAMILY_CREATION:
                 self._process_welcome_to_family(**kwargs)
-            elif notification_type == FamliyNotificationType.MEMBERSHIP_REQUEST:
+            elif notification_type == FamliyNotificationType.FAMILY_MEMBERSHIP_REQUEST:
                 self._process_new_member_request(**kwargs)
-            elif notification_type == FamliyNotificationType.MEMBERSHIP_APPROVED:
-                self._process_membeship_approved(**kwargs)
+            elif notification_type == FamliyNotificationType.FAMILY_MEMBERSHIP_APPROVED:
+                self._process_membership_approved(**kwargs)
             elif notification_type == FamliyNotificationType.FAMILY_MEMBERSHIP_DENIED:
                 self._process_member_denied_request(**kwargs)
 
@@ -110,7 +110,7 @@ class FamilyMembershipNotificationHelper:
                     family_id=family_id,
                 )
 
-    def _process_membeship_approved(self, user_id, admin_user, family_id):
+    def _process_membership_approved(self, user_id, admin_user, family_id):
 
         all_members = self.family_membership_helper.get_all_members(family_id)
         self._process_welcome_to_family(user_id, family_id)
@@ -121,7 +121,7 @@ class FamilyMembershipNotificationHelper:
                 continue
 
             if member["is_admin"]:
-                if member == admin_user:
+                if member["user_id"] == admin_user:
                     pass
 
                 is_notification_enabled = self.family_settings_helper.is_notification_enabled(

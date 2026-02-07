@@ -84,7 +84,7 @@ class FamilyNotificationSettings(FamHelpDeskBaseModel):
     ticket_creation_group = BooleanAttribute(default=True)
     ticket_assigned = BooleanAttribute(default=True)
     ticket_comment = BooleanAttribute(default=True)
-    ticket_satatus_change = BooleanAttribute(default=True)
+    ticket_status_change = BooleanAttribute(default=True)
 
     # Standard timestamp fields
     created_date = NumberAttribute()
@@ -131,7 +131,7 @@ class FamilyNotificationSettings(FamHelpDeskBaseModel):
             "ticket_creation_group": settings.ticket_creation_group,
             "ticket_assigned": settings.ticket_assigned,
             "ticket_comment": settings.ticket_comment,
-            "ticket_satatus_change": settings.ticket_satatus_change,
+            "ticket_status_change": settings.ticket_status_change,
         }
 
     def save(self, **kwargs):

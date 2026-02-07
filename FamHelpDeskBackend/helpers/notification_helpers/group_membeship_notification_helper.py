@@ -48,8 +48,6 @@ class GroupMembershipNotificationHelper:
             self._process_group_member_added(**kwargs)
         elif notification_type == FamliyNotificationType.GROUP_MEMBERSHIP_DENIED:
             self._process_group_member_denied_request(**kwargs)
-        elif notification_type == FamliyNotificationType.GROUP_MEMBERSHIP_ADDED:
-            self._process_group_member_added(**kwargs)
 
     def _process_new_group_creation(self, user_id, family_id, group_id):
         all_members = self.family_membership_helper.get_all_members(family_id)
@@ -123,7 +121,7 @@ class GroupMembershipNotificationHelper:
                 )
 
             if member["is_admin"]:
-                if member == admin_user:
+                if member["user_id"] == admin_user:
                     pass
 
                 is_notification_enabled = self.family_settings_helper.is_notification_enabled(
@@ -203,7 +201,7 @@ class GroupMembershipNotificationHelper:
                 )
 
             if member["is_admin"]:
-                if member == admin_user:
+                if member["user_id"] == admin_user:
                     pass
 
                 is_notification_enabled = (
