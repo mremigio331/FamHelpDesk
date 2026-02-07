@@ -57,8 +57,8 @@ export function addNotificationMonitoring(
     evaluationPeriods: 1,
     datapointsToAlarm: 1,
     treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
-    alarmDescription: `${famHelpDesk} Notification DLQ Alarm (${stage}): Alert when failed notification messages are in the dead letter queue`,
-    comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+    alarmDescription: `${famHelpDesk} Notification DLQ Alarm (${stage}): Alert when DLQ has more than 1 visible message`,
+    comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
     actionsEnabled: true,
   });
 

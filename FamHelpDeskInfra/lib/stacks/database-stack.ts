@@ -66,5 +66,19 @@ export class DatabaseStack extends Stack {
       },
       projectionType: dynamodb.ProjectionType.ALL,
     });
+
+    // GSI for querying all notification settings for users in a family
+    this.table.addGlobalSecondaryIndex({
+      indexName: "FamilySettingsIndex",
+      partitionKey: {
+        name: "family_id",
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: "user_id",
+        type: dynamodb.AttributeType.STRING,
+      },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
   }
 }

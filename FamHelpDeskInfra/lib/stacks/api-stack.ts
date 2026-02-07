@@ -29,7 +29,8 @@ interface ApiStackProps extends StackProps {
   userTable: dynamodb.ITable;
   escalationEmail: string;
   escalationNumber: string;
-  notificationTopicArn: string;
+  notificationQueueUrl: string;
+  userDeleteLambdaArn: string;
 }
 
 export class ApiStack extends Stack {
@@ -53,12 +54,13 @@ export class ApiStack extends Stack {
       stage,
       escalationEmail,
       escalationNumber,
-      notificationTopicArn,
+      notificationQueueUrl,
+      userDeleteLambdaArn
     } = props;
 
-    // Validate that notification topic ARN is provided
-    if (!notificationTopicArn) {
-      throw new Error(`NotificationTopicArn is required for ApiStack in stage ${stage}`);
+    // Validate that notification queue URL is provided
+    if (!notificationQueueUrl) {
+      throw new Error(`NotificationQueueUrl is required for ApiStack in stage ${stage}`);
     }
 
     const apiGwLogsRole = new iam.Role(
@@ -139,7 +141,8 @@ export class ApiStack extends Stack {
               : `https://famhelpdesk-${stage.toLowerCase()}.auth.us-west-2.amazoncognito.com`,
           STAGE: stage.toLowerCase(),
           API_DOMAIN_NAME: apiDomainName,
-          NOTIFICATION_TOPIC_ARN: notificationTopicArn,
+          NOTIFICATION_QUEUE_URL: notificationQueueUrl,
+          USER_DELETE_LAMBDA: userDeleteLambdaArn
         },
       },
     );
@@ -160,6 +163,15 @@ export class ApiStack extends Stack {
         effect: iam.Effect.ALLOW,
         actions: ["cognito-idp:AdminUpdateUserAttributes"],
         resources: [userPool.userPoolArn],
+      }),
+    );
+
+    // Add permission for API Lambda to invoke the user delete Lambda
+    famHelpDeskApi.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["lambda:InvokeFunction"],
+        resources: [userDeleteLambdaArn],
       }),
     );
 

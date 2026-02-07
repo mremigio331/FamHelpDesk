@@ -3,6 +3,7 @@ import { Construct } from "constructs";
 import * as sns from "aws-cdk-lib/aws-sns";
 import * as sqs from "aws-cdk-lib/aws-sqs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as snsSubscriptions from "aws-cdk-lib/aws-sns-subscriptions";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as iam from "aws-cdk-lib/aws-iam";
@@ -20,6 +21,7 @@ interface NotificationStackProps extends StackProps {
 
 export class NotificationStack extends Stack {
   public readonly notificationTopic: sns.Topic;
+  public readonly notificationQueue: sqs.Queue; // NEW: SQS queue for notifications
   public readonly notificationProcessor: lambda.Function;
   public readonly deadLetterQueue: sqs.Queue;
   public readonly alarmTopic: sns.Topic;
@@ -47,6 +49,19 @@ export class NotificationStack extends Stack {
     this.deadLetterQueue = new sqs.Queue(this, `${famHelpDesk}-NotificationDLQ-${stage}`, {
       queueName: `${famHelpDesk}-NotificationDLQ-${stage}`,
       retentionPeriod: Duration.days(14), // Keep failed messages for 14 days
+      visibilityTimeout: Duration.minutes(6), // Lambda timeout + buffer
+    });
+
+    // NEW: Create main SQS queue for notification events
+    this.notificationQueue = new sqs.Queue(this, `${famHelpDesk}-NotificationQueue-${stage}`, {
+      queueName: `${famHelpDesk}-NotificationQueue-${stage}`,
+      visibilityTimeout: Duration.minutes(6), // Lambda timeout + buffer
+      retentionPeriod: Duration.days(4),
+      receiveMessageWaitTime: Duration.seconds(20), // Long polling
+      deadLetterQueue: {
+        queue: this.deadLetterQueue,
+        maxReceiveCount: 3, // Retry up to 3 times before sending to DLQ
+      },
     });
 
     // Create SNS topic for notification events
@@ -64,16 +79,29 @@ export class NotificationStack extends Stack {
       timeout: Duration.minutes(5),
       memorySize: 256,
       layers: [layer],
+      reservedConcurrentExecutions: 10,
+      tracing: lambda.Tracing.ACTIVE,
       environment: {
         STAGE: stage,
         TABLE_NAME: userTable.tableName,
-        POWERTOOLS_SERVICE_NAME: "notification-processor",
-        POWERTOOLS_LOG_LEVEL: "INFO",
       },
     });
 
+    this.notificationProcessor.role?.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName("AWSXRayDaemonWriteAccess"),
+    );
+
     // Grant DynamoDB permissions to the Lambda function
     userTable.grantReadWriteData(this.notificationProcessor);
+
+    // NEW: Add SQS event source to Lambda with batch processing
+    this.notificationProcessor.addEventSource(
+      new lambdaEventSources.SqsEventSource(this.notificationQueue, {
+        batchSize: 10, // Process up to 10 messages per invocation
+        maxBatchingWindow: Duration.seconds(5), // Wait up to 5 seconds to fill batch
+        reportBatchItemFailures: true, // Enable partial batch failure reporting
+      })
+    );
 
     // Add monitoring and alarms
     this.notificationMetrics = addNotificationMonitoring(
@@ -99,6 +127,16 @@ export class NotificationStack extends Stack {
     this.exportValue(this.notificationTopic.topicArn, {
       name: `${famHelpDesk}-NotificationTopicArn-${stage}`,
     });
+
+    // NEW: Export the SQS queue URL for use by other stacks
+    this.exportValue(this.notificationQueue.queueUrl, {
+      name: `${famHelpDesk}-NotificationQueueUrl-${stage}`,
+    });
+
+    // NEW: Export the SQS queue ARN for use by other stacks
+    this.exportValue(this.notificationQueue.queueArn, {
+      name: `${famHelpDesk}-NotificationQueueArn-${stage}`,
+    });
   }
 
   /**
@@ -106,5 +144,12 @@ export class NotificationStack extends Stack {
    */
   public grantPublishToTopic(lambdaFunction: lambda.Function): void {
     this.notificationTopic.grantPublish(lambdaFunction);
+  }
+
+  /**
+   * NEW: Grant SQS send message permissions to a Lambda function
+   */
+  public grantSendMessages(lambdaFunction: lambda.Function): void {
+    this.notificationQueue.grantSendMessages(lambdaFunction);
   }
 }

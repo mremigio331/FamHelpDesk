@@ -4,6 +4,7 @@ import {
   RemovalPolicy,
   CfnOutput,
   Duration,
+  Fn,
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as cognito from "aws-cdk-lib/aws-cognito";
@@ -12,6 +13,7 @@ import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as path from "path";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as sns from "aws-cdk-lib/aws-sns";
+import * as sqs from "aws-cdk-lib/aws-sqs";
 import * as subs from "aws-cdk-lib/aws-sns-subscriptions";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import { addCognitoMonitoring, CognitoMetrics } from "../monitoring/cognito-monitoring";
@@ -33,7 +35,7 @@ interface CognitoStackProps extends StackProps {
     key_id: string;
     private_key_secret_name: string;
   }
-  notificationTopicArn: string;
+  notificationQueueUrl: string;
 }
 
 export class CognitoStack extends Stack {
@@ -56,7 +58,7 @@ export class CognitoStack extends Stack {
       escalationNumber,
       googleOathKeys,
       appleOauthKeys,
-      notificationTopicArn,
+      notificationQueueUrl,
     } = props;
 
     const layer = new lambda.LayerVersion(
@@ -100,7 +102,7 @@ export class CognitoStack extends Stack {
           TABLE_NAME: userTable.tableName,
           POWERTOOLS_LOG_LEVEL: "INFO",
           USER_ADDED_TOPIC_ARN: userAddedTopic.topicArn,
-          NOTIFICATION_TOPIC_ARN: notificationTopicArn,
+          NOTIFICATION_QUEUE_URL: notificationQueueUrl,
           STAGE: stage
         },
       },
@@ -124,13 +126,16 @@ export class CognitoStack extends Stack {
 
     userAddedTopic.grantPublish(userEventLogger);
 
-    // Grant permission to publish to the notification topic
-    const notificationTopic = sns.Topic.fromTopicArn(
+    // Grant permission to send messages to the notification queue
+    // Import the queue ARN directly from the NotificationStack export
+    const queueArn = Fn.importValue(`${famHelpDesk}-NotificationQueueArn-${stage}`);
+    
+    const notificationQueue = sqs.Queue.fromQueueArn(
       this,
-      `${famHelpDesk}-ImportedNotificationTopic-${stage}`,
-      notificationTopicArn
+      `${famHelpDesk}-ImportedNotificationQueue-${stage}`,
+      queueArn
     );
-    notificationTopic.grantPublish(userEventLogger);
+    notificationQueue.grantSendMessages(userEventLogger);
 
     this.cognitoMetrics = addCognitoMonitoring(this, logGroup, userEventLogger, stage);
 
