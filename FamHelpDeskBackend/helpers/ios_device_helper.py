@@ -19,7 +19,7 @@ class iOSDeviceHelper:
         request_id: str = None,
         stage: str = None,
         table_name: str = None,
-        notification_topic_arn: str = None,
+        notification_queue_url: str = None,
     ):
         """
         Initialize the iOS Device Helper.
@@ -35,13 +35,13 @@ class iOSDeviceHelper:
             self.logger.append_keys(request_id=request_id)
 
         iOSDeviceTokenModel.set_stage_and_table(
-            stage, table_name, notification_topic_arn
+            stage, table_name, notification_queue_url
         )
         self.audit_helper = AuditHelper(
             request_id=request_id,
             stage=stage,
             table_name=table_name,
-            notification_topic_arn=notification_topic_arn,
+            notification_queue_url=notification_queue_url,
         )
 
     def register_device(

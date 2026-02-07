@@ -17,24 +17,30 @@ class FamilyHelper:
         request_id: str = None,
         stage: str = None,
         table_name: str = None,
-        notification_topic_arn: str = None,
+        notification_queue_url: str = None,
     ):
         self.logger = Logger()
         if request_id:
             self.logger.append_keys(request_id=request_id)
         self.request_id = request_id
-        FamilyModel.set_stage_and_table(stage, table_name, notification_topic_arn)
+        FamilyModel.set_stage_and_table(stage, table_name, notification_queue_url)
         self.audit_helper = AuditHelper(
             request_id=request_id,
             stage=stage,
             table_name=table_name,
-            notification_topic_arn=notification_topic_arn,
+            notification_queue_url=notification_queue_url,
         )
         self.notification_helper = NotificationHelper(
             request_id=request_id,
             stage=stage,
             table_name=table_name,
-            notification_topic_arn=notification_topic_arn,
+            notification_queue_url=notification_queue_url,
+        )
+        self.group_helper = GroupHelper(
+            request_id=request_id,
+            stage=stage,
+            table_name=table_name,
+            notification_queue_url=notification_queue_url,
         )
 
     def create_family(
@@ -82,8 +88,7 @@ class FamilyHelper:
         )
 
         # Create default group (which will also create a default queue)
-        group_helper = GroupHelper(request_id=self.request_id)
-        group_helper.create_group(
+        self.group_helper.create_group(
             family_id=family_id,
             group_name="General",
             created_by=created_by,

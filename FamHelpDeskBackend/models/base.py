@@ -16,8 +16,9 @@ class MembershipStatus(str, Enum):
 
 class FamHelpDeskBaseModel(Model):
     class Meta:
-        stage = os.getenv("STAGE", "Testing")
-        table_name = os.getenv("TABLE_NAME", "FamHelpDesk-Testing")
+        stage = os.getenv("STAGE")
+        table_name = os.getenv("TABLE_NAME")
+        notification_queue_url = os.getenv("NOTIFICATION_QUEUE_URL")
         region = "us-west-2"
 
     pk = UnicodeAttribute(hash_key=True)
@@ -43,7 +44,12 @@ class FamHelpDeskBaseModel(Model):
         return int(time.time())
 
     @classmethod
-    def set_stage_and_table(cls, stage: str = None, table_name: str = None):
+    def set_stage_and_table(
+        cls,
+        stage: str = None,
+        table_name: str = None,
+        notification_queue_url: str = None,
+    ):
         """
         Update stage and table_name for this model if provided.
         If None, uses existing values (from environment or defaults).
@@ -51,8 +57,11 @@ class FamHelpDeskBaseModel(Model):
         Args:
             stage: Optional stage name (e.g., "Testing", "Production")
             table_name: Optional DynamoDB table name
+            notification_queue_url: Optional SQS queue URL for notifications
         """
         if stage is not None:
             cls.Meta.stage = stage
         if table_name is not None:
             cls.Meta.table_name = table_name
+        if notification_queue_url is not None:
+            cls.Meta.notification_queue_url = notification_queue_url

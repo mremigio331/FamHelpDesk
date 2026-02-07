@@ -26,7 +26,7 @@ class QueueValidationHelper:
         request_id: str = None,
         stage: str = None,
         table_name: str = None,
-        notification_topic_arn: str = None,
+        notification_queue_url: str = None,
     ):
         self.logger = Logger()
         if request_id:
@@ -36,19 +36,19 @@ class QueueValidationHelper:
             request_id=request_id,
             stage=stage,
             table_name=table_name,
-            notification_topic_arn=notification_topic_arn,
+            notification_queue_url=notification_queue_url,
         )
         self.group_helper = GroupHelper(
             request_id=request_id,
             stage=stage,
             table_name=table_name,
-            notification_topic_arn=notification_topic_arn,
+            notification_queue_url=notification_queue_url,
         )
         self.queue_helper = QueueHelper(
             request_id=request_id,
             stage=stage,
             table_name=table_name,
-            notification_topic_arn=notification_topic_arn,
+            notification_queue_url=notification_queue_url,
         )
 
     def validate_queue_name(self, queue_name: str, max_length: int = 100) -> None:

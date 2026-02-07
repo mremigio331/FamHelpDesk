@@ -10,25 +10,25 @@ class FamilyMembershipNotificationHelper:
         request_id: str = None,
         stage: str = None,
         table_name: str = None,
-        notification_topic_arn: str = None,
+        notification_queue_url: str = None,
     ):
         self.notification_helper = NotificationHelper(
             request_id=request_id,
             stage=stage,
             table_name=table_name,
-            notification_topic_arn=notification_topic_arn,
+            notification_queue_url=notification_queue_url,
         )
         self.family_settings_helper = FamilyNotificationSettingsHelper(
             request_id=request_id,
             stage=stage,
             table_name=table_name,
-            notification_topic_arn=notification_topic_arn,
+            notification_queue_url=notification_queue_url,
         )
         self.family_membership_helper = FamilyMembershipHelper(
             request_id=request_id,
             stage=stage,
             table_name=table_name,
-            notification_topic_arn=notification_topic_arn,
+            notification_queue_url=notification_queue_url,
         )
 
     def process_notification(self, notification_type: FamliyNotificationType, **kwargs):

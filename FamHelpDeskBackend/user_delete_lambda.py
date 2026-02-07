@@ -36,7 +36,7 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
     region = os.getenv("COGNITO_REGION")
     user_pool_id = os.getenv("COGNITO_USER_POOL_ID")
     sender_email = os.getenv("SENDER_EMAIL")
-    sns_topic_arn = os.getenv("NOTIFICATION_TOPIC_ARN")
+    sns_topic_arn = os.getenv("NOTIFICATION_QUEUE_URL")
 
     if not all([stage, region, user_pool_id, sender_email, sns_topic_arn]):
         missing_vars = [
@@ -46,7 +46,7 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
                 "COGNITO_REGION": region,
                 "COGNITO_USER_POOL_ID": user_pool_id,
                 "SENDER_EMAIL": sender_email,
-                "NOTIFICATION_TOPIC_ARN": sns_topic_arn,
+                "NOTIFICATION_QUEUE_URL": sns_topic_arn,
             }.items()
             if not value
         ]

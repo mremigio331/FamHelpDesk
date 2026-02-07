@@ -11,12 +11,12 @@ class AuditHelper:
         request_id: str = None,
         stage: str = None,
         table_name: str = None,
-        notification_topic_arn: str = None,
+        notification_queue_url: str = None,
     ):
         self.logger = Logger()
         if request_id:
             self.logger.append_keys(request_id=request_id)
-        AuditModel.set_stage_and_table(stage, table_name, notification_topic_arn)
+        AuditModel.set_stage_and_table(stage, table_name, notification_queue_url)
 
     # Family-based audit methods
     def create_family_audit_record(

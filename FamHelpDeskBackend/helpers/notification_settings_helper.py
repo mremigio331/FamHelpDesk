@@ -13,7 +13,7 @@ class NotificationSettingsHelper:
         request_id: str = None,
         stage: str = None,
         table_name: str = None,
-        notification_topic_arn: str = None,
+        notification_queue_url: str = None,
     ):
         """
         Initialize NotificationSettingsHelper with logger and request_id support.
@@ -28,7 +28,7 @@ class NotificationSettingsHelper:
             self.logger.append_keys(request_id=request_id)
         self.request_id = request_id
         NotificationSettingsModel.set_stage_and_table(
-            stage, table_name, notification_topic_arn
+            stage, table_name, notification_queue_url
         )
 
     def create_default_settings(self, user_id: str) -> NotificationSettingsModel:

@@ -15,7 +15,7 @@ class FamilyNotificationSettingsHelper:
         request_id: str = None,
         stage: str = None,
         table_name: str = None,
-        notification_topic_arn: str = None,
+        notification_queue_url: str = None,
     ):
         """
         Initialize FamilyNotificationSettingsHelper with logger and request_id support.
@@ -30,7 +30,7 @@ class FamilyNotificationSettingsHelper:
             self.logger.append_keys(request_id=request_id)
         self.request_id = request_id
         FamilyNotificationSettings.set_stage_and_table(
-            stage, table_name, notification_topic_arn
+            stage, table_name, notification_queue_url
         )
 
     def create_default_settings(
@@ -208,7 +208,7 @@ class FamilyNotificationSettingsHelper:
         return settings
 
     def is_notification_enabled(
-        self, user_id: str, family_id: str, notification_type: NotificationType
+        self, user_id: str, family_id: str, notification_type: FamliyNotificationType
     ) -> bool:
         """
         Check if notification type is enabled for user-family pair.
@@ -218,7 +218,7 @@ class FamilyNotificationSettingsHelper:
         Args:
             user_id: The user ID to check settings for
             family_id: The family ID to check settings for
-            notification_type: The NotificationType enum value to check
+            notification_type: The FamliyNotificationType enum value to check
 
         Returns:
             bool: True if notification should be sent, False otherwise

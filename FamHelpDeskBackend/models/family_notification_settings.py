@@ -34,6 +34,9 @@ class FamliyNotificationType(Enum):
     TICKET_COMMENT = "Ticket Comment"
     TICKET_STATUS_CHANGED = "Ticket Status Changed"
 
+    # Welcom
+    WELCOME = "Welcome"
+
 
 class FamilySettingsIndex(GlobalSecondaryIndex):
     """GSI for querying all settings for users in a family"""
