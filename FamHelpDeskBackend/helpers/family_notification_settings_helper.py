@@ -90,6 +90,7 @@ class FamilyNotificationSettingsHelper:
             ticket_assigned=True,
             ticket_comment=True,
             ticket_status_change=True,
+            ticket_resolved=True,
             created_date=current_time,
             last_updated=current_time,
         )
@@ -170,15 +171,7 @@ class FamilyNotificationSettingsHelper:
             raise
 
     def update_settings(
-        self,
-        user_id: str,
-        family_id: str,
-        welcome_to_family_enabled: Optional[bool] = None,
-        membership_request_enabled: Optional[bool] = None,
-        ticket_creation_enabled: Optional[bool] = None,
-        ticket_assigned_enabled: Optional[bool] = None,
-        ticket_comment_enabled: Optional[bool] = None,
-        ticket_status_changed_enabled: Optional[bool] = None,
+        self, user_id: str, family_id: str, **kwargs
     ) -> FamilyNotificationSettings:
         """
         Update specific notification preferences.
@@ -186,12 +179,7 @@ class FamilyNotificationSettingsHelper:
         Args:
             user_id: The user ID to update settings for
             family_id: The family ID to update settings for
-            welcome_to_family_enabled: Optional welcome to family notification preference
-            membership_request_enabled: Optional membership request notification preference
-            ticket_creation_enabled: Optional ticket creation notification preference
-            ticket_assigned_enabled: Optional ticket assignment notification preference
-            ticket_comment_enabled: Optional ticket comment notification preference
-            ticket_status_changed_enabled: Optional ticket status change notification preference
+            **kwargs: Any notification preference fields to update (e.g., ticket_assigned=True)
 
         Returns:
             FamilyNotificationSettings: The updated settings object
@@ -201,19 +189,45 @@ class FamilyNotificationSettingsHelper:
         if settings is None:
             settings = self.create_default_settings(user_id, family_id)
 
-        # Update provided boolean flags
-        if welcome_to_family_enabled is not None:
-            settings.welcome_to_family_enabled = welcome_to_family_enabled
-        if membership_request_enabled is not None:
-            settings.membership_request_enabled = membership_request_enabled
-        if ticket_creation_enabled is not None:
-            settings.ticket_creation_enabled = ticket_creation_enabled
-        if ticket_assigned_enabled is not None:
-            settings.ticket_assigned_enabled = ticket_assigned_enabled
-        if ticket_comment_enabled is not None:
-            settings.ticket_comment_enabled = ticket_comment_enabled
-        if ticket_status_changed_enabled is not None:
-            settings.ticket_status_changed_enabled = ticket_status_changed_enabled
+        # Valid notification preference field names
+        valid_fields = {
+            # Family
+            "new_family_creation_enabled",
+            "welcome_enabled",
+            # Family Membership
+            "welcome_to_family_enabled",
+            "new_family_member_enabled",
+            "family_membership_approved",
+            "family_membership_denied",
+            "family_membership_invitation",
+            "family_membership_joined",
+            "family_membership_left",
+            "family_membership_request",
+            # Group Membership
+            "group_membership_approved",
+            "group_membership_denied",
+            "group_membership_added",
+            "group_membership_joined",
+            "group_membership_left",
+            "group_membership_request",
+            "new_group_creation",
+            # Tickets
+            "ticket_creation_family",
+            "ticket_creation_group",
+            "ticket_assigned",
+            "ticket_comment",
+            "ticket_status_change",
+            "ticket_resolved",
+        }
+
+        # Update provided fields
+        for field_name, value in kwargs.items():
+            if field_name in valid_fields and value is not None:
+                setattr(settings, field_name, value)
+            elif field_name not in valid_fields:
+                self.logger.warning(
+                    f"Ignoring unknown field '{field_name}' in update_settings"
+                )
 
         # Update last_updated timestamp
         settings.last_updated = int(time.time())
@@ -281,6 +295,7 @@ class FamilyNotificationSettingsHelper:
             FamliyNotificationType.TICKET_ASSIGNED: settings.ticket_assigned,
             FamliyNotificationType.TICKET_COMMENT: settings.ticket_comment,
             FamliyNotificationType.TICKET_STATUS_CHANGED: settings.ticket_status_change,
+            FamliyNotificationType.TICKET_RESOLVED: settings.ticket_resolved,
         }
 
         is_enabled = notification_mapping.get(notification_type, True)

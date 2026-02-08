@@ -33,6 +33,7 @@ class FamliyNotificationType(Enum):
     TICKET_ASSIGNED = "Ticket Assigned"
     TICKET_COMMENT = "Ticket Comment"
     TICKET_STATUS_CHANGED = "Ticket Status Changed"
+    TICKET_RESOLVED = "Ticket Resolved"
 
     # Welcom
     WELCOME = "Welcome"
@@ -91,6 +92,7 @@ class FamilyNotificationSettings(FamHelpDeskBaseModel):
     ticket_assigned = BooleanAttribute(default=True)
     ticket_comment = BooleanAttribute(default=True)
     ticket_status_change = BooleanAttribute(default=True)
+    ticket_resolved = BooleanAttribute(default=True)
 
     # Standard timestamp fields
     created_date = NumberAttribute()
@@ -143,6 +145,7 @@ class FamilyNotificationSettings(FamHelpDeskBaseModel):
             "ticket_assigned": settings.ticket_assigned,
             "ticket_comment": settings.ticket_comment,
             "ticket_status_change": settings.ticket_status_change,
+            "ticket_resolved": settings.ticket_resolved,
         }
 
     def save(self, **kwargs):

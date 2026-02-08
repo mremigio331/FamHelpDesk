@@ -21,8 +21,8 @@ class NotificationHelper:
         self.logger = Logger()
         if request_id:
             self.logger.append_keys(request_id=request_id)
-        self.notification_queue_url = notification_queue_url
-        NotificationModel.set_stage_and_table(stage, table_name)
+        NotificationModel.set_stage_and_table(stage, table_name, notification_queue_url)
+        self.notification_queue_url = NotificationModel.Meta.notification_queue_url
         self.sqs_client = boto3.client("sqs")
 
     def create_notification(

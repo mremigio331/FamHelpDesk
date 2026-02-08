@@ -415,6 +415,18 @@ class TicketHelper:
                 **notification_context,
             )
 
+            # Send specific TICKET_RESOLVED notification when ticket is resolved
+            if ticket.status == TicketStatus.RESOLVED.value:
+                resolved_notification_context = {
+                    "family_id": family_id,
+                    "ticket_id": ticket_id,
+                    "resolved_by": updated_by,
+                }
+                self.notification_helper.create_notification_async(
+                    notification_type=FamliyNotificationType.TICKET_RESOLVED,
+                    **resolved_notification_context,
+                )
+
         self.logger.info(f"Updated ticket {ticket_id} for family {family_id}")
 
         return ticket
@@ -497,10 +509,18 @@ class TicketHelper:
 
         try:
             # Query the ticket_id GSI
-            results = list(TicketModel.ticket_id_index.query(ticket_id, limit=1))
+            results = list(TicketModel.ticket_id_index.query(ticket_id))
 
-            if results:
-                ticket = results[0]
+            # Filter to get only the actual ticket (SK = TICKET#{ticket_id})
+            # Not comments (SK = TICKET#{ticket_id}#COMMENT#{comment_id})
+            expected_sk = TicketModel.create_sk(ticket_id)
+            ticket = None
+            for result in results:
+                if result.sk == expected_sk:
+                    ticket = result
+                    break
+
+            if ticket:
                 self.logger.info(f"Retrieved ticket {ticket_id} via GSI")
                 return ticket
             else:

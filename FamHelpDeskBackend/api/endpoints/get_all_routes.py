@@ -12,6 +12,12 @@ from api.endpoints.family import (
     get_family,
     update_family,
 )
+from api.endpoints.family.get_family_notification_settings import (
+    router as get_family_notification_settings_router,
+)
+from api.endpoints.family.update_family_notification_settings import (
+    router as update_family_notification_settings_router,
+)
 from api.endpoints.group import (
     create_group,
     get_all_groups,
@@ -193,6 +199,16 @@ def get_all_routes(app: FastAPI) -> FastAPI:
     )
     app.include_router(
         update_settings_router, prefix=NOTIFICATIONS_PATH, tags=[NOTIFICATIONS_TAG]
+    )
+    app.include_router(
+        get_family_notification_settings_router,
+        prefix=FAMILY_PATH,
+        tags=[FAMILY_TAG],
+    )
+    app.include_router(
+        update_family_notification_settings_router,
+        prefix=FAMILY_PATH,
+        tags=[FAMILY_TAG],
     )
 
     # Queue routes

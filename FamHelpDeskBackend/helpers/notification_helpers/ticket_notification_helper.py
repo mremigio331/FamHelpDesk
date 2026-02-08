@@ -57,6 +57,8 @@ class TicketNotificationHelper:
             self._process_ticket_comment(**kwargs)
         elif notification_type == FamliyNotificationType.TICKET_STATUS_CHANGED:
             self._process_ticket_status_changed(**kwargs)
+        elif notification_type == FamliyNotificationType.TICKET_RESOLVED:
+            self._process_resolved_ticket(**kwargs)
 
     def _process_new_ticket(self, ticket_id, family_id):
         """
@@ -96,9 +98,9 @@ class TicketNotificationHelper:
             if is_notification_enabled:
                 # Special message if assigned to this user
                 if member["user_id"] == ticket_assigned_to:
-                    message = f"{ticket_created_by} just created a new {ticket_severity} ticket in {family_id} and assigned it to you."
+                    message = f"{ticket_created_by} just created a new sev {ticket_severity} ticket in {family_id} and assigned it to you."
                 else:
-                    message = f"{ticket_created_by} just created a new {ticket_severity} ticket in {family_id}."
+                    message = f"{ticket_created_by} just created a new sev {ticket_severity} ticket in {family_id}."
 
                 self.notification_helper.create_notification(
                     user_id=member["user_id"],
@@ -213,6 +215,40 @@ class TicketNotificationHelper:
                     user_id=user_id,
                     message=message,
                     notification_type=FamliyNotificationType.TICKET_STATUS_CHANGED,
+                    family_id=family_id,
+                    ticket_id=ticket_id,
+                )
+
+    def _process_resolved_ticket(self, ticket_id, resolved_by, family_id):
+        """
+        Process TICKET_RESOLVED notification.
+        Recipients: All users with audit records for the ticket (if ticket_resolved_enabled setting is true).
+        """
+        # Get all users who have interacted with the ticket
+        involved_users = self.audit_helper.get_users_from_ticket_audit(
+            family_id, ticket_id
+        )
+
+        for user_id in involved_users:
+            # Skip the user who resolved the ticket
+            if user_id == resolved_by:
+                continue
+
+            # Check if user has ticket resolved notifications enabled
+            is_notification_enabled = (
+                self.family_settings_helper.is_notification_enabled(
+                    user_id=user_id,
+                    family_id=family_id,
+                    notification_type=FamliyNotificationType.TICKET_RESOLVED,
+                )
+            )
+
+            if is_notification_enabled:
+                message = f"{resolved_by} resolved ticket {ticket_id} in {family_id}."
+                self.notification_helper.create_notification(
+                    user_id=user_id,
+                    message=message,
+                    notification_type=FamliyNotificationType.TICKET_RESOLVED,
                     family_id=family_id,
                     ticket_id=ticket_id,
                 )

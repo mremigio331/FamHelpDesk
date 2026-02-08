@@ -141,6 +141,7 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
             FamliyNotificationType.TICKET_ASSIGNED,
             FamliyNotificationType.TICKET_COMMENT,
             FamliyNotificationType.TICKET_STATUS_CHANGED,
+            FamliyNotificationType.TICKET_RESOLVED,
         ]:
             helper = TicketNotificationHelper(
                 request_id=request_id,
