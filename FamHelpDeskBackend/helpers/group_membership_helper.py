@@ -120,6 +120,7 @@ class GroupMembershipHelper:
             user_id=user_id,
             notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_REQUEST,
             family_id=family_id,
+            group_id=group_id,
         )
 
         return after
@@ -418,7 +419,7 @@ class GroupMembershipHelper:
             )
             self.notification_helper.create_notification_async(
                 user_id=target_user_id,
-                admin_id=granter_user_id,
+                admin_user=granter_user_id,
                 notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_ADDED,
                 family_id=family_id,
                 group_id=group_id,

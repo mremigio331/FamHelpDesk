@@ -64,12 +64,32 @@ class FamilyNotificationSettingsHelper:
             user_id=user_id,
             family_id=family_id,
             # All notification types enabled by default
+            # Family
+            new_family_creation_enabled=True,
+            welcome_enabled=True,
+            # Family Membership
             welcome_to_family_enabled=True,
-            membership_request_enabled=True,
-            ticket_creation_enabled=True,
-            ticket_assigned_enabled=True,
-            ticket_comment_enabled=True,
-            ticket_status_changed_enabled=True,
+            new_family_member_enabled=True,
+            family_membership_approved=True,
+            family_membership_denied=False,
+            family_membership_invitation=False,
+            family_membership_joined=True,
+            family_membership_left=True,
+            family_membership_request=True,
+            # Group Membership
+            group_membership_approved=False,
+            group_membership_denied=False,
+            group_membership_added=False,
+            group_membership_joined=False,
+            group_membership_left=False,
+            group_membership_request=False,
+            new_group_creation=False,
+            # Tickets
+            ticket_creation_family=False,
+            ticket_creation_group=True,
+            ticket_assigned=True,
+            ticket_comment=True,
+            ticket_status_change=True,
             created_date=current_time,
             last_updated=current_time,
         )
@@ -235,7 +255,12 @@ class FamilyNotificationSettingsHelper:
 
         # Map NotificationType enum values to corresponding boolean fields
         notification_mapping = {
-            # Faimly
+            # Family
+            FamliyNotificationType.NEW_FAMILY_CREATION: settings.new_family_creation_enabled,
+            FamliyNotificationType.WELCOME: settings.welcome_enabled,
+            # Family Membership
+            FamliyNotificationType.WELCOME_TO_FAMILY: settings.welcome_to_family_enabled,
+            FamliyNotificationType.NEW_FAMILY_MEMEBER: settings.new_family_member_enabled,
             FamliyNotificationType.FAMILY_MEMBERSHIP_APPROVED: settings.family_membership_approved,
             FamliyNotificationType.FAMILY_MEMBERSHIP_DENIED: settings.family_membership_denied,
             FamliyNotificationType.FAMILY_MEMBERSHIP_INVITATION: settings.family_membership_invitation,
@@ -255,7 +280,7 @@ class FamilyNotificationSettingsHelper:
             FamliyNotificationType.TICKET_CREATION_GROUP: settings.ticket_creation_group,
             FamliyNotificationType.TICKET_ASSIGNED: settings.ticket_assigned,
             FamliyNotificationType.TICKET_COMMENT: settings.ticket_comment,
-            FamliyNotificationType.TICKET_STATUS_CHANGED: settings.ticket_satatus_change,
+            FamliyNotificationType.TICKET_STATUS_CHANGED: settings.ticket_status_change,
         }
 
         is_enabled = notification_mapping.get(notification_type, True)

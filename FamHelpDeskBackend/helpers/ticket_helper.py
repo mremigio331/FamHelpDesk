@@ -7,10 +7,10 @@ import time
 from models.ticket import TicketModel, TicketStatus
 from helpers.audit_helper import AuditHelper
 from helpers.notification_helper import NotificationHelper
-from helpers.notification_settings_helper import NotificationSettingsHelper
+from helpers.family_notification_settings_helper import FamilyNotificationSettingsHelper
 from helpers.entity_ref import EntityRefHelper
 from models.audit import AuditActions, AuditEntityTypes
-from models.notification import NotificationType
+from models.family_notification_settings import FamliyNotificationType
 from exceptions.ticket_exceptions import (
     TicketNotFoundException,
     InvalidTicketStatusTransitionException,
@@ -45,7 +45,7 @@ class TicketHelper:
             table_name=table_name,
             notification_queue_url=notification_queue_url,
         )
-        self.notification_settings_helper = NotificationSettingsHelper(
+        self.family_notification_settings_helper = FamilyNotificationSettingsHelper(
             request_id=request_id,
             stage=stage,
             table_name=table_name,
@@ -152,46 +152,28 @@ class TicketHelper:
             after=audit_data,
         )
 
-        # Create ticket creation notification for the creator (async)
-        if self.notification_settings_helper.is_notification_enabled(
-            created_by, NotificationType.TICKET_CREATION
-        ):
-            notification_context = {
-                "family_id": family_id,
-                "ticket_id": ticket_id,
-                "queue_id": queue_id,
-                "group_id": group_id,
-            }
-            self.notification_helper.create_notification_async(
-                user_id=created_by,
-                message=f"Ticket '{title}' has been created in queue {queue_id}",
-                notification_type=NotificationType.TICKET_CREATION,
-                **notification_context,
-            )
+        # Create ticket creation notification (async) - lambda determines recipients
+        notification_context = {
+            "family_id": family_id,
+            "ticket_id": ticket_id,
+        }
+        self.notification_helper.create_notification_async(
+            notification_type=FamliyNotificationType.TICKET_CREATION_FAMILY,
+            **notification_context,
+        )
 
         # Create ticket assignment notification if ticket is assigned during creation (async)
         if assigned_to is not None and assigned_to != created_by:
-            if self.notification_settings_helper.is_notification_enabled(
-                assigned_to, NotificationType.TICKET_ASSIGNED
-            ):
-                notification_context = {
-                    "family_id": family_id,
-                    "ticket_id": ticket_id,
-                    "queue_id": queue_id,
-                    "group_id": group_id,
-                }
-                self.notification_helper.create_notification_async(
-                    user_id=assigned_to,
-                    message=f"Ticket '{title}' has been assigned to you in queue {queue_id}",
-                    notification_type=NotificationType.TICKET_ASSIGNED,
-                    **notification_context,
-                )
-                self.notification_helper.create_notification_async(
-                    user_id=assigned_to,
-                    message=f"Ticket '{title}' has been assigned to you in queue {queue_id}",
-                    notification_type=NotificationType.TICKET_ASSIGNED,
-                    **notification_context,
-                )
+            notification_context = {
+                "family_id": family_id,
+                "ticket_id": ticket_id,
+                "assigned_to": assigned_to,
+                "assigned_by": created_by,
+            }
+            self.notification_helper.create_notification_async(
+                notification_type=FamliyNotificationType.TICKET_ASSIGNED,
+                **notification_context,
+            )
 
         self.logger.info(
             f"Created ticket {ticket_id} in queue {queue_id} for family {family_id}"
@@ -408,54 +390,30 @@ class TicketHelper:
             and ticket.assigned_to is not None
             and ticket.assigned_to != updated_by
         ):
-            if self.notification_settings_helper.is_notification_enabled(
-                ticket.assigned_to, NotificationType.TICKET_ASSIGNED
-            ):
-                notification_context = {
-                    "family_id": family_id,
-                    "ticket_id": ticket_id,
-                    "queue_id": ticket.queue_id,
-                    "group_id": ticket.group_id,
-                }
-                self.notification_helper.create_notification_async(
-                    user_id=ticket.assigned_to,
-                    message=f"Ticket '{ticket.title}' has been assigned to you in queue {ticket.queue_id}",
-                    notification_type=NotificationType.TICKET_ASSIGNED,
-                    **notification_context,
-                )
+            notification_context = {
+                "family_id": family_id,
+                "ticket_id": ticket_id,
+                "assigned_to": ticket.assigned_to,
+                "assigned_by": updated_by,
+            }
+            self.notification_helper.create_notification_async(
+                notification_type=FamliyNotificationType.TICKET_ASSIGNED,
+                **notification_context,
+            )
 
         # Create notifications for status changes (async)
         if status_changed:
             notification_context = {
                 "family_id": family_id,
                 "ticket_id": ticket_id,
-                "queue_id": ticket.queue_id,
-                "group_id": ticket.group_id,
+                "old_status": old_status,
+                "new_status": ticket.status,
+                "changed_by": updated_by,
             }
-
-            # Notify the ticket creator if they're not the one making the change
-            if ticket.created_by != updated_by:
-                if self.notification_settings_helper.is_notification_enabled(
-                    ticket.created_by, NotificationType.TICKET_STATUS_CHANGED
-                ):
-                    self.notification_helper.create_notification_async(
-                        user_id=ticket.created_by,
-                        message=f"Ticket '{ticket.title}' status changed from {old_status} to {ticket.status}",
-                        notification_type=NotificationType.TICKET_STATUS_CHANGED,
-                        **notification_context,
-                    )
-
-            # Notify the assigned user if they exist and are not the one making the change
-            if ticket.assigned_to is not None and ticket.assigned_to != updated_by:
-                if self.notification_settings_helper.is_notification_enabled(
-                    ticket.assigned_to, NotificationType.TICKET_STATUS_CHANGED
-                ):
-                    self.notification_helper.create_notification_async(
-                        user_id=ticket.assigned_to,
-                        message=f"Ticket '{ticket.title}' status changed from {old_status} to {ticket.status}",
-                        notification_type=NotificationType.TICKET_STATUS_CHANGED,
-                        **notification_context,
-                    )
+            self.notification_helper.create_notification_async(
+                notification_type=FamliyNotificationType.TICKET_STATUS_CHANGED,
+                **notification_context,
+            )
 
         self.logger.info(f"Updated ticket {ticket_id} for family {family_id}")
 

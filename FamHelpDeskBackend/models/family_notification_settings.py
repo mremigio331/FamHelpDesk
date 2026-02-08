@@ -62,7 +62,13 @@ class FamilyNotificationSettings(FamHelpDeskBaseModel):
 
     # Notification type preferences with defaults
 
+    # Family
+    new_family_creation_enabled = BooleanAttribute(default=True)
+    welcome_enabled = BooleanAttribute(default=True)
+
     # Family Membership
+    welcome_to_family_enabled = BooleanAttribute(default=True)
+    new_family_member_enabled = BooleanAttribute(default=True)
     family_membership_approved = BooleanAttribute(default=True)
     family_membership_denied = BooleanAttribute(default=False)
     family_membership_invitation = BooleanAttribute(default=False)
@@ -111,7 +117,12 @@ class FamilyNotificationSettings(FamHelpDeskBaseModel):
             "family_id": settings.family_id,
             "created_date": settings.created_date,
             "last_updated": settings.last_updated,
-            # Faimly
+            # Family
+            "new_family_creation_enabled": settings.new_family_creation_enabled,
+            "welcome_enabled": settings.welcome_enabled,
+            # Family Membership
+            "welcome_to_family_enabled": settings.welcome_to_family_enabled,
+            "new_family_member_enabled": settings.new_family_member_enabled,
             "family_membership_approved": settings.family_membership_approved,
             "family_membership_denied": settings.family_membership_denied,
             "family_membership_invitation": settings.family_membership_invitation,

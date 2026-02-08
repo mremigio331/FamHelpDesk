@@ -8,7 +8,9 @@ from models.ticket_comment import TicketCommentModel
 from helpers.ticket_helper import TicketHelper
 from helpers.audit_helper import AuditHelper
 from helpers.entity_ref import EntityRefHelper
+from helpers.notification_helper import NotificationHelper
 from models.audit import AuditActions, AuditEntityTypes
+from models.family_notification_settings import FamliyNotificationType
 from exceptions.ticket_exceptions import (
     CommentNotFoundException,
     CommentEditWindowExpiredException,
@@ -31,6 +33,7 @@ class TicketCommentHelper:
             request_id: Optional request ID for logging correlation
             stage: Optional stage to override model configuration
             table_name: Optional table name to override model configuration
+            notification_queue_url: Optional notification queue URL
         """
         self.logger = Logger()
         if request_id:
@@ -46,6 +49,12 @@ class TicketCommentHelper:
             notification_queue_url=notification_queue_url,
         )
         self.ticket_helper = TicketHelper(
+            request_id=request_id,
+            stage=stage,
+            table_name=table_name,
+            notification_queue_url=notification_queue_url,
+        )
+        self.notification_helper = NotificationHelper(
             request_id=request_id,
             stage=stage,
             table_name=table_name,
@@ -168,6 +177,17 @@ class TicketCommentHelper:
                 "family_id": family_id,
                 "ticket_id": ticket_id,
             },
+        )
+
+        # Send notification for ticket comment (async) - lambda determines recipients
+        notification_context = {
+            "ticket_id": ticket_id,
+            "comment_author": comment_user,
+            "family_id": family_id,
+        }
+        self.notification_helper.create_notification_async(
+            notification_type=FamliyNotificationType.TICKET_COMMENT,
+            **notification_context,
         )
 
         # Return enriched comment data

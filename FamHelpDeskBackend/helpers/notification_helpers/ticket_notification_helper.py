@@ -108,11 +108,24 @@ class TicketNotificationHelper:
                     ticket_id=ticket_id,
                 )
 
-    def _process_ticket_assigned(self, ticket_id, assigned_to, assigned_by, family_id):
+    def _process_ticket_assigned(self, ticket_id, family_id, **kwargs):
         """
         Process TICKET_ASSIGNED notification.
         Recipients: Only the assigned user (if ticket_assigned_enabled setting is true).
+
+        Accepts either:
+        - assigned_to, assigned_by (new format)
+        - user_id (legacy format from old notification system)
         """
+        # Support both new and legacy parameter formats
+        assigned_to = kwargs.get("assigned_to") or kwargs.get("user_id")
+        assigned_by = kwargs.get("assigned_by", "someone")
+
+        if not assigned_to:
+            raise ValueError(
+                "Missing assigned_to or user_id parameter for TICKET_ASSIGNED notification"
+            )
+
         # Check if assigned user has ticket assignment notifications enabled
         is_notification_enabled = self.family_settings_helper.is_notification_enabled(
             user_id=assigned_to,
