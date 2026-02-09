@@ -94,6 +94,16 @@ export class NotificationStack extends Stack {
     // Grant DynamoDB permissions to the Lambda function
     userTable.grantReadWriteData(this.notificationProcessor);
 
+    // Grant Secrets Manager permissions for APNs credentials
+    const apnsSecretArn = `arn:aws:secretsmanager:${this.region}:${this.account}:secret:AppleKeys-*`;
+    this.notificationProcessor.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["secretsmanager:GetSecretValue"],
+        resources: [apnsSecretArn],
+      })
+    );
+
     // NEW: Add SQS event source to Lambda with batch processing
     this.notificationProcessor.addEventSource(
       new lambdaEventSources.SqsEventSource(this.notificationQueue, {

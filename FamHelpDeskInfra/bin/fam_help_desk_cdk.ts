@@ -108,8 +108,23 @@ async function main() {
         escalationNumber,
         googleOathKeys,
         appleOauthKeys,
-        notificationTopicArn: notificationStack.notificationTopic.topicArn,
+        notificationQueueUrl: cdk.Fn.importValue(`${famHelpDesk}-NotificationQueueUrl-${stage}`),
       },
+    );
+
+    const userProfileDeleteStack = new UserProfileDeleteStack(
+      app,
+      `${famHelpDesk}-UserProfileDeleteStack-${stage}`,
+      {
+        env: awsEnv,
+        stage,
+        escalationEmail,
+        escalationNumber,
+        senderEmail: "noreply@famhelpdesk.com", 
+        cognitoUserPoolId: cognitoStack.userPool.userPoolId,
+        userTable: databaseStack.table,
+        notificationQueue: notificationStack.notificationQueue,
+      }
     );
 
     const apiStack = new ApiStack(app, `${famHelpDesk}-ApiStack-${stage}`, {
@@ -125,11 +140,21 @@ async function main() {
       userTable: databaseStack.table,
       escalationEmail: escalationEmail,
       escalationNumber: escalationNumber,
-      notificationTopicArn: notificationStack.notificationTopic.topicArn,
+      notificationQueueUrl: cdk.Fn.importValue(`${famHelpDesk}-NotificationQueueUrl-${stage}`),
+      userDeleteLambdaArn: userProfileDeleteStack.userDeleteLambdaArn,
     });
 
-    // Grant the API Lambda functions permission to publish to the notification topic
+    // Grant the API Lambda permission to send messages to the notification queue (NEW - SQS)
+    notificationStack.grantSendMessages(apiStack.lambdaFunction);
+    
+    // Grant the API Lambda permission to publish to the notification topic (OLD - SNS, keep during migration)
     notificationStack.grantPublishToTopic(apiStack.lambdaFunction);
+    
+    // Grant the Cognito Lambda permission to send messages to the notification queue (NEW - SQS)
+    notificationStack.grantSendMessages(cognitoStack.userEventLoggerFunction);
+    
+    // Grant the Cognito Lambda permission to publish to the notification topic (OLD - SNS, keep during migration)
+    notificationStack.grantPublishToTopic(cognitoStack.userEventLoggerFunction);
 
     new WebsiteStack(app, `${famHelpDesk}-WebsiteStack-${stage}`, {
       env: awsEnv,
@@ -148,20 +173,6 @@ async function main() {
       cognitoMetrics: cognitoStack.cognitoMetrics,
       notificationMetrics: notificationStack.notificationMetrics,
     });
-
-    new UserProfileDeleteStack(
-      app,
-      `${famHelpDesk}-UserProfileDeleteStack-${stage}`,
-      {
-        env: awsEnv,
-        stage,
-        escalationEmail,
-        escalationNumber,
-        senderEmail: "noreply@famhelpdesk.com", 
-        cognitoUserPoolId: cognitoStack.userPool.userPoolId,
-        userTable: databaseStack.table,
-      }
-    );
   }
 }
 
