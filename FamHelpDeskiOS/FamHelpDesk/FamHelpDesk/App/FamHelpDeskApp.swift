@@ -1,16 +1,52 @@
 import Amplify
 import AWSCognitoAuthPlugin
 import SwiftUI
+import UIKit
+import UserNotifications
 
 @main
 struct FamHelpDeskApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var auth = AuthManager()
     @State private var userSession = UserSession.shared
     @State private var showErrorAfterDelay = false
+    @StateObject private var navigationCoordinator = NavigationCoordinator.shared
     private let logger = AuthLogger.shared
 
     init() {
         configureAmplify()
+        setupNotificationDelegate()
+        checkAndRequestNotificationPermissions()
+    }
+
+    /// Set up notification center delegate
+    private func setupNotificationDelegate() {
+        UNUserNotificationCenter.current().delegate = appDelegate
+    }
+
+    /// Check if notification permissions have been requested and request if needed
+    private func checkAndRequestNotificationPermissions() {
+        // Check if permissions have already been requested
+        let hasRequestedPermissions = UserDefaults.standard.bool(forKey: "hasRequestedNotificationPermissions")
+
+        if !hasRequestedPermissions {
+            print("📱 [APP] First launch - will request notification permissions")
+            // Request permissions on first launch
+            Task {
+                let granted = await NotificationManager.shared.requestPermissions()
+
+                // Mark as requested regardless of outcome
+                UserDefaults.standard.set(true, forKey: "hasRequestedNotificationPermissions")
+
+                if granted {
+                    print("✅ [APP] Notification permissions granted on first launch")
+                } else {
+                    print("⚠️ [APP] Notification permissions denied on first launch")
+                }
+            }
+        } else {
+            print("📱 [APP] Notification permissions already requested previously")
+        }
     }
 
     var body: some Scene {
@@ -57,6 +93,13 @@ struct FamHelpDeskApp: App {
                 if case .authenticated = auth.authenticationState, userSession.currentUser == nil, !userSession.isLoading {
                     print("📱 [APP] Initial profile load on app start")
                     await userSession.loadUserProfile()
+                }
+            }
+            .onAppear {
+                // Clear badge count when app opens
+                Task { @MainActor in
+                    UIApplication.shared.applicationIconBadgeNumber = 0
+                    print("🔢 [APP] Cleared badge count on app open")
                 }
             }
             .onChange(of: auth.authenticationState) { oldState, newState in
@@ -354,5 +397,95 @@ struct ProfileLoadErrorView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(uiColor: .systemBackground))
         .padding()
+    }
+}
+
+// MARK: - AppDelegate for APNs
+
+class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    func application(
+        _: UIApplication,
+        didFinishLaunchingWithOptions _: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        print("📱 [AppDelegate] Application did finish launching")
+        return true
+    }
+
+    /// Called when APNs successfully registers the device
+    func application(
+        _: UIApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        print("📱 [AppDelegate] Successfully registered for remote notifications")
+
+        // Register device with backend via NotificationManager
+        Task {
+            await NotificationManager.shared.registerDevice(token: deviceToken)
+        }
+    }
+
+    /// Called when APNs fails to register the device
+    func application(
+        _: UIApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: Error
+    ) {
+        print("❌ [AppDelegate] Failed to register for remote notifications: \(error.localizedDescription)")
+
+        // Show alert to user on main thread
+        Task { @MainActor in
+            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  let rootViewController = windowScene.windows.first?.rootViewController
+            else {
+                return
+            }
+
+            let alert = UIAlertController(
+                title: "Notification Registration Failed",
+                message: "Unable to register for push notifications. Please check your network connection and try again.",
+                preferredStyle: .alert
+            )
+
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+
+            rootViewController.present(alert, animated: true)
+        }
+    }
+
+    // MARK: - UNUserNotificationCenterDelegate
+
+    /// Handle notification when app is in foreground
+    func userNotificationCenter(
+        _: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        print("📱 [AppDelegate] Received notification in foreground")
+
+        // Update badge count if present in payload
+        if let badge = notification.request.content.badge as? Int {
+            Task { @MainActor in
+                UIApplication.shared.applicationIconBadgeNumber = badge
+                print("🔢 [AppDelegate] Updated badge count to: \(badge)")
+            }
+        }
+
+        // Show banner, play sound, and update badge
+        completionHandler([.banner, .sound, .badge])
+    }
+
+    /// Handle notification tap
+    func userNotificationCenter(
+        _: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        print("📱 [AppDelegate] User tapped notification")
+
+        let userInfo = response.notification.request.content.userInfo
+
+        // Parse userInfo and call NotificationManager to handle navigation
+        NotificationManager.shared.handleNotification(response.notification)
+
+        completionHandler()
     }
 }

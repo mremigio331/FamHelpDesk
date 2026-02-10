@@ -29,6 +29,10 @@ enum APIEndpoint {
     case acknowledgeNotification(notificationId: String)
     case acknowledgeAllNotifications
     case getUnreadCount
+    case getNotificationSettings
+    case updateNotificationSettings
+    case getFamilyNotificationSettings(familyId: String)
+    case updateFamilyNotificationSettings(familyId: String)
 
     // Membership endpoints
     case reviewMembershipRequest(familyId: String)
@@ -110,6 +114,14 @@ enum APIEndpoint {
             "/notifications/acknowledge-all"
         case .getUnreadCount:
             "/notifications/unread"
+        case .getNotificationSettings:
+            "/notifications/settings"
+        case .updateNotificationSettings:
+            "/notifications/settings"
+        case let .getFamilyNotificationSettings(familyId):
+            "/family/\(familyId)/notification-settings"
+        case let .updateFamilyNotificationSettings(familyId):
+            "/family/\(familyId)/notification-settings"
         case let .reviewMembershipRequest(familyId):
             "/membership/\(familyId)/review"
         case let .getGroupMembers(familyId, groupId):

@@ -43,15 +43,39 @@ struct Notification: Codable, Identifiable {
 }
 
 enum NotificationType: String, Codable, CaseIterable {
+    // Welcome
     case welcome = "Welcome"
+
+    // Family
+    case newFamilyCreation = "New Family Created"
+
+    // Family Membership
+    case familyMembershipApproved = "Family Membership Approved"
+    case familyMembershipDenied = "Family Membership Denied"
+    case familyMembershipInvitation = "Family Membership Invitation"
+    case familyMemberJoined = "Family Membership Accepted"
+    case familyMembershipLeft = "Family Member left"
+    case familyMembershipRequest = "Family Membership Request"
+    case newFamilyMember = "New Family Member"
     case welcomeToFamily = "Welcome to Family"
-    case membershipRequest = "Membership Request"
-    case membershipApproved = "Membership Approved"
-    case membershipDenied = "Membership Denied"
+
+    // Group Membership
+    case groupMembershipApproved = "Group Membership Approved"
+    case groupMembershipDenied = "Group Membership Denied"
+    case groupMembershipAdded = "Group Membership Added"
+    case groupMemberJoined = "Group Membership Accepted"
+    case groupMembershipLeft = "Group Member left"
+    case groupMembershipRequest = "Group Membership Request"
+    case newGroupCreation = "New Group Creation"
+
+    // Tickets
+    case ticketCreationFamily = "Family Ticket Creation"
+    case ticketCreationGroup = "Group Ticket Creation"
     case ticketAssigned = "Ticket Assigned"
     case ticketComment = "Ticket Comment"
     case ticketStatusChanged = "Ticket Status Changed"
-    case groupInvitation = "Group Invitation"
+    case ticketResolved = "Ticket Resolved"
+
     case unknown = "Unknown"
 }
 

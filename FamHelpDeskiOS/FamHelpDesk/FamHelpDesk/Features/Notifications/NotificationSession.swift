@@ -4,7 +4,7 @@ import Foundation
 final class NotificationSession {
     static let shared = NotificationSession()
 
-    private let notificationService = NotificationService()
+    private let notificationService = NotificationService.shared
 
     var notifications: [Notification] = []
     var unreadCount: Int = 0
@@ -32,7 +32,7 @@ final class NotificationSession {
         do {
             let response = try await notificationService.getNotifications(
                 limit: 20,
-                viewed: nil,
+                viewed: nil as Bool?,
                 nextToken: refresh ? nil : nextToken
             )
 

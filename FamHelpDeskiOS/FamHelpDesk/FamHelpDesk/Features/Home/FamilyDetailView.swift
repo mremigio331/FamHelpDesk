@@ -358,6 +358,19 @@ struct FamilyDetailView: View {
                 }
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
 
+                // Family Settings Section (only for members)
+                if let item = familyItem, item.membership.status == "MEMBER" {
+                    Section("Family Settings") {
+                        NavigationLink(destination: FamilyNotificationSettingsView(
+                            familyId: family.familyId,
+                            familyName: family.familyName
+                        )) {
+                            Label("Notification Settings", systemImage: "bell.badge")
+                        }
+                    }
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                }
+
                 // Add some extra content to make scrolling more apparent
                 Section("Additional Information") {
                     VStack(alignment: .leading, spacing: 12) {

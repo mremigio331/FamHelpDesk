@@ -230,24 +230,57 @@ struct NotificationItemView: View {
 extension NotificationType {
     var displayName: String {
         switch self {
+        // Welcome
         case .welcome:
             "Welcome"
+        // Family
+        case .newFamilyCreation:
+            "New Family"
+        // Family Membership
+        case .familyMembershipApproved:
+            "Membership Approved"
+        case .familyMembershipDenied:
+            "Membership Denied"
+        case .familyMembershipInvitation:
+            "Family Invitation"
+        case .familyMemberJoined:
+            "Member Joined"
+        case .familyMembershipLeft:
+            "Member Left"
+        case .familyMembershipRequest:
+            "Membership Request"
+        case .newFamilyMember:
+            "New Member"
         case .welcomeToFamily:
             "Welcome to Family"
-        case .membershipRequest:
-            "Membership Request"
-        case .membershipApproved:
-            "Membership Approved"
-        case .membershipDenied:
-            "Membership Denied"
+        // Group Membership
+        case .groupMembershipApproved:
+            "Group Approved"
+        case .groupMembershipDenied:
+            "Group Denied"
+        case .groupMembershipAdded:
+            "Added to Group"
+        case .groupMemberJoined:
+            "Group Member Joined"
+        case .groupMembershipLeft:
+            "Group Member Left"
+        case .groupMembershipRequest:
+            "Group Request"
+        case .newGroupCreation:
+            "New Group"
+        // Tickets
+        case .ticketCreationFamily:
+            "Family Ticket"
+        case .ticketCreationGroup:
+            "Group Ticket"
         case .ticketAssigned:
             "Ticket Assigned"
         case .ticketComment:
             "Ticket Comment"
         case .ticketStatusChanged:
-            "Ticket Status Changed"
-        case .groupInvitation:
-            "Group Invitation"
+            "Ticket Updated"
+        case .ticketResolved:
+            "Ticket Resolved"
         case .unknown:
             "Unknown"
         }
@@ -255,18 +288,54 @@ extension NotificationType {
 
     var color: Color {
         switch self {
+        // Welcome
         case .welcome, .welcomeToFamily:
             .blue
-        case .membershipRequest:
-            .orange
-        case .membershipApproved:
+
+        // Family
+        case .newFamilyCreation:
             .green
-        case .membershipDenied:
+
+        // Family Membership - Positive
+        case .familyMembershipApproved, .familyMemberJoined, .newFamilyMember:
+            .green
+
+        // Family Membership - Neutral/Info
+        case .familyMembershipInvitation, .familyMembershipRequest:
+            .orange
+
+        // Family Membership - Negative
+        case .familyMembershipDenied, .familyMembershipLeft:
             .red
-        case .ticketAssigned, .ticketComment, .ticketStatusChanged:
-            .purple
-        case .groupInvitation:
+
+        // Group Membership - Positive
+        case .groupMembershipApproved, .groupMemberJoined, .groupMembershipAdded, .newGroupCreation:
+            .green
+
+        // Group Membership - Neutral/Info
+        case .groupMembershipRequest:
+            .orange
+
+        // Group Membership - Negative
+        case .groupMembershipDenied, .groupMembershipLeft:
+            .red
+
+        // Tickets
+        case .ticketCreationFamily, .ticketCreationGroup:
             .blue
+
+        case .ticketAssigned:
+            .purple
+
+        case .ticketComment:
+            .indigo
+
+        case .ticketStatusChanged:
+            .teal
+
+        case .ticketResolved:
+            .green
+
         case .unknown:
             .gray
         }

@@ -61,6 +61,14 @@ struct ProfileContentView: View {
                 LabeledRow(label: "Email", value: profile.email)
                 LabeledRow(label: "User ID", value: profile.userId)
             }
+
+            Section("Settings") {
+                NavigationLink {
+                    NotificationSettingsView()
+                } label: {
+                    Label("Notifications", systemImage: "bell.fill")
+                }
+            }
         }
         .refreshable {
             await userSession.refreshProfile()

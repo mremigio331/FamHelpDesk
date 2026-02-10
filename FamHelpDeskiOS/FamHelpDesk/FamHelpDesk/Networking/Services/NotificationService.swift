@@ -1,91 +1,130 @@
 import Foundation
 
+/// Service for fetching and managing in-app notifications
+/// Note: This is separate from NotificationSettingsService which handles notification preferences
 final class NotificationService {
-    private let networkManager: NetworkManager
-    private let retryHelper = RetryHelper()
+    static let shared = NotificationService()
 
-    init(networkManager: NetworkManager = .shared) {
-        self.networkManager = networkManager
-    }
+    private let networkManager = NetworkManager.shared
 
-    /// Fetches notifications for the current user with enhanced error handling
-    /// - Parameters:
-    ///   - limit: Maximum number of notifications to fetch
-    ///   - viewed: Filter by viewed status (nil for all)
-    ///   - nextToken: Token for pagination
-    /// - Returns: NotificationResponse containing notifications and pagination info
-    /// - Throws: ServiceError with structured error information
-    func getNotifications(limit: Int = 20, viewed: Bool? = nil, nextToken: String? = nil) async throws -> NotificationResponse {
+    private init() {}
+
+    // TODO: Implement these methods when notification fetching is added
+    func getNotifications(limit: Int, viewed _: Bool?, nextToken: String?) async throws -> NotificationListResponse {
+        // Build query parameters
         var queryItems: [URLQueryItem] = [
             URLQueryItem(name: "limit", value: String(limit)),
         ]
-
-        if let viewed {
-            queryItems.append(URLQueryItem(name: "viewed", value: String(viewed)))
-        }
 
         if let nextToken {
             queryItems.append(URLQueryItem(name: "next_token", value: nextToken))
         }
 
-        do {
-            // Get the raw data for decoding
-            let rawData = try await networkManager.getRawData(
-                endpoint: APIEndpoint.getNotifications.path,
-                queryItems: queryItems
-            )
+        // Note: The backend endpoint doesn't support filtering by viewed status yet
+        // This parameter is kept for future compatibility
 
-            // Decode the response
-            let decoder = JSONDecoder()
-            // Don't use convertFromSnakeCase since we have explicit CodingKeys
-            let response: NotificationResponse = try decoder.decode(NotificationResponse.self, from: rawData)
-            print("📱 Notifications Response: \(response.notifications.count) notifications, next_token: \(response.nextToken ?? "nil")")
-            return response
-        } catch {
-            let serviceError = mapToServiceError(error)
-            print("❌ Error fetching notifications: \(serviceError)")
-            throw serviceError
-        }
+        print("📱 [NotificationService] Fetching notifications (limit: \(limit))")
+
+        // Make API request
+        let response: NotificationAPIResponse = try await networkManager.get(
+            endpoint: APIEndpoint.getNotifications.path,
+            queryItems: queryItems
+        )
+
+        print("✅ [NotificationService] Fetched \(response.count) notifications")
+
+        return NotificationListResponse(
+            notifications: response.notifications,
+            nextToken: response.nextToken,
+            hasMore: response.nextToken != nil
+        )
     }
 
-    /// Acknowledges a specific notification with enhanced error handling
-    /// - Parameter notificationId: The ID of the notification to acknowledge
-    /// - Returns: AcknowledgeResponse indicating success
-    /// - Throws: ServiceError with structured error information
-    func acknowledgeNotification(notificationId: String) async throws {
-        let request = AcknowledgeNotificationRequest(notificationId: notificationId)
+    func acknowledgeNotification(notificationId: String) async throws -> AcknowledgeResponse {
+        print("📱 [NotificationService] Acknowledging notification: \(notificationId)")
 
-        do {
-            _ = try await networkManager.putRawData(
-                endpoint: APIEndpoint.acknowledgeNotification(notificationId: notificationId).path,
-                body: request
-            )
-            print("📱 Acknowledged notification: \(notificationId)")
-        } catch {
-            let serviceError = mapToServiceError(error)
-            print("❌ Error acknowledging notification: \(serviceError)")
-            throw serviceError
-        }
+        // Make API request - PUT /notifications/{notification_id}/acknowledge
+        // Create empty request body
+        struct EmptyRequest: Codable {}
+
+        let response: AcknowledgeAPIResponse = try await networkManager.put(
+            endpoint: APIEndpoint.acknowledgeNotification(notificationId: notificationId).path,
+            body: EmptyRequest()
+        )
+
+        print("✅ [NotificationService] Notification acknowledged: \(response.message)")
+
+        return AcknowledgeResponse(
+            success: true,
+            message: response.message
+        )
     }
 
-    /// Acknowledges all notifications for the current user with enhanced error handling
-    /// - Returns: AcknowledgeResponse indicating success
-    /// - Throws: ServiceError with structured error information
-    func acknowledgeAllNotifications() async throws {
-        do {
-            _ = try await networkManager.putRawData(
-                endpoint: APIEndpoint.acknowledgeAllNotifications.path,
-                body: EmptyRequest()
-            )
-            print("📱 Acknowledged all notifications")
-        } catch {
-            let serviceError = mapToServiceError(error)
-            print("❌ Error acknowledging all notifications: \(serviceError)")
-            throw serviceError
-        }
+    func acknowledgeAllNotifications() async throws -> AcknowledgeResponse {
+        print("📱 [NotificationService] Acknowledging all notifications")
+
+        // Make API request - PUT /notifications/acknowledge-all
+        // Create empty request body
+        struct EmptyRequest: Codable {}
+
+        let response: AcknowledgeAllAPIResponse = try await networkManager.put(
+            endpoint: APIEndpoint.acknowledgeAllNotifications.path,
+            body: EmptyRequest()
+        )
+
+        print("✅ [NotificationService] Acknowledged \(response.acknowledgedCount) notifications")
+
+        return AcknowledgeResponse(
+            success: true,
+            message: response.message
+        )
     }
 }
 
-// MARK: - Helper Models
+// MARK: - Response Models (Stubs)
 
-private struct EmptyRequest: Codable {}
+struct NotificationListResponse: Codable {
+    let notifications: [Notification]
+    let nextToken: String?
+    let hasMore: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case notifications
+        case nextToken = "next_token"
+        case hasMore = "has_more"
+    }
+}
+
+// MARK: - API Response Models
+
+struct NotificationAPIResponse: Codable {
+    let notifications: [Notification]
+    let count: Int
+    let nextToken: String?
+
+    enum CodingKeys: String, CodingKey {
+        case notifications
+        case count
+        case nextToken = "next_token"
+    }
+}
+
+struct AcknowledgeAPIResponse: Codable {
+    let message: String
+    let notificationId: String
+
+    enum CodingKeys: String, CodingKey {
+        case message
+        case notificationId = "notification_id"
+    }
+}
+
+struct AcknowledgeAllAPIResponse: Codable {
+    let message: String
+    let acknowledgedCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case message
+        case acknowledgedCount = "acknowledged_count"
+    }
+}

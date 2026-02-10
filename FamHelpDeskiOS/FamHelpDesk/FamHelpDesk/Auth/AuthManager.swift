@@ -147,6 +147,9 @@ final class AuthManager: ObservableObject {
     private func forceLocalSignOut() async {
         print("🔓 Force local sign-out started")
 
+        // Unregister device from push notifications
+        await unregisterDeviceForNotifications()
+
         // Clear all local state FIRST
         isAuthenticated = false
         userDisplayName = nil
@@ -366,6 +369,11 @@ final class AuthManager: ObservableObject {
                 await UserSession.shared.loadUserProfile()
             }
 
+            // Register device for push notifications after successful authentication
+            Task {
+                await registerDeviceForNotifications()
+            }
+
         } catch {
             logger.logAuthenticationStateChange(.signInFailure(error: error, method: "load_user_attributes"))
             let authError = mapAmplifyError(error)
@@ -554,6 +562,9 @@ final class AuthManager: ObservableObject {
     func signOut() async {
         logger.logAuthenticationStateChange(.signOutStarted)
 
+        // Unregister device from push notifications before signing out
+        await unregisterDeviceForNotifications()
+
         do {
             // Sign out from Amplify
             _ = await Amplify.Auth.signOut()
@@ -600,6 +611,9 @@ final class AuthManager: ObservableObject {
     /// Useful for testing scenarios where normal sign out might fail
     func forceSignOut() async {
         logger.logAuthenticationStateChange(.signOutStarted)
+
+        // Unregister device from push notifications before signing out
+        await unregisterDeviceForNotifications()
 
         do {
             // Try global sign out first (signs out from all devices)
@@ -686,5 +700,34 @@ final class AuthManager: ObservableObject {
         default:
             return false
         }
+    }
+
+    // MARK: - Push Notification Device Management
+
+    /// Register device for push notifications after successful authentication
+    private func registerDeviceForNotifications() async {
+        print("📱 [AUTH] Registering device for push notifications after login")
+
+        // Check if we have notification permissions
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+
+        guard settings.authorizationStatus == .authorized else {
+            print("⚠️ [AUTH] Notification permissions not granted, skipping device registration")
+            return
+        }
+
+        // Trigger APNs registration - the device token will be handled by AppDelegate
+        await MainActor.run {
+            UIApplication.shared.registerForRemoteNotifications()
+        }
+
+        print("✅ [AUTH] Triggered APNs registration")
+    }
+
+    /// Unregister device from push notifications before logout
+    private func unregisterDeviceForNotifications() async {
+        print("📱 [AUTH] Unregistering device from push notifications before logout")
+        await NotificationManager.shared.unregisterDevice()
+        print("✅ [AUTH] Device unregistered from push notifications")
     }
 }
