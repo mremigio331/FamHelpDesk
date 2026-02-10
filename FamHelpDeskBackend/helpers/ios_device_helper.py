@@ -354,3 +354,32 @@ class iOSDeviceHelper:
             f"Retrieved {len(filtered_devices)} {environment} devices for user {user_id}"
         )
         return filtered_devices
+
+    def has_ios_devices(self, user_id: str) -> bool:
+        """
+        Check if user has any enabled iOS devices.
+
+        This is a lightweight check that returns immediately after finding
+        the first enabled device, avoiding fetching all device data.
+
+        Args:
+            user_id: User ID to check
+
+        Returns:
+            bool: True if user has at least one enabled device, False otherwise
+        """
+        pk = iOSDeviceTokenModel.create_pk(user_id)
+
+        try:
+            # Query for devices, limit to 10 for efficiency
+            for device in iOSDeviceTokenModel.query(
+                pk,
+                iOSDeviceTokenModel.sk.startswith("DEVICE#"),
+                limit=10,  # Check first 10 in case some are disabled
+            ):
+                if device.enabled:
+                    return True
+            return False
+        except Exception as e:
+            self.logger.error(f"Error checking devices for user {user_id}: {e}")
+            return False

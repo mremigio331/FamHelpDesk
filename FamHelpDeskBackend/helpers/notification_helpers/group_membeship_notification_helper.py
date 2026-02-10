@@ -61,6 +61,16 @@ class GroupMembershipNotificationHelper:
                     notification_type=FamliyNotificationType.NEW_GROUP_CREATION,
                     family_id=family_id,
                 )
+
+                # Send iOS push notification
+                self.notification_helper.send_to_ios_push_queue(
+                    user_id=member["user_id"],
+                    title="Group Created",
+                    message=message,
+                    notification_type=FamliyNotificationType.NEW_GROUP_CREATION.value,
+                    family_id=family_id,
+                    group_id=group_id,
+                )
                 continue
             is_notification_enabled = (
                 self.family_settings_helper.is_notification_enabled(
@@ -76,6 +86,16 @@ class GroupMembershipNotificationHelper:
                     message=message,
                     notification_type=FamliyNotificationType.NEW_GROUP_CREATION,
                     family_id=family_id,
+                )
+
+                # Send iOS push notification
+                self.notification_helper.send_to_ios_push_queue(
+                    user_id=member["user_id"],
+                    title="New Group Created",
+                    message=message,
+                    notification_type=FamliyNotificationType.NEW_GROUP_CREATION.value,
+                    family_id=family_id,
+                    group_id=group_id,
                 )
 
     def _process_group_membership_request(self, user_id, family_id, group_id):
@@ -101,6 +121,16 @@ class GroupMembershipNotificationHelper:
                     family_id=family_id,
                 )
 
+                # Send iOS push notification
+                self.notification_helper.send_to_ios_push_queue(
+                    user_id=admin_id,
+                    title="Group Membership Request",
+                    message=message,
+                    notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_REQUEST.value,
+                    family_id=family_id,
+                    group_id=group_id,
+                )
+
     def _process_group_membeship_approved(
         self, user_id, admin_user, family_id, group_id
     ):
@@ -118,6 +148,16 @@ class GroupMembershipNotificationHelper:
                     message=message,
                     notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_APPROVED,
                     family_id=family_id,
+                )
+
+                # Send iOS push notification
+                self.notification_helper.send_to_ios_push_queue(
+                    user_id=member["user_id"],
+                    title="Group Membership Approved",
+                    message=message,
+                    notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_APPROVED.value,
+                    family_id=family_id,
+                    group_id=group_id,
                 )
 
             if member["is_admin"]:
@@ -139,6 +179,16 @@ class GroupMembershipNotificationHelper:
                         family_id=family_id,
                     )
 
+                    # Send iOS push notification
+                    self.notification_helper.send_to_ios_push_queue(
+                        user_id=member["user_id"],
+                        title="Group Membership Approved",
+                        message=message,
+                        notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_APPROVED.value,
+                        family_id=family_id,
+                        group_id=group_id,
+                    )
+
             else:
                 is_notification_enabled = self.family_settings_helper.is_notification_enabled(
                     user_id=member["user_id"],
@@ -152,6 +202,16 @@ class GroupMembershipNotificationHelper:
                         message=message,
                         notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_APPROVED,
                         family_id=family_id,
+                    )
+
+                    # Send iOS push notification
+                    self.notification_helper.send_to_ios_push_queue(
+                        user_id=member["user_id"],
+                        title="New Group Member",
+                        message=message,
+                        notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_APPROVED.value,
+                        family_id=family_id,
+                        group_id=group_id,
                     )
 
     def _process_group_member_denied_request(
@@ -182,6 +242,16 @@ class GroupMembershipNotificationHelper:
                     family_id=family_id,
                 )
 
+                # Send iOS push notification
+                self.notification_helper.send_to_ios_push_queue(
+                    user_id=admin_id,
+                    title="Group Membership Denied",
+                    message=message,
+                    notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_DENIED.value,
+                    family_id=family_id,
+                    group_id=group_id,
+                )
+
     def _process_group_member_added(self, user_id, admin_user, family_id, group_id):
         all_members = self.group_membership_helper.get_all_memberships_by_user(
             family_id=family_id, group_id=group_id
@@ -198,6 +268,16 @@ class GroupMembershipNotificationHelper:
                     message=message,
                     notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_ADDED,
                     family_id=family_id,
+                )
+
+                # Send iOS push notification
+                self.notification_helper.send_to_ios_push_queue(
+                    user_id=member["user_id"],
+                    title="Added to Group",
+                    message=message,
+                    notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_ADDED.value,
+                    family_id=family_id,
+                    group_id=group_id,
                 )
 
             if member["is_admin"]:
@@ -221,6 +301,16 @@ class GroupMembershipNotificationHelper:
                         family_id=family_id,
                     )
 
+                    # Send iOS push notification
+                    self.notification_helper.send_to_ios_push_queue(
+                        user_id=member["user_id"],
+                        title="Group Member Added",
+                        message=message,
+                        notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_ADDED.value,
+                        family_id=family_id,
+                        group_id=group_id,
+                    )
+
             else:
                 is_notification_enabled = (
                     self.family_settings_helper.is_notification_enabled(
@@ -236,4 +326,14 @@ class GroupMembershipNotificationHelper:
                         message=message,
                         notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_ADDED,
                         family_id=family_id,
+                    )
+
+                    # Send iOS push notification
+                    self.notification_helper.send_to_ios_push_queue(
+                        user_id=member["user_id"],
+                        title="Group Member Added",
+                        message=message,
+                        notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_ADDED.value,
+                        family_id=family_id,
+                        group_id=group_id,
                     )

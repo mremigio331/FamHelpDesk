@@ -110,6 +110,21 @@ class TicketNotificationHelper:
                     ticket_id=ticket_id,
                 )
 
+                # Send iOS push notification
+                title = (
+                    "New Ticket Assigned to You"
+                    if member["user_id"] == ticket_assigned_to
+                    else "New Ticket Created"
+                )
+                self.notification_helper.send_to_ios_push_queue(
+                    user_id=member["user_id"],
+                    title=title,
+                    message=message,
+                    notification_type=notification_type.value,
+                    family_id=family_id,
+                    ticket_id=ticket_id,
+                )
+
     def _process_ticket_assigned(self, ticket_id, family_id, **kwargs):
         """
         Process TICKET_ASSIGNED notification.
@@ -143,6 +158,16 @@ class TicketNotificationHelper:
                 user_id=assigned_to,
                 message=message,
                 notification_type=FamliyNotificationType.TICKET_ASSIGNED,
+                family_id=family_id,
+                ticket_id=ticket_id,
+            )
+
+            # Send iOS push notification
+            self.notification_helper.send_to_ios_push_queue(
+                user_id=assigned_to,
+                title="Ticket Assigned to You",
+                message=message,
+                notification_type=FamliyNotificationType.TICKET_ASSIGNED.value,
                 family_id=family_id,
                 ticket_id=ticket_id,
             )
@@ -183,6 +208,16 @@ class TicketNotificationHelper:
                     ticket_id=ticket_id,
                 )
 
+                # Send iOS push notification
+                self.notification_helper.send_to_ios_push_queue(
+                    user_id=user_id,
+                    title="New Ticket Comment",
+                    message=message,
+                    notification_type=FamliyNotificationType.TICKET_COMMENT.value,
+                    family_id=family_id,
+                    ticket_id=ticket_id,
+                )
+
     def _process_ticket_status_changed(
         self, ticket_id, old_status, new_status, changed_by, family_id
     ):
@@ -219,6 +254,16 @@ class TicketNotificationHelper:
                     ticket_id=ticket_id,
                 )
 
+                # Send iOS push notification
+                self.notification_helper.send_to_ios_push_queue(
+                    user_id=user_id,
+                    title="Ticket Status Changed",
+                    message=message,
+                    notification_type=FamliyNotificationType.TICKET_STATUS_CHANGED.value,
+                    family_id=family_id,
+                    ticket_id=ticket_id,
+                )
+
     def _process_resolved_ticket(self, ticket_id, resolved_by, family_id):
         """
         Process TICKET_RESOLVED notification.
@@ -249,6 +294,16 @@ class TicketNotificationHelper:
                     user_id=user_id,
                     message=message,
                     notification_type=FamliyNotificationType.TICKET_RESOLVED,
+                    family_id=family_id,
+                    ticket_id=ticket_id,
+                )
+
+                # Send iOS push notification
+                self.notification_helper.send_to_ios_push_queue(
+                    user_id=user_id,
+                    title="Ticket Resolved",
+                    message=message,
+                    notification_type=FamliyNotificationType.TICKET_RESOLVED.value,
                     family_id=family_id,
                     ticket_id=ticket_id,
                 )

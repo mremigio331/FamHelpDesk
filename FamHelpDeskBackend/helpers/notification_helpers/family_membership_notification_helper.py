@@ -64,6 +64,15 @@ class FamilyMembershipNotificationHelper:
             family_id=family_id,
         )
 
+        # Send iOS push notification
+        self.notification_helper.send_to_ios_push_queue(
+            user_id=user_id,
+            title="Welcome!",
+            message=message,
+            notification_type=FamliyNotificationType.WELCOME_TO_FAMILY.value,
+            family_id=family_id,
+        )
+
     def _process_new_member_to_family(self, user_id, family_id):
         all_family_members = self.family_membership_helper.get_all_members(
             family_id=family_id
@@ -89,6 +98,15 @@ class FamilyMembershipNotificationHelper:
                     family_id=family_id,
                 )
 
+                # Send iOS push notification
+                self.notification_helper.send_to_ios_push_queue(
+                    user_id=member["user_id"],
+                    title="New Family Member",
+                    message=message,
+                    notification_type=FamliyNotificationType.NEW_FAMILY_MEMEBER.value,
+                    family_id=family_id,
+                )
+
     def _process_new_member_request(self, user_id, family_id):
         admins = self.family_membership_helper.get_all_admins(family_id=family_id)
 
@@ -107,6 +125,15 @@ class FamilyMembershipNotificationHelper:
                     user_id=admin_id,
                     message=message,
                     notification_type=FamliyNotificationType.FAMILY_MEMBERSHIP_REQUEST,
+                    family_id=family_id,
+                )
+
+                # Send iOS push notification
+                self.notification_helper.send_to_ios_push_queue(
+                    user_id=admin_id,
+                    title="Membership Request",
+                    message=message,
+                    notification_type=FamliyNotificationType.FAMILY_MEMBERSHIP_REQUEST.value,
                     family_id=family_id,
                 )
 
@@ -138,6 +165,15 @@ class FamilyMembershipNotificationHelper:
                         family_id=family_id,
                     )
 
+                    # Send iOS push notification
+                    self.notification_helper.send_to_ios_push_queue(
+                        user_id=member["user_id"],
+                        title="Membership Approved",
+                        message=message,
+                        notification_type=FamliyNotificationType.FAMILY_MEMBERSHIP_APPROVED.value,
+                        family_id=family_id,
+                    )
+
             else:
                 is_notification_enabled = (
                     self.family_settings_helper.is_notification_enabled(
@@ -152,6 +188,15 @@ class FamilyMembershipNotificationHelper:
                         user_id=member["user_id"],
                         message=message,
                         notification_type=FamliyNotificationType.FAMILY_MEMBERSHIP_APPROVED,
+                        family_id=family_id,
+                    )
+
+                    # Send iOS push notification
+                    self.notification_helper.send_to_ios_push_queue(
+                        user_id=member["user_id"],
+                        title="New Member Joined",
+                        message=message,
+                        notification_type=FamliyNotificationType.FAMILY_MEMBERSHIP_APPROVED.value,
                         family_id=family_id,
                     )
 
@@ -176,5 +221,14 @@ class FamilyMembershipNotificationHelper:
                     user_id=admin_id,
                     message=message,
                     notification_type=FamliyNotificationType.FAMILY_MEMBERSHIP_DENIED,
+                    family_id=family_id,
+                )
+
+                # Send iOS push notification
+                self.notification_helper.send_to_ios_push_queue(
+                    user_id=admin_id,
+                    title="Membership Denied",
+                    message=message,
+                    notification_type=FamliyNotificationType.FAMILY_MEMBERSHIP_DENIED.value,
                     family_id=family_id,
                 )

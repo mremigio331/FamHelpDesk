@@ -367,3 +367,329 @@ class NotificationHelper:
         entity_lookup = EntityRefHelper._batch_lookup_names(entity_uuids)
 
         return entity_lookup
+
+    def send_to_ios_push_queue(
+        self,
+        user_id: str,
+        title: str,
+        message: str,
+        notification_type: str,
+        family_id: str = None,
+        ticket_id: str = None,
+        group_id: str = None,
+    ) -> bool:
+        """
+        Send iOS push notification request to SQS queue if user has iOS devices.
+
+        This method:
+        1. Checks if user has any enabled iOS devices (lightweight check)
+        2. If yes, sends message to ios-push-queue
+        3. Returns immediately (non-blocking)
+
+        Args:
+            user_id: Target user ID
+            title: Notification title
+            message: Notification message (already formatted/cleaned)
+            notification_type: Type of notification
+            family_id: Optional family context
+            ticket_id: Optional ticket context for deep linking
+            group_id: Optional group context for deep linking
+
+        Returns:
+            bool: True if message sent to queue, False if no devices or error
+        """
+        from helpers.ios_device_helper import iOSDeviceHelper
+
+        # Lightweight check - does user have any enabled iOS devices?
+        ios_helper = iOSDeviceHelper(
+            request_id=(
+                self.logger.get_correlation_id()
+                if hasattr(self.logger, "get_correlation_id")
+                else None
+            ),
+            stage=NotificationModel.Meta.stage,
+            table_name=NotificationModel.Meta.table_name,
+        )
+
+        if not ios_helper.has_ios_devices(user_id):
+            self.logger.debug(
+                f"User {user_id} has no iOS devices, skipping push notification"
+            )
+            return False
+
+        # Get iOS push queue URL from environment
+        ios_push_queue_url = os.environ.get("IOS_PUSH_NOTIFICATION_QUEUE_URL")
+        if not ios_push_queue_url:
+            self.logger.warning("IOS_PUSH_NOTIFICATION_QUEUE_URL not configured")
+            return False
+
+        try:
+            # Send message to iOS Push SQS Queue
+            self.sqs_client.send_message(
+                QueueUrl=ios_push_queue_url,
+                MessageBody=json.dumps(
+                    {
+                        "user_id": user_id,
+                        "title": title,
+                        "message": message,
+                        "notification_type": notification_type,
+                        "family_id": family_id,
+                        "ticket_id": ticket_id,
+                        "group_id": group_id,
+                        "timestamp": int(time.time()),
+                    }
+                ),
+            )
+
+            self.logger.info(
+                f"Sent iOS push notification to queue for user {user_id}",
+                extra={"user_id": user_id, "notification_type": notification_type},
+            )
+            return True
+
+        except Exception as e:
+            self.logger.error(
+                f"Failed to send iOS push notification to queue: {str(e)}",
+                extra={"user_id": user_id, "error": str(e)},
+            )
+            return False
+
+    def send_ios_push_notification(
+        self,
+        user_id: str,
+        title: str,
+        message: str,
+        notification_type: str,
+        data: dict = None,
+    ) -> dict:
+        """
+        Send push notifications to all user's enabled iOS devices.
+
+        This method is called by ios_push_processor Lambda.
+        Settings check already happened in notification_processor before queuing.
+
+        Args:
+            user_id: Target user ID
+            title: Notification title
+            message: Notification message (already formatted/cleaned)
+            notification_type: Type of notification
+            data: Custom data payload for deep linking
+
+        Returns:
+            Dictionary with success/failure counts:
+            {
+                "success": int,      # Number of successful deliveries
+                "failed": int,       # Number of failed deliveries
+                "disabled": int,     # Number of devices disabled due to invalid tokens
+            }
+            OR
+            {
+                "skipped": True,
+                "reason": str        # Reason for skipping (e.g., "no_devices")
+            }
+        """
+        from helpers.ios_device_helper import iOSDeviceHelper
+        from clients.apns_client import APNsClient
+
+        # Query all enabled devices
+        ios_helper = iOSDeviceHelper(
+            request_id=(
+                self.logger.get_correlation_id()
+                if hasattr(self.logger, "get_correlation_id")
+                else None
+            ),
+            stage=NotificationModel.Meta.stage,
+            table_name=NotificationModel.Meta.table_name,
+        )
+        devices = ios_helper.get_user_devices(user_id, enabled_only=True)
+
+        if not devices:
+            self.logger.info(
+                f"No enabled devices found for user {user_id}",
+                extra={"user_id": user_id},
+            )
+            return {"skipped": True, "reason": "no_devices"}
+
+        # Group devices by environment
+        sandbox_devices = [d for d in devices if d.environment == "sandbox"]
+        production_devices = [d for d in devices if d.environment == "production"]
+
+        self.logger.info(
+            f"Sending push notifications to {len(devices)} devices for user {user_id}",
+            extra={
+                "user_id": user_id,
+                "total_devices": len(devices),
+                "sandbox_devices": len(sandbox_devices),
+                "production_devices": len(production_devices),
+            },
+        )
+
+        # Track results
+        results = {"success": 0, "failed": 0, "disabled": 0}
+
+        # Send to each environment
+        for device_list, env in [
+            (sandbox_devices, "sandbox"),
+            (production_devices, "production"),
+        ]:
+            if not device_list:
+                continue
+
+            try:
+                # Create APNs client for this environment
+                client = APNsClient(
+                    environment=env,
+                    stage=NotificationModel.Meta.stage,
+                    request_id=(
+                        self.logger.get_correlation_id()
+                        if hasattr(self.logger, "get_correlation_id")
+                        else None
+                    ),
+                )
+
+                # Send to each device in this environment
+                for device in device_list:
+                    try:
+                        response = self._send_with_retry(
+                            client=client,
+                            device_token=device.apns_token,
+                            title=title,
+                            body=message,
+                            data=data,
+                        )
+
+                        if response.success:
+                            results["success"] += 1
+                            self.logger.info(
+                                f"Successfully sent push notification to device {device.device_id}",
+                                extra={
+                                    "user_id": user_id,
+                                    "device_id": device.device_id,
+                                    "environment": env,
+                                },
+                            )
+                        elif response.is_invalid_token():
+                            # Disable device with invalid token
+                            ios_helper.disable_device(
+                                user_id=user_id,
+                                device_id=device.device_id,
+                                reason=f"APNs error: {response.error_reason}",
+                            )
+                            results["disabled"] += 1
+                            self.logger.warning(
+                                f"Disabled device {device.device_id} due to invalid token",
+                                extra={
+                                    "user_id": user_id,
+                                    "device_id": device.device_id,
+                                    "error_reason": response.error_reason,
+                                },
+                            )
+                        else:
+                            results["failed"] += 1
+                            self.logger.warning(
+                                f"Failed to send push notification to device {device.device_id}",
+                                extra={
+                                    "user_id": user_id,
+                                    "device_id": device.device_id,
+                                    "error_reason": response.error_reason,
+                                    "status_code": response.status_code,
+                                },
+                            )
+
+                    except Exception as e:
+                        results["failed"] += 1
+                        self.logger.error(
+                            f"Exception sending push notification to device {device.device_id}: {str(e)}",
+                            extra={
+                                "user_id": user_id,
+                                "device_id": device.device_id,
+                                "error": str(e),
+                            },
+                        )
+
+            except Exception as e:
+                # Failed to create APNs client for this environment
+                self.logger.error(
+                    f"Failed to create APNs client for {env} environment: {str(e)}",
+                    extra={"environment": env, "error": str(e)},
+                )
+                # Mark all devices in this environment as failed
+                results["failed"] += len(device_list)
+
+        return results
+
+    def _send_with_retry(
+        self,
+        client,
+        device_token: str,
+        title: str,
+        body: str,
+        data: dict,
+        max_retries: int = 3,
+    ):
+        """
+        Send notification with exponential backoff retry.
+
+        Only retries temporary errors (500, 503) and rate limits (429).
+        Permanent errors (400, 403, 410, 413) are not retried.
+
+        Args:
+            client: APNsClient instance
+            device_token: Device token
+            title: Notification title
+            body: Notification body
+            data: Custom data
+            max_retries: Maximum retry attempts (default: 3)
+
+        Returns:
+            Final APNsResponse
+        """
+        for attempt in range(max_retries):
+            response = client.send_notification(
+                device_token=device_token,
+                title=title,
+                body=body,
+                data=data,
+            )
+
+            if response.success:
+                return response
+
+            # Check if error is retryable
+            if not response.is_temporary_error() and not response.is_rate_limited():
+                # Permanent error, don't retry
+                self.logger.info(
+                    f"Permanent error, not retrying (attempt {attempt + 1}/{max_retries})",
+                    extra={
+                        "status_code": response.status_code,
+                        "error_reason": response.error_reason,
+                        "attempt": attempt + 1,
+                    },
+                )
+                return response
+
+            # Exponential backoff for retryable errors
+            if attempt < max_retries - 1:
+                sleep_time = 2**attempt  # 1s, 2s, 4s
+                self.logger.info(
+                    f"Retryable error, waiting {sleep_time}s before retry "
+                    f"(attempt {attempt + 1}/{max_retries})",
+                    extra={
+                        "status_code": response.status_code,
+                        "error_reason": response.error_reason,
+                        "sleep_time": sleep_time,
+                        "attempt": attempt + 1,
+                    },
+                )
+                time.sleep(sleep_time)
+            else:
+                self.logger.warning(
+                    f"Max retries reached (attempt {attempt + 1}/{max_retries})",
+                    extra={
+                        "status_code": response.status_code,
+                        "error_reason": response.error_reason,
+                        "attempt": attempt + 1,
+                    },
+                )
+
+        return response
