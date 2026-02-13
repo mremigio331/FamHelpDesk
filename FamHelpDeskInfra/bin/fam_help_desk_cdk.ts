@@ -8,7 +8,7 @@ import { ApiStack } from "../lib/stacks/api-stack";
 import { WebsiteStack } from "../lib/stacks/website-stack";
 import { DashboardStack } from "../lib/stacks/dashboard-stack";
 import { RumStack } from "../lib/stacks/rum-stack";
-import { UserProfileDeleteStack } from "../lib/stacks/user-profile-delete-stack";
+import { ResourceDeleteStack } from "../lib/stacks/resource-delete-stack";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -112,7 +112,7 @@ async function main() {
       },
     );
 
-    const userProfileDeleteStack = new UserProfileDeleteStack(
+    const resourceDeleteStack = new ResourceDeleteStack(
       app,
       `${famHelpDesk}-UserProfileDeleteStack-${stage}`,
       {
@@ -141,7 +141,7 @@ async function main() {
       escalationEmail: escalationEmail,
       escalationNumber: escalationNumber,
       notificationQueueUrl: cdk.Fn.importValue(`${famHelpDesk}-NotificationQueueUrl-${stage}`),
-      userDeleteLambdaArn: userProfileDeleteStack.userDeleteLambdaArn,
+      userDeleteLambdaArn: resourceDeleteStack.userDeleteLambdaArn,
     });
 
     // Grant the API Lambda permission to send messages to the notification queue (NEW - SQS)

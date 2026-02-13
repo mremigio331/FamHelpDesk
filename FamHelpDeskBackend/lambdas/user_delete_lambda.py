@@ -36,7 +36,7 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
     region = os.getenv("COGNITO_REGION")
     user_pool_id = os.getenv("COGNITO_USER_POOL_ID")
     sender_email = os.getenv("SENDER_EMAIL")
-    sns_topic_arn = os.getenv("NOTIFICATION_QUEUE_URL")
+    sns_topic_arn = os.getenv("NOTIFICATION_TOPIC_ARN")
 
     if not all([stage, region, user_pool_id, sender_email, sns_topic_arn]):
         missing_vars = [
@@ -46,7 +46,7 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
                 "COGNITO_REGION": region,
                 "COGNITO_USER_POOL_ID": user_pool_id,
                 "SENDER_EMAIL": sender_email,
-                "NOTIFICATION_QUEUE_URL": sns_topic_arn,
+                "NOTIFICATION_TOPIC_ARN": sns_topic_arn,
             }.items()
             if not value
         ]
@@ -62,6 +62,16 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
         user_profile_helper = UserProfileHelper(request_id=request_id)
         logger.info(f"Retrieving user profile for user_id: {user_id}")
         user_profile = user_profile_helper.get_profile(user_id)
+
+        if not user_profile:
+            logger.warning(
+                f"User profile not found for user_id: {user_id}. User may have already been deleted."
+            )
+            return {
+                "statusCode": 200,
+                "message": f"User {user_id} not found - may have already been deleted",
+            }
+
         logger.info(f"Successfully retrieved user profile for user_id: {user_id}")
     except UserNotFound as e:
         logger.error(f"User with ID {user_id} not found: {e}")

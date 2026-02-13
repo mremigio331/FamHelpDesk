@@ -24,6 +24,9 @@ export class NotificationStack extends Stack {
   public readonly notificationQueue: sqs.Queue; // NEW: SQS queue for notifications
   public readonly notificationProcessor: lambda.Function;
   public readonly deadLetterQueue: sqs.Queue;
+  public readonly iosPushQueue: sqs.Queue; // iOS Push notification queue
+  public readonly iosPushDeadLetterQueue: sqs.Queue; // iOS Push DLQ
+  public readonly iosPushProcessor: lambda.Function; // iOS Push Processor Lambda
   public readonly alarmTopic: sns.Topic;
   public readonly notificationMetrics: NotificationMetrics;
 
@@ -60,6 +63,25 @@ export class NotificationStack extends Stack {
       receiveMessageWaitTime: Duration.seconds(20), // Long polling
       deadLetterQueue: {
         queue: this.deadLetterQueue,
+        maxReceiveCount: 3, // Retry up to 3 times before sending to DLQ
+      },
+    });
+
+    // Create iOS Push Dead Letter Queue for failed push notifications
+    this.iosPushDeadLetterQueue = new sqs.Queue(this, `${famHelpDesk}-IosPushDLQ-${stage}`, {
+      queueName: `${famHelpDesk}-IosPushDLQ-${stage}`,
+      retentionPeriod: Duration.days(14), // Keep failed messages for 14 days
+      visibilityTimeout: Duration.minutes(6), // Lambda timeout + buffer
+    });
+
+    // Create iOS Push SQS Queue for iOS push notification delivery
+    this.iosPushQueue = new sqs.Queue(this, `${famHelpDesk}-IosPushQueue-${stage}`, {
+      queueName: `${famHelpDesk}-IosPushQueue-${stage}`,
+      visibilityTimeout: Duration.minutes(5), // Allow time for APNs calls with retries
+      retentionPeriod: Duration.days(4), // Keep messages for 4 days
+      receiveMessageWaitTime: Duration.seconds(20), // Long polling
+      deadLetterQueue: {
+        queue: this.iosPushDeadLetterQueue,
         maxReceiveCount: 3, // Retry up to 3 times before sending to DLQ
       },
     });
@@ -104,9 +126,71 @@ export class NotificationStack extends Stack {
       })
     );
 
+    // Grant iOS Push Queue send message permissions to notification processor
+    this.iosPushQueue.grantSendMessages(this.notificationProcessor);
+
+    // Add iOS Push Queue URL to notification processor environment
+    this.notificationProcessor.addEnvironment('IOS_PUSH_QUEUE_URL', this.iosPushQueue.queueUrl);
+
     // NEW: Add SQS event source to Lambda with batch processing
     this.notificationProcessor.addEventSource(
       new lambdaEventSources.SqsEventSource(this.notificationQueue, {
+        batchSize: 10, // Process up to 10 messages per invocation
+        maxBatchingWindow: Duration.seconds(5), // Wait up to 5 seconds to fill batch
+        reportBatchItemFailures: true, // Enable partial batch failure reporting
+      })
+    );
+
+    // Create iOS Push Processor Lambda
+    this.iosPushProcessor = new lambda.Function(this, `${famHelpDesk}-IosPushProcessor-${stage}`, {
+      functionName: `${famHelpDesk}-IosPushProcessor-${stage}`,
+      runtime: lambda.Runtime.PYTHON_3_11,
+      handler: "ios_push_processor.lambda_handler",
+      code: lambda.Code.fromAsset("../FamHelpDeskBackend"),
+      timeout: Duration.minutes(5), // Allow time for APNs retries
+      memorySize: 512, // Increased memory for APNs processing
+      layers: [layer],
+      reservedConcurrentExecutions: 10,
+      tracing: lambda.Tracing.ACTIVE,
+      environment: {
+        STAGE: stage,
+        TABLE_NAME: userTable.tableName,
+        IOS_PUSH_QUEUE_URL: this.iosPushQueue.queueUrl,
+      },
+    });
+
+    // Grant X-Ray permissions to iOS Push Processor
+    this.iosPushProcessor.role?.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName("AWSXRayDaemonWriteAccess"),
+    );
+
+    // Grant DynamoDB read/write permissions for device tokens
+    userTable.grantReadWriteData(this.iosPushProcessor);
+
+    // Grant Secrets Manager read permissions for "AppleKeys" secret
+    this.iosPushProcessor.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["secretsmanager:GetSecretValue"],
+        resources: [apnsSecretArn],
+      })
+    );
+
+    // Grant CloudWatch Logs permissions (automatically granted by CDK)
+    // Grant CloudWatch Metrics permissions
+    this.iosPushProcessor.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          "cloudwatch:PutMetricData",
+        ],
+        resources: ["*"],
+      })
+    );
+
+    // Wire iOS Push Processor Lambda to ios-push-queue as event source
+    this.iosPushProcessor.addEventSource(
+      new lambdaEventSources.SqsEventSource(this.iosPushQueue, {
         batchSize: 10, // Process up to 10 messages per invocation
         maxBatchingWindow: Duration.seconds(5), // Wait up to 5 seconds to fill batch
         reportBatchItemFailures: true, // Enable partial batch failure reporting
@@ -147,6 +231,16 @@ export class NotificationStack extends Stack {
     this.exportValue(this.notificationQueue.queueArn, {
       name: `${famHelpDesk}-NotificationQueueArn-${stage}`,
     });
+
+    // Export iOS Push Queue URL for use by notification processor Lambda
+    this.exportValue(this.iosPushQueue.queueUrl, {
+      name: `${famHelpDesk}-IosPushQueueUrl-${stage}`,
+    });
+
+    // Export iOS Push Queue ARN for use by other stacks
+    this.exportValue(this.iosPushQueue.queueArn, {
+      name: `${famHelpDesk}-IosPushQueueArn-${stage}`,
+    });
   }
 
   /**
@@ -161,5 +255,12 @@ export class NotificationStack extends Stack {
    */
   public grantSendMessages(lambdaFunction: lambda.Function): void {
     this.notificationQueue.grantSendMessages(lambdaFunction);
+  }
+
+  /**
+   * Grant SQS send message permissions to iOS Push Queue
+   */
+  public grantSendToIosPushQueue(lambdaFunction: lambda.Function): void {
+    this.iosPushQueue.grantSendMessages(lambdaFunction);
   }
 }
