@@ -168,7 +168,7 @@ struct NotificationItemView: View {
 
                 // Timestamp
                 HStack {
-                    Text(formatNotificationDate(notification.createdAt))
+                    Text(formatNotificationDate(notification.timestamp))
                         .font(.caption)
                         .foregroundColor(.secondary)
 
@@ -191,14 +191,8 @@ struct NotificationItemView: View {
         .background(notification.viewed ? Color.clear : Color.blue.opacity(0.05))
     }
 
-    private func formatNotificationDate(_ dateString: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-
-        guard let date = formatter.date(from: dateString) else {
-            return dateString
-        }
-
+    private func formatNotificationDate(_ timestamp: Int) -> String {
+        let date = Date(timeIntervalSince1970: TimeInterval(timestamp))
         let now = Date()
         let timeInterval = now.timeIntervalSince(date)
 

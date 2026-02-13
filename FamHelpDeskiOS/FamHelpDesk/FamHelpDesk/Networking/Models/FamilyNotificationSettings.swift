@@ -80,6 +80,46 @@ struct FamilyNotificationSettings: Codable, Identifiable {
         case ticketStatusChange = "ticket_status_change"
         case ticketResolved = "ticket_resolved"
     }
+
+    // Custom decoder that ignores unknown fields
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        userId = try container.decode(String.self, forKey: .userId)
+        familyId = try container.decode(String.self, forKey: .familyId)
+        createdDate = try container.decode(Int.self, forKey: .createdDate)
+        lastUpdated = try container.decodeIfPresent(Int.self, forKey: .lastUpdated)
+
+        // Family
+        newFamilyCreationEnabled = try container.decode(Bool.self, forKey: .newFamilyCreationEnabled)
+        welcomeEnabled = try container.decode(Bool.self, forKey: .welcomeEnabled)
+
+        // Family Membership
+        welcomeToFamilyEnabled = try container.decode(Bool.self, forKey: .welcomeToFamilyEnabled)
+        newFamilyMemberEnabled = try container.decode(Bool.self, forKey: .newFamilyMemberEnabled)
+        familyMembershipApproved = try container.decode(Bool.self, forKey: .familyMembershipApproved)
+        familyMembershipDenied = try container.decode(Bool.self, forKey: .familyMembershipDenied)
+        familyMembershipInvitation = try container.decode(Bool.self, forKey: .familyMembershipInvitation)
+        familyMembershipJoined = try container.decode(Bool.self, forKey: .familyMembershipJoined)
+        familyMembershipLeft = try container.decode(Bool.self, forKey: .familyMembershipLeft)
+        familyMembershipRequest = try container.decode(Bool.self, forKey: .familyMembershipRequest)
+
+        // Group Membership
+        groupMembershipApproved = try container.decode(Bool.self, forKey: .groupMembershipApproved)
+        groupMembershipDenied = try container.decode(Bool.self, forKey: .groupMembershipDenied)
+        groupMembershipAdded = try container.decode(Bool.self, forKey: .groupMembershipAdded)
+        groupMembershipJoined = try container.decode(Bool.self, forKey: .groupMembershipJoined)
+        groupMembershipLeft = try container.decode(Bool.self, forKey: .groupMembershipLeft)
+        groupMembershipRequest = try container.decode(Bool.self, forKey: .groupMembershipRequest)
+        newGroupCreation = try container.decode(Bool.self, forKey: .newGroupCreation)
+
+        // Tickets
+        ticketCreationFamily = try container.decode(Bool.self, forKey: .ticketCreationFamily)
+        ticketCreationGroup = try container.decode(Bool.self, forKey: .ticketCreationGroup)
+        ticketAssigned = try container.decode(Bool.self, forKey: .ticketAssigned)
+        ticketComment = try container.decode(Bool.self, forKey: .ticketComment)
+        ticketStatusChange = try container.decode(Bool.self, forKey: .ticketStatusChange)
+        ticketResolved = try container.decode(Bool.self, forKey: .ticketResolved)
+    }
 }
 
 struct UpdateFamilyNotificationSettingsRequest: Codable {

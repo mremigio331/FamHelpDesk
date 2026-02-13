@@ -169,3 +169,13 @@ struct ReviewMembershipRequest: Codable {
 struct RequestFamilyMembershipRequest: Codable {
     let familyId: String
 }
+
+struct UpdateFamilyMemberRoleRequest: Codable {
+    let targetUserId: String
+    let isAdmin: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case targetUserId = "target_user_id"
+        case isAdmin = "is_admin"
+    }
+}

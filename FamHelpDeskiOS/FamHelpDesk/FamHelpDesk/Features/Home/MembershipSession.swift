@@ -85,6 +85,34 @@ final class MembershipSession {
         }
     }
 
+    @MainActor
+    func updateMemberRole(familyId: String, targetUserId: String, isAdmin: Bool) async throws {
+        do {
+            try await membershipService.updateFamilyMemberRole(familyId: familyId, targetUserId: targetUserId, isAdmin: isAdmin)
+
+            // Invalidate the cache to force refresh on next fetch
+            familyMembersTimestamps[familyId] = Date().addingTimeInterval(-staleTimeInterval - 1)
+
+        } catch {
+            print("Error updating member role: \(error)")
+            throw error
+        }
+    }
+
+    @MainActor
+    func removeMember(familyId: String, targetUserId: String) async throws {
+        do {
+            try await membershipService.removeFamilyMember(familyId: familyId, targetUserId: targetUserId)
+
+            // Invalidate the cache to force refresh on next fetch
+            familyMembersTimestamps[familyId] = Date().addingTimeInterval(-staleTimeInterval - 1)
+
+        } catch {
+            print("Error removing member: \(error)")
+            throw error
+        }
+    }
+
     // Helper method to check if data is stale
     func isFamilyMembersStale(familyId: String) -> Bool {
         guard let timestamp = familyMembersTimestamps[familyId] else { return true }

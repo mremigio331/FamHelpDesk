@@ -8,6 +8,8 @@ struct UserProfileDetailView: View {
     @State private var showEditProfile = false
     @StateObject private var deletionViewModel: ProfileDeletionViewModel
     @State private var showDeletionAlert = false
+    @StateObject private var notificationManager = NotificationManager.shared
+    @StateObject private var deviceViewModel = DeviceStatusViewModel()
 
     init() {
         let deletionService = ProfileDeletionService(authManager: AuthManager())
@@ -53,6 +55,71 @@ struct UserProfileDetailView: View {
                                     .frame(width: 16, height: 16)
                                 Text(user.profileColor)
                             }
+                        }
+                    }
+
+                    // Push Notifications Section
+                    Section {
+                        // Master toggle
+                        Toggle(isOn: Binding(
+                            get: { deviceViewModel.device?.enabled ?? false },
+                            set: { newValue in
+                                Task {
+                                    if newValue {
+                                        if deviceViewModel.device == nil {
+                                            await deviceViewModel.registerDevice()
+                                        } else {
+                                            await deviceViewModel.enableDevice()
+                                        }
+                                    } else {
+                                        await deviceViewModel.disableDevice()
+                                    }
+                                }
+                            }
+                        )) {
+                            HStack {
+                                Image(systemName: "bell.badge.fill")
+                                Text("Push Notifications")
+
+                                if deviceViewModel.isLoading {
+                                    Spacer()
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                } else if !notificationManager.isAuthorized {
+                                    Spacer()
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundColor(.orange)
+                                        .font(.caption)
+                                }
+                            }
+                        }
+                        .disabled(!notificationManager.isAuthorized)
+
+                        // iOS Settings button if permission not granted
+                        if !notificationManager.isAuthorized {
+                            Button {
+                                if let url = URL(string: UIApplication.openSettingsURLString) {
+                                    UIApplication.shared.open(url)
+                                }
+                            } label: {
+                                HStack {
+                                    Image(systemName: "gear")
+                                    Text("Enable in iOS Settings")
+                                    Spacer()
+                                    Image(systemName: "arrow.up.forward.app")
+                                        .font(.caption)
+                                }
+                            }
+                        }
+                    } header: {
+                        Text("Notifications")
+                    } footer: {
+                        if !notificationManager.isAuthorized {
+                            Text("Enable push notifications in iOS Settings to receive updates about tickets, groups, and family activities.")
+                        } else if let device = deviceViewModel.device, device.enabled {
+                            Text("Push notifications are enabled for this device.")
+                        } else {
+                            Text("Enable push notifications to receive updates about tickets, groups, and family activities.")
                         }
                     }
 
@@ -175,6 +242,10 @@ struct UserProfileDetailView: View {
             }
             .refreshable {
                 await userSession.refreshProfile()
+            }
+            .task {
+                await notificationManager.checkAuthorizationStatus()
+                await deviceViewModel.loadDeviceStatus()
             }
             .sheet(isPresented: $showEditProfile) {
                 if let currentUser = userSession.currentUser {

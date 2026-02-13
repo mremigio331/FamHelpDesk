@@ -36,6 +36,8 @@ enum APIEndpoint {
 
     // Membership endpoints
     case reviewMembershipRequest(familyId: String)
+    case updateFamilyMemberRole(familyId: String)
+    case removeFamilyMember(familyId: String, targetUserId: String)
     case getGroupMembers(familyId: String, groupId: String)
     case requestGroupMembership(familyId: String, groupId: String)
     case addGroupMember(familyId: String, groupId: String)
@@ -124,6 +126,10 @@ enum APIEndpoint {
             "/family/\(familyId)/notification-settings"
         case let .reviewMembershipRequest(familyId):
             "/membership/\(familyId)/review"
+        case let .updateFamilyMemberRole(familyId):
+            "/membership/\(familyId)/members/role"
+        case let .removeFamilyMember(familyId, targetUserId):
+            "/membership/\(familyId)/members/\(targetUserId)"
         case let .getGroupMembers(familyId, groupId):
             "/membership/\(familyId)/\(groupId)/members"
         case let .requestGroupMembership(familyId, groupId):

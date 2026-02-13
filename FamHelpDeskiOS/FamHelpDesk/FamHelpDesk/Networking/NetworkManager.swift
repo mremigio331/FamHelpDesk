@@ -139,11 +139,14 @@ final class NetworkManager {
             if let token = try await getFreshToken() {
                 logger.logNetworkOperation(.authHeaderAdded)
                 request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                print("🔑 [NetworkManager] Added Authorization header for \(method) \(url.path) - Token prefix: \(token.prefix(20))...")
             } else {
                 logger.logNetworkOperation(.authHeaderMissing(reason: "no_token_available"))
+                print("⚠️ [NetworkManager] No token available for \(method) \(url.path)")
             }
         } catch {
             logger.logNetworkOperation(.authHeaderMissing(reason: "token_retrieval_failed"))
+            print("❌ [NetworkManager] Token retrieval failed for \(method) \(url.path): \(error)")
             // Don't throw here - allow request to proceed without token
             // The server will return 401 if authentication is required
         }

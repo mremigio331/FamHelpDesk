@@ -126,6 +126,48 @@ final class MembershipService {
         }
     }
 
+    /// Updates a family member's admin role with enhanced error handling
+    /// - Parameters:
+    ///   - familyId: The ID of the family
+    ///   - targetUserId: The ID of the user whose role should be updated
+    ///   - isAdmin: Whether the user should be an admin
+    /// - Throws: ServiceError with structured error information
+    func updateFamilyMemberRole(familyId: String, targetUserId: String, isAdmin: Bool) async throws {
+        let request = UpdateFamilyMemberRoleRequest(targetUserId: targetUserId, isAdmin: isAdmin)
+
+        do {
+            _ = try await networkManager.putRawData(
+                endpoint: APIEndpoint.updateFamilyMemberRole(familyId: familyId).path,
+                body: request
+            )
+
+            print("📱 Successfully updated role for user \(targetUserId) in family \(familyId) to admin=\(isAdmin)")
+        } catch {
+            let serviceError = mapToServiceError(error)
+            print("❌ Error updating family member role: \(serviceError)")
+            throw serviceError
+        }
+    }
+
+    /// Removes a member from a family with enhanced error handling
+    /// - Parameters:
+    ///   - familyId: The ID of the family
+    ///   - targetUserId: The ID of the user to remove
+    /// - Throws: ServiceError with structured error information
+    func removeFamilyMember(familyId: String, targetUserId: String) async throws {
+        do {
+            _ = try await networkManager.deleteRawData(
+                endpoint: APIEndpoint.removeFamilyMember(familyId: familyId, targetUserId: targetUserId).path
+            )
+
+            print("📱 Successfully removed user \(targetUserId) from family \(familyId)")
+        } catch {
+            let serviceError = mapToServiceError(error)
+            print("❌ Error removing family member: \(serviceError)")
+            throw serviceError
+        }
+    }
+
     /// Fetches all members of a group with enhanced error handling
     /// - Parameters:
     ///   - familyId: The ID of the family containing the group

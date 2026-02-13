@@ -41,6 +41,19 @@ final class APIClient {
         return try JSONDecoder().decode(T.self, from: data)
     }
 
+    func put<T: Decodable>(_ path: String, body: some Encodable) async throws -> T {
+        let url = baseURL.appendingPathComponent(path)
+        print("🌐 PUT (APIClient): \(url.absoluteString)")
+        var req = URLRequest(url: url)
+        req.httpMethod = "PUT"
+        req.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = accessToken { req.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        req.httpBody = try JSONEncoder().encode(body)
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        try validate(resp: resp, data: data)
+        return try JSONDecoder().decode(T.self, from: data)
+    }
+
     func deleteUserProfile() async throws -> HTTPURLResponse {
         let url = baseURL.appendingPathComponent("user/profile")
         var req = URLRequest(url: url)

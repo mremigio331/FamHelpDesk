@@ -6,9 +6,22 @@ struct EntityRef: Codable, Hashable {
     let id: String
     let name: String?
 
+    // Regular initializer for direct creation
     init(id: String, name: String? = nil) {
         self.id = id
         self.name = name
+    }
+
+    // Custom decoder that ignores unknown fields
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decodeIfPresent(String.self, forKey: .name)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
     }
 }
 
@@ -176,6 +189,64 @@ struct Ticket: Codable, Identifiable, Hashable {
         case reopenUntil = "reopen_until"
         case assignedTo = "assigned_to"
         case isPrivate = "private"
+    }
+
+    // Regular initializer for direct creation (testing/previews)
+    init(
+        familyId: EntityRef,
+        groupId: EntityRef,
+        queueId: EntityRef,
+        ticketId: String,
+        title: String,
+        description: String?,
+        severity: TicketSeverity,
+        status: TicketStatus,
+        creationDate: TimeInterval,
+        createdBy: EntityRef,
+        lastUpdateTime: TimeInterval,
+        resolvedDate: TimeInterval?,
+        closedDate: TimeInterval?,
+        reopenUntil: TimeInterval?,
+        assignedTo: EntityRef?,
+        isPrivate: Bool
+    ) {
+        self.familyId = familyId
+        self.groupId = groupId
+        self.queueId = queueId
+        self.ticketId = ticketId
+        self.title = title
+        self.description = description
+        self.severity = severity
+        self.status = status
+        self.creationDate = creationDate
+        self.createdBy = createdBy
+        self.lastUpdateTime = lastUpdateTime
+        self.resolvedDate = resolvedDate
+        self.closedDate = closedDate
+        self.reopenUntil = reopenUntil
+        self.assignedTo = assignedTo
+        self.isPrivate = isPrivate
+    }
+
+    // Custom decoder that ignores unknown fields
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        familyId = try container.decode(EntityRef.self, forKey: .familyId)
+        groupId = try container.decode(EntityRef.self, forKey: .groupId)
+        queueId = try container.decode(EntityRef.self, forKey: .queueId)
+        ticketId = try container.decode(String.self, forKey: .ticketId)
+        title = try container.decode(String.self, forKey: .title)
+        description = try container.decodeIfPresent(String.self, forKey: .description)
+        severity = try container.decode(TicketSeverity.self, forKey: .severity)
+        status = try container.decode(TicketStatus.self, forKey: .status)
+        creationDate = try container.decode(TimeInterval.self, forKey: .creationDate)
+        createdBy = try container.decode(EntityRef.self, forKey: .createdBy)
+        lastUpdateTime = try container.decode(TimeInterval.self, forKey: .lastUpdateTime)
+        resolvedDate = try container.decodeIfPresent(TimeInterval.self, forKey: .resolvedDate)
+        closedDate = try container.decodeIfPresent(TimeInterval.self, forKey: .closedDate)
+        reopenUntil = try container.decodeIfPresent(TimeInterval.self, forKey: .reopenUntil)
+        assignedTo = try container.decodeIfPresent(EntityRef.self, forKey: .assignedTo)
+        isPrivate = try container.decode(Bool.self, forKey: .isPrivate)
     }
 
     // MARK: - Hashable

@@ -3,21 +3,84 @@ import SwiftUI
 struct NotificationSettingsView: View {
     @StateObject private var viewModel = NotificationSettingsViewModel()
     @StateObject private var notificationManager = NotificationManager.shared
+    @StateObject private var deviceViewModel = DeviceStatusViewModel()
 
     var body: some View {
         Group {
-            if viewModel.isLoading {
-                ProgressView("Loading settings...")
+            if viewModel.isLoading || deviceViewModel.isLoading {
+                VStack {
+                    ProgressView()
+                    Text("Loading settings...")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 8)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 Form {
-                    // Notification Permission Status Section
+                    // Status Summary Section
                     Section {
-                        HStack {
-                            Label("Push Notifications", systemImage: "bell.badge.fill")
-                            Spacer()
-                            Text(notificationManager.isAuthorized ? "Enabled" : "Disabled")
-                                .foregroundColor(notificationManager.isAuthorized ? .green : .secondary)
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Image(systemName: deviceViewModel.device?.enabled == true ? "bell.badge.fill" : "bell.slash.fill")
+                                    .font(.title2)
+                                    .foregroundColor(deviceViewModel.device?.enabled == true ? .green : .secondary)
+
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Push Notifications")
+                                        .font(.headline)
+
+                                    if !notificationManager.isAuthorized {
+                                        Text("iOS permission required")
+                                            .font(.subheadline)
+                                            .foregroundColor(.orange)
+                                    } else if deviceViewModel.device?.enabled == true {
+                                        Text("Enabled on this device")
+                                            .font(.subheadline)
+                                            .foregroundColor(.green)
+                                    } else {
+                                        Text("Disabled on this device")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+
+                                Spacer()
+                            }
+
+                            if !notificationManager.isAuthorized {
+                                Text("Enable push notifications in iOS Settings to receive updates about tickets, groups, and family activities.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
+                        .padding(.vertical, 4)
+                    }
+
+                    // Master Toggle Section
+                    Section {
+                        Toggle(isOn: Binding(
+                            get: { deviceViewModel.device?.enabled ?? false },
+                            set: { newValue in
+                                Task {
+                                    if newValue {
+                                        if deviceViewModel.device == nil {
+                                            // Need to register first
+                                            await deviceViewModel.registerDevice()
+                                        } else {
+                                            // Just enable
+                                            await deviceViewModel.enableDevice()
+                                        }
+                                    } else {
+                                        // Disable
+                                        await deviceViewModel.disableDevice()
+                                    }
+                                }
+                            }
+                        )) {
+                            Label("Enable on This Device", systemImage: "iphone")
+                        }
+                        .disabled(!notificationManager.isAuthorized)
 
                         if !notificationManager.isAuthorized {
                             Button {
@@ -25,7 +88,7 @@ struct NotificationSettingsView: View {
                             } label: {
                                 HStack {
                                     Image(systemName: "gear")
-                                    Text("Open Settings")
+                                    Text("Open iOS Settings")
                                     Spacer()
                                     Image(systemName: "arrow.up.forward.app")
                                         .font(.caption)
@@ -33,99 +96,27 @@ struct NotificationSettingsView: View {
                             }
                         }
                     } header: {
-                        Text("Permission Status")
+                        Text("Device Settings")
                     } footer: {
-                        if notificationManager.isAuthorized {
-                            Text("Push notifications are enabled for this device")
+                        if !notificationManager.isAuthorized {
+                            Text("You must grant notification permission in iOS Settings before enabling push notifications.")
+                        } else if deviceViewModel.device?.enabled == true {
+                            Text("This device will receive push notifications for tickets, groups, and family activities.")
                         } else {
-                            Text("Push notifications are disabled. Enable them in Settings to receive notifications.")
+                            Text("Enable to start receiving push notifications on this device.")
                         }
-                    }
-
-                    Section {
-                        Toggle("Welcome Messages", isOn: $viewModel.welcomeEnabled)
-                            .onChange(of: viewModel.welcomeEnabled) { _, _ in
-                                Task {
-                                    await viewModel.saveSettings()
-                                }
-                            }
-
-                        Toggle("Membership Updates", isOn: $viewModel.membershipEnabled)
-                            .onChange(of: viewModel.membershipEnabled) { _, _ in
-                                Task {
-                                    await viewModel.saveSettings()
-                                }
-                            }
-
-                        Toggle("Group Invitations", isOn: $viewModel.groupInvitationEnabled)
-                            .onChange(of: viewModel.groupInvitationEnabled) { _, _ in
-                                Task {
-                                    await viewModel.saveSettings()
-                                }
-                            }
-                    } header: {
-                        Text("General")
-                    } footer: {
-                        Text("These are global defaults. You can customize per family.")
-                    }
-
-                    Section {
-                        Toggle("Ticket Creation", isOn: $viewModel.ticketCreationEnabled)
-                            .onChange(of: viewModel.ticketCreationEnabled) { _, _ in
-                                Task {
-                                    await viewModel.saveSettings()
-                                }
-                            }
-
-                        Toggle("Ticket Assigned", isOn: $viewModel.ticketAssignedEnabled)
-                            .onChange(of: viewModel.ticketAssignedEnabled) { _, _ in
-                                Task {
-                                    await viewModel.saveSettings()
-                                }
-                            }
-
-                        Toggle("Ticket Comments", isOn: $viewModel.ticketCommentEnabled)
-                            .onChange(of: viewModel.ticketCommentEnabled) { _, _ in
-                                Task {
-                                    await viewModel.saveSettings()
-                                }
-                            }
-
-                        Toggle("Ticket Status Changes", isOn: $viewModel.ticketStatusChangedEnabled)
-                            .onChange(of: viewModel.ticketStatusChangedEnabled) { _, _ in
-                                Task {
-                                    await viewModel.saveSettings()
-                                }
-                            }
-                    } header: {
-                        Text("Tickets")
-                    } footer: {
-                        Text("These are global defaults. You can customize per family.")
-                    }
-
-                    // Per-Family Settings Section
-                    Section {
-                        NavigationLink {
-                            FamilyNotificationSettingsListView()
-                        } label: {
-                            Label("Manage Family Settings", systemImage: "bell.badge")
-                        }
-                    } header: {
-                        Text("Per-Family Settings")
-                    } footer: {
-                        Text("Customize notification preferences for each family individually")
                     }
 
                     Section {
                         NavigationLink {
                             DeviceStatusView()
                         } label: {
-                            Label("Device Status", systemImage: "iphone")
+                            Label("Device Registration Details", systemImage: "iphone.circle")
                         }
                     } header: {
-                        Text("Device Management")
+                        Text("Advanced")
                     } footer: {
-                        Text("View and manage push notification registration for this device")
+                        Text("View detailed device registration information and manage device tokens.")
                     }
 
                     if let errorMessage = viewModel.errorMessage {
@@ -142,6 +133,7 @@ struct NotificationSettingsView: View {
         .task {
             await viewModel.loadSettings()
             await notificationManager.checkAuthorizationStatus()
+            await deviceViewModel.loadDeviceStatus()
         }
     }
 

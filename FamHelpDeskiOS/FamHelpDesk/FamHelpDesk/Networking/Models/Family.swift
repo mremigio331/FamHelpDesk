@@ -25,6 +25,34 @@ struct Family: Codable, Identifiable, Hashable {
         case isPrivate = "private"
     }
 
+    // Regular initializer for direct creation
+    init(
+        familyId: String,
+        familyName: String,
+        familyDescription: String?,
+        createdBy: String,
+        creationDate: TimeInterval,
+        isPrivate: Bool
+    ) {
+        self.familyId = familyId
+        self.familyName = familyName
+        self.familyDescription = familyDescription
+        self.createdBy = createdBy
+        self.creationDate = creationDate
+        self.isPrivate = isPrivate
+    }
+
+    // Custom decoder that ignores unknown fields
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        familyId = try container.decode(String.self, forKey: .familyId)
+        familyName = try container.decode(String.self, forKey: .familyName)
+        familyDescription = try container.decodeIfPresent(String.self, forKey: .familyDescription)
+        createdBy = try container.decode(String.self, forKey: .createdBy)
+        creationDate = try container.decode(TimeInterval.self, forKey: .creationDate)
+        isPrivate = try container.decode(Bool.self, forKey: .isPrivate)
+    }
+
     func hash(into hasher: inout Hasher) {
         hasher.combine(familyId)
     }
@@ -53,6 +81,31 @@ struct FamilyMembership: Codable {
         case status
         case isAdmin = "is_admin"
         case requestDate = "request_date"
+    }
+
+    // Regular initializer for direct creation
+    init(
+        userId: String,
+        familyId: String,
+        status: String,
+        isAdmin: Bool,
+        requestDate: TimeInterval
+    ) {
+        self.userId = userId
+        self.familyId = familyId
+        self.status = status
+        self.isAdmin = isAdmin
+        self.requestDate = requestDate
+    }
+
+    // Custom decoder that ignores unknown fields
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        userId = try container.decode(String.self, forKey: .userId)
+        familyId = try container.decode(String.self, forKey: .familyId)
+        status = try container.decode(String.self, forKey: .status)
+        isAdmin = try container.decode(Bool.self, forKey: .isAdmin)
+        requestDate = try container.decode(TimeInterval.self, forKey: .requestDate)
     }
 }
 

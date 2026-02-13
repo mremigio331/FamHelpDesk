@@ -40,6 +40,40 @@ struct Notification: Codable, Identifiable {
         case familyId = "family_id"
         case ticketId = "ticket_id"
     }
+
+    // Regular initializer for direct creation
+    init(
+        notificationId: String,
+        userId: String,
+        notificationType: String,
+        message: String,
+        timestamp: Int,
+        viewed: Bool,
+        familyId: String? = nil,
+        ticketId: String? = nil
+    ) {
+        self.notificationId = notificationId
+        self.userId = userId
+        self.notificationType = notificationType
+        self.message = message
+        self.timestamp = timestamp
+        self.viewed = viewed
+        self.familyId = familyId
+        self.ticketId = ticketId
+    }
+
+    // Custom decoder that ignores unknown fields
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        notificationId = try container.decode(String.self, forKey: .notificationId)
+        userId = try container.decode(String.self, forKey: .userId)
+        notificationType = try container.decode(String.self, forKey: .notificationType)
+        message = try container.decode(String.self, forKey: .message)
+        timestamp = try container.decode(Int.self, forKey: .timestamp)
+        viewed = try container.decode(Bool.self, forKey: .viewed)
+        familyId = try container.decodeIfPresent(String.self, forKey: .familyId)
+        ticketId = try container.decodeIfPresent(String.self, forKey: .ticketId)
+    }
 }
 
 enum NotificationType: String, Codable, CaseIterable {

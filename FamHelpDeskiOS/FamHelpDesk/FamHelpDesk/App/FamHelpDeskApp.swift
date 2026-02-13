@@ -11,12 +11,12 @@ struct FamHelpDeskApp: App {
     @State private var userSession = UserSession.shared
     @State private var showErrorAfterDelay = false
     @StateObject private var navigationCoordinator = NavigationCoordinator.shared
+    @State private var showNotificationPrompt = false
     private let logger = AuthLogger.shared
 
     init() {
         configureAmplify()
         setupNotificationDelegate()
-        checkAndRequestNotificationPermissions()
     }
 
     /// Set up notification center delegate
@@ -24,26 +24,14 @@ struct FamHelpDeskApp: App {
         UNUserNotificationCenter.current().delegate = appDelegate
     }
 
-    /// Check if notification permissions have been requested and request if needed
-    private func checkAndRequestNotificationPermissions() {
+    /// Check if we should show notification permission prompt
+    private func checkAndShowNotificationPrompt() {
         // Check if permissions have already been requested
         let hasRequestedPermissions = UserDefaults.standard.bool(forKey: "hasRequestedNotificationPermissions")
 
         if !hasRequestedPermissions {
-            print("📱 [APP] First launch - will request notification permissions")
-            // Request permissions on first launch
-            Task {
-                let granted = await NotificationManager.shared.requestPermissions()
-
-                // Mark as requested regardless of outcome
-                UserDefaults.standard.set(true, forKey: "hasRequestedNotificationPermissions")
-
-                if granted {
-                    print("✅ [APP] Notification permissions granted on first launch")
-                } else {
-                    print("⚠️ [APP] Notification permissions denied on first launch")
-                }
-            }
+            print("📱 [APP] First launch - will show notification prompt")
+            showNotificationPrompt = true
         } else {
             print("📱 [APP] Notification permissions already requested previously")
         }
@@ -118,6 +106,12 @@ struct FamHelpDeskApp: App {
                         userSession.signOut()
                         showErrorAfterDelay = false
                     }
+
+                    // Check and show notification prompt only after authentication
+                    if case .authenticated = newState {
+                        print("📱 [APP] User authenticated, checking if should show notification prompt")
+                        checkAndShowNotificationPrompt()
+                    }
                 }
             }
             .onChange(of: userSession.errorMessage) { _, errorMessage in
@@ -136,6 +130,29 @@ struct FamHelpDeskApp: App {
                 } else {
                     showErrorAfterDelay = false
                 }
+            }
+            .alert("Enable Push Notifications?", isPresented: $showNotificationPrompt) {
+                Button("Enable") {
+                    Task {
+                        let granted = await NotificationManager.shared.requestPermissions()
+
+                        // Mark as requested regardless of outcome
+                        UserDefaults.standard.set(true, forKey: "hasRequestedNotificationPermissions")
+
+                        if granted {
+                            print("✅ [APP] Notification permissions granted")
+                        } else {
+                            print("⚠️ [APP] Notification permissions denied")
+                        }
+                    }
+                }
+                Button("Not Now", role: .cancel) {
+                    // Mark as requested so we don't ask again
+                    UserDefaults.standard.set(true, forKey: "hasRequestedNotificationPermissions")
+                    print("📱 [APP] User declined notification permissions")
+                }
+            } message: {
+                Text("Get notified about tickets, groups, and family activities. You can change this later in Settings.")
             }
         }
     }
@@ -429,9 +446,43 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         _: UIApplication,
         didFailToRegisterForRemoteNotificationsWithError error: Error
     ) {
-        print("❌ [AppDelegate] Failed to register for remote notifications: \(error.localizedDescription)")
+        print("❌ [AppDelegate] Failed to register for remote notifications")
+        print("❌ [AppDelegate] Error: \(error)")
+        print("❌ [AppDelegate] Error description: \(error.localizedDescription)")
+        print("❌ [AppDelegate] Error type: \(type(of: error))")
 
-        // Show alert to user on main thread
+        // Check for specific error types
+        let nsError = error as NSError
+        print("❌ [AppDelegate] Error domain: \(nsError.domain)")
+        print("❌ [AppDelegate] Error code: \(nsError.code)")
+        print("❌ [AppDelegate] Error userInfo: \(nsError.userInfo)")
+
+        // Check entitlements
+        if let entitlements = Bundle.main.object(forInfoDictionaryKey: "Entitlements") {
+            print("📋 [AppDelegate] Entitlements found: \(entitlements)")
+        } else {
+            print("⚠️ [AppDelegate] No entitlements found in Info.plist")
+        }
+
+        // Check for entitlements file
+        if let entitlementsPath = Bundle.main.path(forResource: "FamHelpDesk", ofType: "entitlements") {
+            print("📋 [AppDelegate] Entitlements file path: \(entitlementsPath)")
+        } else {
+            print("⚠️ [AppDelegate] No entitlements file found in bundle")
+        }
+
+        // Check bundle identifier
+        if let bundleId = Bundle.main.bundleIdentifier {
+            print("📦 [AppDelegate] Bundle ID: \(bundleId)")
+        }
+
+        // Check if running in simulator
+        #if targetEnvironment(simulator)
+            print("⚠️ [AppDelegate] Running in simulator - push notifications not supported")
+            return
+        #endif
+
+        // Show alert to user on main thread (only on device)
         Task { @MainActor in
             guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
                   let rootViewController = windowScene.windows.first?.rootViewController
@@ -441,7 +492,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 
             let alert = UIAlertController(
                 title: "Notification Registration Failed",
-                message: "Unable to register for push notifications. Please check your network connection and try again.",
+                message: "Unable to register for push notifications. Error: \(error.localizedDescription)",
                 preferredStyle: .alert
             )
 

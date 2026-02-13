@@ -2,7 +2,7 @@ import Foundation
 
 /// Model representing a registered iOS device for push notifications
 struct Device: Identifiable, Codable {
-    let id: String
+    var id: String { deviceId } // Use deviceId as the Identifiable id
     let deviceId: String
     let environment: String
     let bundleId: String
@@ -17,7 +17,6 @@ struct Device: Identifiable, Codable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id
         case deviceId = "device_id"
         case environment
         case bundleId = "bundle_id"

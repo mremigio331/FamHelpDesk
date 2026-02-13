@@ -7,6 +7,7 @@ struct FamilyMembersView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var searchText = ""
+    @State private var showManagementSheet = false
 
     private var members: [FamilyMember] {
         let allMembers = membershipSession.familyMembers[family.familyId] ?? []
@@ -38,90 +39,128 @@ struct FamilyMembersView: View {
         familyItem?.membership.isAdmin ?? false
     }
 
+    @ViewBuilder
+    private var pendingRequestsSection: some View {
+        if isAdmin, !pendingRequests.isEmpty {
+            Section(header: Text("Pending Requests (\(pendingRequests.count))")) {
+                ForEach(pendingRequests) { request in
+                    MembershipRequestRowView(
+                        request: request,
+                        onApprove: {
+                            await handleApprove(request)
+                        },
+                        onReject: {
+                            await handleReject(request)
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var membersSection: some View {
+        if isLoading, members.isEmpty {
+            loadingView
+        } else if members.isEmpty {
+            emptyMembersView
+        } else {
+            membersList
+        }
+    }
+
+    private var loadingView: some View {
+        Section {
+            HStack {
+                ProgressView()
+                    .scaleEffect(0.8)
+                Text("Loading members...")
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.vertical, 20)
+        }
+    }
+
+    private var emptyMembersView: some View {
+        Section {
+            VStack(spacing: 12) {
+                Image(systemName: "person.2")
+                    .font(.largeTitle)
+                    .foregroundColor(.gray)
+                Text("No Members")
+                    .font(.headline)
+                Text("This family doesn't have any members yet.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 20)
+        }
+    }
+
+    private var membersList: some View {
+        Section(
+            header: HStack {
+                Text("Family Members (\(members.count))")
+                Spacer()
+                if isAdmin {
+                    Button(action: {
+                        showManagementSheet = true
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "gearshape")
+                            Text("Manage")
+                        }
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                    }
+                }
+            }
+        ) {
+            ForEach(members) { member in
+                SimpleMemberRowView(member: member)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var errorSection: some View {
+        if let errorMessage {
+            Section {
+                VStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.title2)
+                        .foregroundColor(.orange)
+                    Text("Error Loading Members")
+                        .font(.headline)
+                    Text(errorMessage)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+
+                    Button("Retry") {
+                        Task {
+                            await loadMembers()
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+            }
+        }
+    }
+
     var body: some View {
         List {
-            // Pending Membership Requests Section (only for admins)
-            if isAdmin, !pendingRequests.isEmpty {
-                Section(header: Text("Pending Requests (\(pendingRequests.count))")) {
-                    ForEach(pendingRequests) { request in
-                        MembershipRequestRowView(
-                            request: request,
-                            onApprove: { await handleApprove(request) },
-                            onReject: { await handleReject(request) }
-                        )
-                    }
-                }
-            }
-
-            // Family Members Section
-            if isLoading, members.isEmpty {
-                Section {
-                    HStack {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                        Text("Loading members...")
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 20)
-                }
-            } else if members.isEmpty {
-                Section {
-                    VStack(spacing: 12) {
-                        Image(systemName: "person.2")
-                            .font(.largeTitle)
-                            .foregroundColor(.gray)
-                        Text("No Members")
-                            .font(.headline)
-                        Text("This family doesn't have any members yet.")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 20)
-                }
-            } else {
-                Section(header: Text("Family Members (\(members.count))")) {
-                    ForEach(members) { member in
-                        MemberRowView(member: member)
-                    }
-                }
-            }
-
-            if let errorMessage {
-                Section {
-                    VStack(spacing: 8) {
-                        Image(systemName: "exclamationmark.triangle")
-                            .font(.title2)
-                            .foregroundColor(.orange)
-                        Text("Error Loading Members")
-                            .font(.headline)
-                        Text(errorMessage)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-
-                        Button("Retry") {
-                            Task {
-                                await loadMembers()
-                            }
-                        }
-                        .buttonStyle(.bordered)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                }
-            }
+            pendingRequestsSection
+            membersSection
+            errorSection
         }
         .navigationTitle("Family Members")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                Text("Family Members")
-                    .font(.headline)
-            }
-        }
         .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search by name or email")
         .onChange(of: searchText) {
             Task {
@@ -133,6 +172,18 @@ struct FamilyMembersView: View {
         }
         .task {
             await loadMembers()
+        }
+        .sheet(isPresented: $showManagementSheet) {
+            ManageMembersSheet(
+                family: family,
+                members: members,
+                onDismiss: {
+                    showManagementSheet = false
+                    Task {
+                        await loadMembers(forceRefresh: true)
+                    }
+                }
+            )
         }
     }
 
@@ -176,12 +227,12 @@ struct FamilyMembersView: View {
     }
 }
 
-struct MemberRowView: View {
+// Simple member row for the main list
+struct SimpleMemberRowView: View {
     let member: FamilyMember
 
     var body: some View {
         HStack(spacing: 12) {
-            // Avatar placeholder
             Circle()
                 .fill(Color.blue.opacity(0.1))
                 .frame(width: 40, height: 40)
@@ -191,13 +242,18 @@ struct MemberRowView: View {
                         .foregroundColor(.blue)
                 )
 
-            Text(member.displayName)
-                .font(.headline)
-                .foregroundColor(.primary)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(member.displayName)
+                    .font(.headline)
+                    .foregroundColor(.primary)
+
+                Text(member.email)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
 
             Spacer()
 
-            // Admin badge
             if member.isAdmin {
                 Text("Admin")
                     .font(.caption)

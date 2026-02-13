@@ -94,8 +94,22 @@ final class NotificationManager: NSObject, ObservableObject {
             return
         }
 
+        // Get auth token
+        guard let authToken = try? await AuthSessionManager.shared.getIDToken() else {
+            print("❌ [NotificationManager] Could not get auth token")
+            return
+        }
+
         // Call backend API to register device
         do {
+            let url = URL(string: APIEnvironment.current.baseURL)!
+                .appendingPathComponent("devices/register")
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.addValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+
             let requestBody: [String: Any] = [
                 "device_id": deviceId,
                 "apns_token": tokenString,
@@ -103,14 +117,26 @@ final class NotificationManager: NSObject, ObservableObject {
                 "bundle_id": bundleId,
             ]
 
-            let response: DeviceRegistrationResponse = try await apiClient.post("devices/register", body: requestBody)
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
 
-            if response.success {
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200 ..< 300).contains(httpResponse.statusCode)
+            else {
+                print("❌ [NotificationManager] Device registration failed with status: \((response as? HTTPURLResponse)?.statusCode ?? -1)")
+                return
+            }
+
+            // Parse response
+            let registrationResponse = try JSONDecoder().decode(DeviceRegistrationResponse.self, from: data)
+
+            if registrationResponse.success {
                 // Store device_id in UserDefaults
                 UserDefaults.standard.set(deviceId, forKey: "apns_device_id")
-                print("✅ [NotificationManager] Device registered successfully: \(response.message)")
+                print("✅ [NotificationManager] Device registered successfully: \(registrationResponse.message)")
             } else {
-                print("❌ [NotificationManager] Device registration failed: \(response.message)")
+                print("❌ [NotificationManager] Device registration failed: \(registrationResponse.message)")
             }
         } catch {
             print("❌ [NotificationManager] Error registering device: \(error)")

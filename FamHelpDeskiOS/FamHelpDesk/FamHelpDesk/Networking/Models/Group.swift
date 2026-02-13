@@ -25,6 +25,34 @@ struct FamilyGroup: Codable, Identifiable, Hashable {
         case creationDate = "creation_date"
     }
 
+    // Regular initializer for direct creation
+    init(
+        groupId: String,
+        familyId: String,
+        groupName: String,
+        groupDescription: String?,
+        createdBy: String,
+        creationDate: TimeInterval
+    ) {
+        self.groupId = groupId
+        self.familyId = familyId
+        self.groupName = groupName
+        self.groupDescription = groupDescription
+        self.createdBy = createdBy
+        self.creationDate = creationDate
+    }
+
+    // Custom decoder that ignores unknown fields
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        groupId = try container.decode(String.self, forKey: .groupId)
+        familyId = try container.decode(String.self, forKey: .familyId)
+        groupName = try container.decode(String.self, forKey: .groupName)
+        groupDescription = try container.decodeIfPresent(String.self, forKey: .groupDescription)
+        createdBy = try container.decode(String.self, forKey: .createdBy)
+        creationDate = try container.decode(TimeInterval.self, forKey: .creationDate)
+    }
+
     func hash(into hasher: inout Hasher) {
         hasher.combine(groupId)
     }
@@ -47,6 +75,16 @@ struct GroupMembership: Codable {
         case groupId = "group_id"
         case status
         case joinedAt = "joined_at"
+    }
+
+    // Custom decoder that ignores unknown fields
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        userId = try container.decode(String.self, forKey: .userId)
+        familyId = try container.decode(String.self, forKey: .familyId)
+        groupId = try container.decode(String.self, forKey: .groupId)
+        status = try container.decode(String.self, forKey: .status)
+        joinedAt = try container.decodeIfPresent(String.self, forKey: .joinedAt)
     }
 }
 
@@ -111,6 +149,19 @@ struct GroupMember: Codable, Identifiable {
         case userDisplayName = "user_display_name"
         case userEmail = "user_email"
     }
+
+    // Custom decoder that ignores unknown fields
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        familyId = try container.decode(String.self, forKey: .familyId)
+        groupId = try container.decode(String.self, forKey: .groupId)
+        userId = try container.decode(String.self, forKey: .userId)
+        status = try container.decode(String.self, forKey: .status)
+        isAdmin = try container.decode(Bool.self, forKey: .isAdmin)
+        requestDate = try container.decode(TimeInterval.self, forKey: .requestDate)
+        userDisplayName = try container.decodeIfPresent(String.self, forKey: .userDisplayName)
+        userEmail = try container.decodeIfPresent(String.self, forKey: .userEmail)
+    }
 }
 
 struct GetGroupMembersResponse: Codable {
@@ -160,6 +211,18 @@ struct GroupMembershipRequestItem: Codable, Identifiable {
         case userDisplayName = "user_display_name"
         case userEmail = "user_email"
     }
+
+    // Custom decoder that ignores unknown fields
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        familyId = try container.decode(String.self, forKey: .familyId)
+        groupId = try container.decode(String.self, forKey: .groupId)
+        userId = try container.decode(String.self, forKey: .userId)
+        status = try container.decode(String.self, forKey: .status)
+        requestDate = try container.decode(TimeInterval.self, forKey: .requestDate)
+        userDisplayName = try container.decodeIfPresent(String.self, forKey: .userDisplayName)
+        userEmail = try container.decodeIfPresent(String.self, forKey: .userEmail)
+    }
 }
 
 struct GetGroupMembershipRequestsResponse: Codable {
@@ -192,6 +255,19 @@ struct GroupMemberWithRole: Codable, Identifiable {
         case joinedAt = "joined_at"
         case userDisplayName = "user_display_name"
         case userEmail = "user_email"
+    }
+
+    // Custom decoder that ignores unknown fields
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        familyId = try container.decode(String.self, forKey: .familyId)
+        groupId = try container.decode(String.self, forKey: .groupId)
+        userId = try container.decode(String.self, forKey: .userId)
+        status = try container.decode(String.self, forKey: .status)
+        isAdmin = try container.decode(Bool.self, forKey: .isAdmin)
+        joinedAt = try container.decodeIfPresent(String.self, forKey: .joinedAt)
+        userDisplayName = try container.decodeIfPresent(String.self, forKey: .userDisplayName)
+        userEmail = try container.decodeIfPresent(String.self, forKey: .userEmail)
     }
 }
 
