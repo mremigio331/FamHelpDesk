@@ -10,7 +10,7 @@ from helpers.audit_helper import AuditHelper
 from helpers.entity_ref import EntityRefHelper
 from helpers.notification_helper import NotificationHelper
 from models.audit import AuditActions, AuditEntityTypes
-from models.family_notification_settings import FamliyNotificationType
+from models.family_notification_settings import FamilyNotificationType
 from exceptions.ticket_exceptions import (
     CommentNotFoundException,
     CommentEditWindowExpiredException,
@@ -186,7 +186,7 @@ class TicketCommentHelper:
             "family_id": family_id,
         }
         self.notification_helper.create_notification_async(
-            notification_type=FamliyNotificationType.TICKET_COMMENT,
+            notification_type=FamilyNotificationType.TICKET_COMMENT,
             **notification_context,
         )
 

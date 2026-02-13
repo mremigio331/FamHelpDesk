@@ -6,7 +6,7 @@ from models.family_membership import FamilyMembershipModel
 from models.base import MembershipStatus
 from helpers.audit_helper import AuditHelper
 from helpers.notification_helper import NotificationHelper
-from models.family_notification_settings import FamliyNotificationType
+from models.family_notification_settings import FamilyNotificationType
 from models.audit import AuditActions, AuditEntityTypes
 from exceptions.membership_exceptions import (
     MembershipNotFound,
@@ -106,7 +106,7 @@ class FamilyMembershipHelper:
 
         self.notification_helper.create_notification_async(
             user_id=user_id,
-            notification_type=FamliyNotificationType.FAMILY_MEMBERSHIP_REQUEST,
+            notification_type=FamilyNotificationType.FAMILY_MEMBERSHIP_REQUEST,
             family_id=family_id,
         )
 
@@ -148,7 +148,7 @@ class FamilyMembershipHelper:
         if not is_admin:
             self.notification_helper.create_notification_async(
                 user_id=user_id,
-                notification_type=FamliyNotificationType.WELCOME_TO_FAMILY,
+                notification_type=FamilyNotificationType.WELCOME_TO_FAMILY,
                 family_id=family_id,
             )
 
@@ -333,17 +333,76 @@ class FamilyMembershipHelper:
             self.notification_helper.create_notification_async(
                 user_id=target_user_id,
                 admin_user=admin_user_id,
-                notification_type=FamliyNotificationType.FAMILY_MEMBERSHIP_APPROVED,
+                notification_type=FamilyNotificationType.FAMILY_MEMBERSHIP_APPROVED,
                 family_id=family_id,
             )
         else:
             self.notification_helper.create_notification_async(
                 user_id=target_user_id,
                 admin_user=admin_user_id,
-                notification_type=FamliyNotificationType.FAMILY_MEMBERSHIP_DENIED,
+                notification_type=FamilyNotificationType.FAMILY_MEMBERSHIP_DENIED,
                 family_id=family_id,
             )
 
+        return after
+
+    def update_member_role(
+        self,
+        family_id: str,
+        admin_user_id: str,
+        target_user_id: str,
+        is_admin: bool,
+    ) -> dict:
+        """
+        Update a family member's role (admin/member).
+        Only family admins can update member roles.
+        This method can both promote members to admin and demote admins to regular members.
+        """
+        # Verify admin privileges
+        try:
+            admin_item = FamilyMembershipModel.get(
+                FamilyMembershipModel.create_pk(family_id),
+                FamilyMembershipModel.create_sk(admin_user_id),
+            )
+        except DoesNotExist:
+            raise MemberPrivilegesRequired()
+
+        if (
+            admin_item.status != MembershipStatus.MEMBER.value
+            or not admin_item.is_admin
+        ):
+            raise AdminPrivilegesRequired()
+
+        # Get target membership
+        try:
+            target_item = FamilyMembershipModel.get(
+                FamilyMembershipModel.create_pk(family_id),
+                FamilyMembershipModel.create_sk(target_user_id),
+            )
+        except DoesNotExist:
+            raise MembershipNotFound()
+
+        if target_item.status != MembershipStatus.MEMBER.value:
+            raise MembershipNotFound()
+
+        before = self._clean_membership(target_item)
+        target_item.is_admin = is_admin
+        target_item.save()
+
+        after = self._clean_membership(target_item)
+        self.audit_helper.create_family_audit_record(
+            family_id=family_id,
+            entity_type=AuditEntityTypes.MEMBER,
+            entity_id=target_user_id,
+            action=AuditActions.UPDATE,
+            actor_user_id=admin_user_id,
+            before=before,
+            after=after,
+        )
+
+        self.logger.info(
+            f"Updated role for user {target_user_id} in family {family_id} to admin={is_admin} by {admin_user_id}."
+        )
         return after
 
     @staticmethod

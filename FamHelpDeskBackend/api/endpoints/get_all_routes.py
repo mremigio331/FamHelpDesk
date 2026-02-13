@@ -46,6 +46,8 @@ from api.endpoints.membership.family_membership import (
     get_family_membership_requests,
     get_family_members,
     get_active_members,
+    update_family_member_role,
+    remove_family_member,
 )
 from api.endpoints.membership.group_membership import (
     group_request_membership,
@@ -68,6 +70,8 @@ from api.endpoints.notifications.update_settings import router as update_setting
 from api.endpoints.devices.register_device import router as register_device_router
 from api.endpoints.devices.unregister_device import router as unregister_device_router
 from api.endpoints.devices.get_device import router as get_device_router
+from api.endpoints.devices.enable_device import router as enable_device_router
+from api.endpoints.devices.disable_device import router as disable_device_router
 from constants.api import (
     DEVICES_PATH,
     DEVICES_TAG,
@@ -134,6 +138,16 @@ def get_all_routes(app: FastAPI) -> FastAPI:
     )
     app.include_router(
         get_active_members.router, prefix=MEMBERSHIP_PATH, tags=[FAMILY_MEMBERSHIP_TAG]
+    )
+    app.include_router(
+        update_family_member_role.router,
+        prefix=MEMBERSHIP_PATH,
+        tags=[FAMILY_MEMBERSHIP_TAG],
+    )
+    app.include_router(
+        remove_family_member.router,
+        prefix=MEMBERSHIP_PATH,
+        tags=[FAMILY_MEMBERSHIP_TAG],
     )
 
     # Group routes
@@ -250,5 +264,7 @@ def get_all_routes(app: FastAPI) -> FastAPI:
         unregister_device_router, prefix=DEVICES_PATH, tags=[DEVICES_TAG]
     )
     app.include_router(get_device_router, prefix=DEVICES_PATH, tags=[DEVICES_TAG])
+    app.include_router(enable_device_router, prefix=DEVICES_PATH, tags=[DEVICES_TAG])
+    app.include_router(disable_device_router, prefix=DEVICES_PATH, tags=[DEVICES_TAG])
 
     return app

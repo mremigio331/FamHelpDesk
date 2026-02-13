@@ -5,7 +5,7 @@ import random
 import re
 import sys
 import uuid
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import boto3
 from aws_lambda_powertools import Logger
@@ -50,6 +50,18 @@ def parse_args() -> argparse.Namespace:
         type=int,
         required=True,
         help="Number of tickets to create.",
+    )
+    parser.add_argument(
+        "--group_count",
+        type=int,
+        default=None,
+        help="Number of groups to create (default: all).",
+    )
+    parser.add_argument(
+        "--queue_count",
+        type=int,
+        default=None,
+        help="Number of queues per group to create (default: all).",
     )
     return parser.parse_args()
 
@@ -343,6 +355,8 @@ def create_groups_and_queues(
     helpers: Dict[str, Any],
     family_id: str,
     members: List[Dict[str, str]],
+    group_count: Optional[int] = None,
+    queue_count: Optional[int] = None,
 ) -> Dict[str, Any]:
     groups_queues_map = [
         {
@@ -419,6 +433,11 @@ def create_groups_and_queues(
         },
     ]
 
+    if group_count is not None:
+        if group_count < 1:
+            raise ValueError("group_count must be at least 1")
+        groups_queues_map = groups_queues_map[:group_count]
+
     group_created_map: List[Dict[str, Any]] = []
     created_group_ids: List[str] = []
     created_queue_ids: List[str] = []
@@ -457,7 +476,13 @@ def create_groups_and_queues(
             )
 
         created_queues = []
-        for queue in highlighted_group["queues"]:
+        queues = highlighted_group["queues"]
+        if queue_count is not None:
+            if queue_count < 1:
+                raise ValueError("queue_count must be at least 1")
+            queues = queues[:queue_count]
+
+        for queue in queues:
             created_queue = helpers["queue_helper"].create_queue(
                 family_id=family_id,
                 group_id=group.group_id,
@@ -533,7 +558,7 @@ def create_tickets(
         if (index + 1) % 10 == 0 or index == ticket_count - 1:
             aws_logger.info(
                 "Ticket progress",
-                extra={"created": index + 1, "total": ticket_count},
+                extra={"created_count": index + 1, "total": ticket_count},
             )
 
     return {
@@ -542,10 +567,31 @@ def create_tickets(
     }
 
 
+def write_partial_resources(
+    resources: Dict[str, Any],
+    output_path: str,
+    aws_logger: Logger,
+) -> None:
+    try:
+        with open(output_path, "w", encoding="utf-8") as handle:
+            json.dump(resources, handle, indent=2)
+        aws_logger.warning(
+            "Wrote partial resources",
+            extra={"path": output_path},
+        )
+    except Exception as exc:
+        aws_logger.warning(
+            "Failed to write partial resources",
+            extra={"path": output_path, "error": str(exc)},
+        )
+
+
 def run_populate(payload: Dict[str, Any]) -> Dict[str, Any]:
     stage = payload.get("stage")
     accounts_count = payload.get("accounts_count")
     ticket_count = payload.get("ticket_count")
+    group_count = payload.get("group_count")
+    queue_count = payload.get("queue_count")
 
     if not stage:
         raise ValueError("Missing required field: stage")
@@ -557,82 +603,96 @@ def run_populate(payload: Dict[str, Any]) -> Dict[str, Any]:
         raise ValueError("accounts_count must be at least 1")
     if ticket_count < 0:
         raise ValueError("ticket_count must be 0 or greater")
+    if group_count is not None and group_count < 1:
+        raise ValueError("group_count must be at least 1")
+    if queue_count is not None and queue_count < 1:
+        raise ValueError("queue_count must be at least 1")
 
     os.environ["REGION"] = DEFAULT_REGION
 
     aws_logger = Logger(service="populate-fake-tickets", level="INFO")
+    partial_path = payload.get("partial_output_path")
+    if not partial_path:
+        if os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
+            partial_path = "/tmp/populate_fake_tickets_partial.json"
+        else:
+            partial_path = os.path.join(
+                os.getcwd(), "populate_fake_tickets_partial.json"
+            )
 
-    table_name = f"FamHelpDesk-{stage}"
-    notification_queue_url = get_cloudformation_resource(
-        f"FamHelpDesk-NotificationQueueUrl-{stage}"
-    )
-
-    helpers = build_helpers(stage, table_name, notification_queue_url)
-
-    user_pool_id = get_user_pool_id(stage)
-    api_key = get_open_ai_api_key()
-
-    aws_logger.info(
-        "Starting fake data population",
-        extra={
-            "stage": stage,
-            "accounts_count": accounts_count,
-            "ticket_count": ticket_count,
-        },
-    )
-
-    users_result = create_users(
-        helpers=helpers,
-        user_pool_id=user_pool_id,
-        accounts_count=accounts_count,
-        api_key=api_key,
-    )
-
-    family_result = create_family_and_memberships(
-        helpers=helpers,
-        users_map=users_result["users_map"],
-    )
-
-    group_result = create_groups_and_queues(
-        helpers=helpers,
-        family_id=family_result["family_id"],
-        members=family_result["members"],
-    )
-
-    ticket_result = create_tickets(
-        helpers=helpers,
-        family_id=family_result["family_id"],
-        members=family_result["members"],
-        group_created_map=group_result["group_created_map"],
-        ticket_count=ticket_count,
-        api_key=api_key,
-        aws_logger=aws_logger,
-    )
-
-    all_groups = helpers["group_helper"].get_all_groups(
-        family_id=family_result["family_id"]
-    )
-    all_queues = helpers["queue_helper"].get_all_queues_by_family(
-        family_id=family_result["family_id"]
-    )
-
-    resources = {
+    resources: Dict[str, Any] = {
         "stage": stage,
         "region": DEFAULT_REGION,
-        "user_pool_id": user_pool_id,
-        "family_id": family_result["family_id"],
-        "user_ids": users_result["created_user_ids"],
-        "user_emails": users_result["created_user_emails"],
-        "group_ids": [group.group_id for group in all_groups],
-        "queue_ids": [queue.queue_id for queue in all_queues],
-        "ticket_ids": ticket_result["created_ticket_ids"],
-        "comment_ids": ticket_result["created_comment_ids"],
-        "group_queue_map": group_result["group_created_map"],
         "accounts_count": accounts_count,
         "ticket_count": ticket_count,
+        "group_count": group_count,
+        "queue_count": queue_count,
     }
 
-    return resources
+    try:
+        table_name = f"FamHelpDesk-{stage}"
+        notification_queue_url = get_cloudformation_resource(
+            f"FamHelpDesk-NotificationQueueUrl-{stage}"
+        )
+
+        helpers = build_helpers(stage, table_name, notification_queue_url)
+
+        user_pool_id = get_user_pool_id(stage)
+        api_key = get_open_ai_api_key()
+
+        resources["user_pool_id"] = user_pool_id
+
+        aws_logger.info(
+            "Starting fake data population",
+            extra={
+                "stage": stage,
+                "accounts_count": accounts_count,
+                "ticket_count": ticket_count,
+            },
+        )
+
+        users_result = create_users(
+            helpers=helpers,
+            user_pool_id=user_pool_id,
+            accounts_count=accounts_count,
+            api_key=api_key,
+        )
+        resources["user_ids"] = users_result["created_user_ids"]
+        resources["user_emails"] = users_result["created_user_emails"]
+
+        family_result = create_family_and_memberships(
+            helpers=helpers,
+            users_map=users_result["users_map"],
+        )
+        resources["family_id"] = family_result["family_id"]
+
+        group_result = create_groups_and_queues(
+            helpers=helpers,
+            family_id=family_result["family_id"],
+            members=family_result["members"],
+            group_count=group_count,
+            queue_count=queue_count,
+        )
+        resources["group_queue_map"] = group_result["group_created_map"]
+        resources["group_ids"] = group_result["created_group_ids"]
+        resources["queue_ids"] = group_result["created_queue_ids"]
+
+        ticket_result = create_tickets(
+            helpers=helpers,
+            family_id=family_result["family_id"],
+            members=family_result["members"],
+            group_created_map=group_result["group_created_map"],
+            ticket_count=ticket_count,
+            api_key=api_key,
+            aws_logger=aws_logger,
+        )
+        resources["ticket_ids"] = ticket_result["created_ticket_ids"]
+        resources["comment_ids"] = ticket_result["created_comment_ids"]
+
+        return resources
+    except Exception:
+        write_partial_resources(resources, partial_path, aws_logger)
+        raise
 
 
 def main() -> None:
@@ -642,6 +702,8 @@ def main() -> None:
             "stage": args.stage,
             "accounts_count": args.accounts_count,
             "ticket_count": args.ticket_count,
+            "group_count": args.group_count,
+            "queue_count": args.queue_count,
         }
     )
 

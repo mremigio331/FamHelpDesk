@@ -8,7 +8,7 @@ from helpers.family_membership_helper import FamilyMembershipHelper
 from helpers.group_helper import GroupHelper
 from helpers.notification_helper import NotificationHelper
 from models.audit import AuditActions, AuditEntityTypes
-from models.family_notification_settings import FamliyNotificationType
+from models.family_notification_settings import FamilyNotificationType
 
 
 class FamilyHelper:
@@ -98,7 +98,7 @@ class FamilyHelper:
 
         self.notification_helper.create_notification_async(
             user_id=created_by,
-            notification_type=FamliyNotificationType.NEW_FAMILY_CREATION,
+            notification_type=FamilyNotificationType.NEW_FAMILY_CREATION,
             family_id=family_id,
         )
 

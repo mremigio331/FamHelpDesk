@@ -4,7 +4,7 @@ from pynamodb.indexes import GlobalSecondaryIndex, AllProjection
 from enum import Enum
 
 
-class FamliyNotificationType(Enum):
+class FamilyNotificationType(Enum):
     # Family
     NEW_FAMILY_CREATION = "New Family Created"
 

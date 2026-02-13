@@ -17,7 +17,7 @@ from exceptions.membership_exceptions import (
     AdminPrivilegesRequired,
     MemberPrivilegesRequired,
 )
-from models.family_notification_settings import FamliyNotificationType
+from models.family_notification_settings import FamilyNotificationType
 
 
 class GroupMembershipHelper:
@@ -118,7 +118,7 @@ class GroupMembershipHelper:
 
         self.notification_helper.create_notification_async(
             user_id=user_id,
-            notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_REQUEST,
+            notification_type=FamilyNotificationType.GROUP_MEMBERSHIP_REQUEST,
             family_id=family_id,
             group_id=group_id,
         )
@@ -338,7 +338,7 @@ class GroupMembershipHelper:
             self.notification_helper.create_notification_async(
                 user_id=target_user_id,
                 admin_user=admin_user_id,
-                notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_APPROVED,
+                notification_type=FamilyNotificationType.GROUP_MEMBERSHIP_APPROVED,
                 family_id=family_id,
                 group_id=group_id,
             )
@@ -346,7 +346,7 @@ class GroupMembershipHelper:
             self.notification_helper.create_notification_async(
                 user_id=target_user_id,
                 admin_user=admin_user_id,
-                notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_DENIED,
+                notification_type=FamilyNotificationType.GROUP_MEMBERSHIP_DENIED,
                 family_id=family_id,
                 group_id=group_id,
             )
@@ -420,7 +420,7 @@ class GroupMembershipHelper:
             self.notification_helper.create_notification_async(
                 user_id=target_user_id,
                 admin_user=granter_user_id,
-                notification_type=FamliyNotificationType.GROUP_MEMBERSHIP_ADDED,
+                notification_type=FamilyNotificationType.GROUP_MEMBERSHIP_ADDED,
                 family_id=family_id,
                 group_id=group_id,
             )

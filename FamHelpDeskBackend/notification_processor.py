@@ -11,7 +11,7 @@ from helpers.notification_helpers import (
     GroupMembershipNotificationHelper,
     TicketNotificationHelper,
 )
-from models.family_notification_settings import FamliyNotificationType
+from models.family_notification_settings import FamilyNotificationType
 from constants.services import NOTIFICATION_SERVICE
 
 logger = Logger(service=NOTIFICATION_SERVICE, level="INFO")
@@ -40,7 +40,7 @@ def _process_welcome_notification(message: Dict[str, Any], request_id: str) -> N
     notification_helper.create_notification(
         user_id=user_id,
         message=welcome_message,
-        notification_type=FamliyNotificationType.WELCOME,
+        notification_type=FamilyNotificationType.WELCOME,
     )
     logger.info(
         "Created welcome notification",
@@ -58,7 +58,7 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
         context: Lambda context
 
     Returns:
-        Dict with processing results
+        Dict with batchItemFailures for partial batch failure reporting
 
     Raises:
         Exception: Any processing error will be raised to trigger SQS retry
@@ -66,108 +66,135 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
     logger.info("Processing notification events from SQS", extra={"event": event})
 
     processed_count = 0
+    failed_message_ids = []
 
     # Process each SQS record
     for record in event.get("Records", []):
-        # Parse SQS message body
-        message = json.loads(record["body"])
+        message_id = record.get("messageId")
 
-        # Extract notification type
-        notification_type_str = message.get("notification_type")
-        if not notification_type_str:
-            raise ValueError("Missing notification_type in message")
-
-        # Convert to enum
         try:
-            notification_type = FamliyNotificationType(notification_type_str)
-        except ValueError:
-            logger.error(f"Invalid notification type: {notification_type_str}")
-            raise
+            # Parse SQS message body
+            message = json.loads(record["body"])
 
-        # Route to appropriate helper based on notification type
-        request_id = context.aws_request_id
+            # Extract notification type
+            notification_type_str = message.get("notification_type")
+            if not notification_type_str:
+                logger.error(f"Missing notification_type in message {message_id}")
+                failed_message_ids.append(message_id)
+                continue
 
-        # Remove notification_type and message from kwargs to avoid conflicts
-        # Helpers generate their own messages based on the context
-        message_kwargs = {
-            k: v
-            for k, v in message.items()
-            if k not in ["notification_type", "message"]
-        }
+            # Convert to enum
+            try:
+                notification_type = FamilyNotificationType(notification_type_str)
+            except ValueError:
+                logger.error(
+                    f"Invalid notification type: {notification_type_str} in message {message_id}"
+                )
+                failed_message_ids.append(message_id)
+                continue
 
-        # Family membership notifications
-        if notification_type in [
-            FamliyNotificationType.NEW_FAMILY_CREATION,
-            FamliyNotificationType.FAMILY_MEMBERSHIP_REQUEST,
-            FamliyNotificationType.FAMILY_MEMBERSHIP_APPROVED,
-            FamliyNotificationType.FAMILY_MEMBERSHIP_DENIED,
-            FamliyNotificationType.FAMILY_MEMBERSHIP_INVITATION,
-            FamliyNotificationType.FAMILY_MEMBER_JOINED,
-            FamliyNotificationType.FAMILY_MEMBERSHIP_LEFT,
-            FamliyNotificationType.FAMILY_MEMBERSHIP_REQUEST,
-            FamliyNotificationType.NEW_FAMILY_MEMEBER,
-            FamliyNotificationType.WELCOME_TO_FAMILY,
-        ]:
-            helper = FamilyMembershipNotificationHelper(
-                request_id=request_id,
-                stage=STAGE,
-                table_name=TABLE_NAME,
-                notification_queue_url=NOTIFICATION_QUEUE_URL,
+            # Route to appropriate helper based on notification type
+            request_id = context.aws_request_id
+
+            # Remove notification_type and message from kwargs to avoid conflicts
+            # Helpers generate their own messages based on the context
+            message_kwargs = {
+                k: v
+                for k, v in message.items()
+                if k not in ["notification_type", "message"]
+            }
+
+            # Family membership notifications
+            if notification_type in [
+                FamilyNotificationType.NEW_FAMILY_CREATION,
+                FamilyNotificationType.FAMILY_MEMBERSHIP_REQUEST,
+                FamilyNotificationType.FAMILY_MEMBERSHIP_APPROVED,
+                FamilyNotificationType.FAMILY_MEMBERSHIP_DENIED,
+                FamilyNotificationType.FAMILY_MEMBERSHIP_INVITATION,
+                FamilyNotificationType.FAMILY_MEMBER_JOINED,
+                FamilyNotificationType.FAMILY_MEMBERSHIP_LEFT,
+                FamilyNotificationType.FAMILY_MEMBERSHIP_REQUEST,
+                FamilyNotificationType.NEW_FAMILY_MEMEBER,
+                FamilyNotificationType.WELCOME_TO_FAMILY,
+            ]:
+                helper = FamilyMembershipNotificationHelper(
+                    request_id=request_id,
+                    stage=STAGE,
+                    table_name=TABLE_NAME,
+                    notification_queue_url=NOTIFICATION_QUEUE_URL,
+                )
+                helper.process_notification(notification_type, **message_kwargs)
+
+            # Group membership notifications
+            elif notification_type in [
+                FamilyNotificationType.NEW_GROUP_CREATION,
+                FamilyNotificationType.GROUP_MEMBERSHIP_REQUEST,
+                FamilyNotificationType.GROUP_MEMBERSHIP_APPROVED,
+                FamilyNotificationType.GROUP_MEMBERSHIP_DENIED,
+                FamilyNotificationType.GROUP_MEMBERSHIP_ADDED,
+                FamilyNotificationType.GROUP_MEMBER_JOINED,
+                FamilyNotificationType.GROUP_MEMBERSHIP_LEFT,
+            ]:
+                helper = GroupMembershipNotificationHelper(
+                    request_id=request_id,
+                    stage=STAGE,
+                    table_name=TABLE_NAME,
+                    notification_queue_url=NOTIFICATION_QUEUE_URL,
+                )
+                helper.process_notification(notification_type, **message_kwargs)
+
+            # Ticket notifications
+            elif notification_type in [
+                FamilyNotificationType.TICKET_CREATION_FAMILY,
+                FamilyNotificationType.TICKET_CREATION_GROUP,
+                FamilyNotificationType.TICKET_ASSIGNED,
+                FamilyNotificationType.TICKET_COMMENT,
+                FamilyNotificationType.TICKET_STATUS_CHANGED,
+                FamilyNotificationType.TICKET_RESOLVED,
+            ]:
+                helper = TicketNotificationHelper(
+                    request_id=request_id,
+                    stage=STAGE,
+                    table_name=TABLE_NAME,
+                    notification_queue_url=NOTIFICATION_QUEUE_URL,
+                )
+                helper.process_notification(notification_type, **message_kwargs)
+
+            elif notification_type == FamilyNotificationType.WELCOME:
+                _process_welcome_notification(message, request_id)
+
+            else:
+                logger.error(
+                    f"Unhandled notification type: {notification_type.value} in message {message_id}"
+                )
+                failed_message_ids.append(message_id)
+                continue
+
+            processed_count += 1
+            logger.info(
+                f"Successfully processed notification: {notification_type.value}",
             )
-            helper.process_notification(notification_type, **message_kwargs)
 
-        # Group membership notifications
-        elif notification_type in [
-            FamliyNotificationType.NEW_GROUP_CREATION,
-            FamliyNotificationType.GROUP_MEMBERSHIP_REQUEST,
-            FamliyNotificationType.GROUP_MEMBERSHIP_APPROVED,
-            FamliyNotificationType.GROUP_MEMBERSHIP_DENIED,
-            FamliyNotificationType.GROUP_MEMBERSHIP_ADDED,
-            FamliyNotificationType.GROUP_MEMBER_JOINED,
-            FamliyNotificationType.GROUP_MEMBERSHIP_LEFT,
-        ]:
-            helper = GroupMembershipNotificationHelper(
-                request_id=request_id,
-                stage=STAGE,
-                table_name=TABLE_NAME,
-                notification_queue_url=NOTIFICATION_QUEUE_URL,
+        except Exception as e:
+            logger.error(
+                f"Error processing message {message_id}: {str(e)}", exc_info=True
             )
-            helper.process_notification(notification_type, **message_kwargs)
+            failed_message_ids.append(message_id)
 
-        # Ticket notifications
-        elif notification_type in [
-            FamliyNotificationType.TICKET_CREATION_FAMILY,
-            FamliyNotificationType.TICKET_CREATION_GROUP,
-            FamliyNotificationType.TICKET_ASSIGNED,
-            FamliyNotificationType.TICKET_COMMENT,
-            FamliyNotificationType.TICKET_STATUS_CHANGED,
-            FamliyNotificationType.TICKET_RESOLVED,
-        ]:
-            helper = TicketNotificationHelper(
-                request_id=request_id,
-                stage=STAGE,
-                table_name=TABLE_NAME,
-                notification_queue_url=NOTIFICATION_QUEUE_URL,
-            )
-            helper.process_notification(notification_type, **message_kwargs)
-
-        elif notification_type == FamliyNotificationType.WELCOME:
-            _process_welcome_notification(message, request_id)
-
-        else:
-            logger.error(f"Unhandled notification type: {notification_type.value}")
-            raise ValueError(f"Unhandled notification type: {notification_type.value}")
-
-        processed_count += 1
-        logger.info(
-            f"Successfully processed notification: {notification_type.value}",
-        )
-
+    # Return batch item failures for SQS partial batch failure reporting
     result = {
-        "statusCode": 200,
-        "processed": processed_count,
+        "batchItemFailures": [
+            {"itemIdentifier": msg_id} for msg_id in failed_message_ids
+        ]
     }
 
-    logger.info("Notification processing completed", extra=result)
+    logger.info(
+        "Notification processing completed",
+        extra={
+            "processed": processed_count,
+            "failed": len(failed_message_ids),
+            "total": len(event.get("Records", [])),
+        },
+    )
 
     return result

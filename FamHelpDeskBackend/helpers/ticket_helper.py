@@ -10,7 +10,7 @@ from helpers.notification_helper import NotificationHelper
 from helpers.family_notification_settings_helper import FamilyNotificationSettingsHelper
 from helpers.entity_ref import EntityRefHelper
 from models.audit import AuditActions, AuditEntityTypes
-from models.family_notification_settings import FamliyNotificationType
+from models.family_notification_settings import FamilyNotificationType
 from exceptions.ticket_exceptions import (
     TicketNotFoundException,
     InvalidTicketStatusTransitionException,
@@ -158,7 +158,7 @@ class TicketHelper:
             "ticket_id": ticket_id,
         }
         self.notification_helper.create_notification_async(
-            notification_type=FamliyNotificationType.TICKET_CREATION_FAMILY,
+            notification_type=FamilyNotificationType.TICKET_CREATION_FAMILY,
             **notification_context,
         )
 
@@ -171,7 +171,7 @@ class TicketHelper:
                 "assigned_by": created_by,
             }
             self.notification_helper.create_notification_async(
-                notification_type=FamliyNotificationType.TICKET_ASSIGNED,
+                notification_type=FamilyNotificationType.TICKET_ASSIGNED,
                 **notification_context,
             )
 
@@ -397,7 +397,7 @@ class TicketHelper:
                 "assigned_by": updated_by,
             }
             self.notification_helper.create_notification_async(
-                notification_type=FamliyNotificationType.TICKET_ASSIGNED,
+                notification_type=FamilyNotificationType.TICKET_ASSIGNED,
                 **notification_context,
             )
 
@@ -411,7 +411,7 @@ class TicketHelper:
                 "changed_by": updated_by,
             }
             self.notification_helper.create_notification_async(
-                notification_type=FamliyNotificationType.TICKET_STATUS_CHANGED,
+                notification_type=FamilyNotificationType.TICKET_STATUS_CHANGED,
                 **notification_context,
             )
 
@@ -423,7 +423,7 @@ class TicketHelper:
                     "resolved_by": updated_by,
                 }
                 self.notification_helper.create_notification_async(
-                    notification_type=FamliyNotificationType.TICKET_RESOLVED,
+                    notification_type=FamilyNotificationType.TICKET_RESOLVED,
                     **resolved_notification_context,
                 )
 

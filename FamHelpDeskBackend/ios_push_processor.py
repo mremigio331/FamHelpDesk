@@ -6,7 +6,7 @@ from aws_lambda_powertools import Logger, Metrics
 from aws_lambda_powertools.metrics import MetricUnit
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
-from helpers.notification_helper import NotificationHelper
+from helpers.ios_notification_helper import iOSNotificationHelper
 
 # Initialize logger and metrics
 logger = Logger()
@@ -25,6 +25,9 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
 
     Returns:
         Dictionary with processing results
+
+    Raises:
+        Exception: If any push notifications fail to send, causing message to go to DLQ
     """
     # Get environment variables
     stage = os.environ.get("STAGE")
@@ -34,9 +37,9 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
         logger.error("TABLE_NAME environment variable not set")
         raise ValueError("TABLE_NAME environment variable is required")
 
-    # Initialize notification helper
-    notification_helper = NotificationHelper(
-        request_id=context.request_id if context else None,
+    # Initialize iOS notification helper
+    ios_notification_helper = iOSNotificationHelper(
+        request_id=context.aws_request_id if context else None,
         stage=stage,
         table_name=table_name,
     )
@@ -46,9 +49,13 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
     total_success = 0
     total_failed = 0
     total_skipped = 0
+    batch_item_failures = []
 
     # Process each SQS record
     for record in event.get("Records", []):
+        message_id = record.get("messageId")
+        record_failed = False
+
         try:
             # Parse message body
             message = json.loads(record["body"])
@@ -63,15 +70,17 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
 
             # Validate required fields
             if not all([user_id, title, message_text, notification_type]):
-                logger.warning(
-                    "Missing required fields in message",
+                logger.error(
+                    "Missing required fields in message - will retry",
                     extra={
                         "user_id": user_id,
                         "has_title": bool(title),
                         "has_message": bool(message_text),
                         "has_notification_type": bool(notification_type),
+                        "message_id": message_id,
                     },
                 )
+                batch_item_failures.append({"itemIdentifier": message_id})
                 total_failed += 1
                 continue
 
@@ -87,7 +96,7 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
             )
 
             # Send push notifications
-            result = notification_helper.send_ios_push_notification(
+            result = ios_notification_helper.send_ios_push_notification(
                 user_id=user_id,
                 title=title,
                 message=message_text,
@@ -112,18 +121,40 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
                 success_count = result.get("success", 0)
                 failed_count = result.get("failed", 0)
                 disabled_count = result.get("disabled", 0)
+                rate_limit_count = result.get("rate_limited", 0)
+                server_error_count = result.get("server_errors", 0)
 
                 total_success += success_count
                 total_failed += failed_count
 
+                # If ALL devices failed (and there were devices), mark as failure for retry
+                total_devices = success_count + failed_count + disabled_count
+                if total_devices > 0 and success_count == 0:
+                    logger.error(
+                        f"All push notifications failed for user {user_id} - will retry",
+                        extra={
+                            "user_id": user_id,
+                            "failed": failed_count,
+                            "disabled": disabled_count,
+                            "rate_limited": rate_limit_count,
+                            "server_errors": server_error_count,
+                            "message_id": message_id,
+                        },
+                    )
+                    batch_item_failures.append({"itemIdentifier": message_id})
+                    record_failed = True
+
                 logger.info(
                     f"iOS push results for user {user_id}: "
-                    f"{success_count} success, {failed_count} failed, {disabled_count} disabled",
+                    f"{success_count} success, {failed_count} failed, {disabled_count} disabled, "
+                    f"{rate_limit_count} rate limited, {server_error_count} server errors",
                     extra={
                         "user_id": user_id,
                         "success": success_count,
                         "failed": failed_count,
                         "disabled": disabled_count,
+                        "rate_limited": rate_limit_count,
+                        "server_errors": server_error_count,
                     },
                 )
 
@@ -144,38 +175,53 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
                     value=disabled_count,
                 )
 
+                # Emit APNs-specific error metrics
+                if rate_limit_count > 0:
+                    metrics.add_metric(
+                        name="APNsRateLimitErrors",
+                        unit=MetricUnit.Count,
+                        value=rate_limit_count,
+                    )
+
+                if server_error_count > 0:
+                    metrics.add_metric(
+                        name="APNsServerErrors",
+                        unit=MetricUnit.Count,
+                        value=server_error_count,
+                    )
+
         except json.JSONDecodeError as e:
             logger.error(
-                f"Failed to parse SQS message body: {str(e)}",
-                extra={"error": str(e), "record": record},
+                f"Failed to parse SQS message body - will retry: {str(e)}",
+                extra={"error": str(e), "message_id": message_id},
             )
+            batch_item_failures.append({"itemIdentifier": message_id})
             total_failed += 1
+            record_failed = True
 
         except Exception as e:
             logger.error(
-                f"Error processing iOS push notification: {str(e)}",
-                extra={"error": str(e), "record": record},
+                f"Error processing iOS push notification - will retry: {str(e)}",
+                extra={"error": str(e), "message_id": message_id},
             )
+            batch_item_failures.append({"itemIdentifier": message_id})
             total_failed += 1
+            record_failed = True
 
     # Log summary
     logger.info(
         f"iOS push processor completed: {total_processed} processed, "
-        f"{total_success} success, {total_failed} failed, {total_skipped} skipped",
+        f"{total_success} success, {total_failed} failed, {total_skipped} skipped, "
+        f"{len(batch_item_failures)} will retry",
         extra={
             "total_processed": total_processed,
             "total_success": total_success,
             "total_failed": total_failed,
             "total_skipped": total_skipped,
+            "batch_item_failures": len(batch_item_failures),
         },
     )
 
-    return {
-        "statusCode": 200,
-        "body": {
-            "processed": total_processed,
-            "success": total_success,
-            "failed": total_failed,
-            "skipped": total_skipped,
-        },
-    }
+    # Return batch item failures for partial batch failure handling
+    # SQS will automatically retry failed messages and send to DLQ after max retries
+    return {"batchItemFailures": batch_item_failures}

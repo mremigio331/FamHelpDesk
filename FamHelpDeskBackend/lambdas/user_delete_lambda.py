@@ -30,13 +30,15 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
         logger.error(f"Error extracting user_id from event: {e}")
         raise ValueError(f"Invalid event format: {str(e)}")
 
+    send_confirmation_email = event.get("send_confirmation_email", True)
+
     # Retrieve and validate environment variables
     logger.info("Validating environment variables...")
     stage = os.getenv("STAGE")
     region = os.getenv("COGNITO_REGION")
     user_pool_id = os.getenv("COGNITO_USER_POOL_ID")
     sender_email = os.getenv("SENDER_EMAIL")
-    sns_topic_arn = os.getenv("NOTIFICATION_TOPIC_ARN")
+    sns_topic_arn = os.getenv("NOTIFICATION_QUEUE_URL")
 
     if not all([stage, region, user_pool_id, sender_email, sns_topic_arn]):
         missing_vars = [
@@ -46,7 +48,7 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
                 "COGNITO_REGION": region,
                 "COGNITO_USER_POOL_ID": user_pool_id,
                 "SENDER_EMAIL": sender_email,
-                "NOTIFICATION_TOPIC_ARN": sns_topic_arn,
+                "NOTIFICATION_QUEUE_URL": sns_topic_arn,
             }.items()
             if not value
         ]
@@ -62,16 +64,6 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
         user_profile_helper = UserProfileHelper(request_id=request_id)
         logger.info(f"Retrieving user profile for user_id: {user_id}")
         user_profile = user_profile_helper.get_profile(user_id)
-
-        if not user_profile:
-            logger.warning(
-                f"User profile not found for user_id: {user_id}. User may have already been deleted."
-            )
-            return {
-                "statusCode": 200,
-                "message": f"User {user_id} not found - may have already been deleted",
-            }
-
         logger.info(f"Successfully retrieved user profile for user_id: {user_id}")
     except UserNotFound as e:
         logger.error(f"User with ID {user_id} not found: {e}")
@@ -194,29 +186,30 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
         )
         raise
 
-    try:
-        logger.info(f"Sending confirmation email to {recipient_email}...")
-        ses_client = boto3.client("ses", region_name=region)
+    if send_confirmation_email:
+        try:
+            logger.info(f"Sending confirmation email to {recipient_email}...")
+            ses_client = boto3.client("ses", region_name=region)
 
-        ses_client.send_email(
-            Source=sender_email,
-            Destination={"ToAddresses": [recipient_email]},
-            Message={
-                "Subject": {"Data": "Account Deletion Confirmation"},
-                "Body": {
-                    "Text": {
-                        "Data": f"Hello {user_profile_clean['display_name']},\n\nYour account has been successfully deleted.\n\nThank you,\nFamHelpDesk Team"
-                    }
+            ses_client.send_email(
+                Source=sender_email,
+                Destination={"ToAddresses": [recipient_email]},
+                Message={
+                    "Subject": {"Data": "Account Deletion Confirmation"},
+                    "Body": {
+                        "Text": {
+                            "Data": f"Hello {user_profile_clean['display_name']},\n\nYour account has been successfully deleted.\n\nThank you,\nFamHelpDesk Team"
+                        }
+                    },
                 },
-            },
-        )
-        logger.info(f"Confirmation email successfully sent to {recipient_email}")
-    except Exception as e:
-        logger.error(
-            f"Failed to send confirmation email to {recipient_email}. Error: {e}",
-            exc_info=True,
-        )
-        raise
+            )
+            logger.info(f"Confirmation email successfully sent to {recipient_email}")
+        except Exception as e:
+            logger.error(
+                f"Failed to send confirmation email to {recipient_email}. Error: {e}",
+                exc_info=True,
+            )
+            raise
 
     # Publish a message to the SNS notification topic
     try:

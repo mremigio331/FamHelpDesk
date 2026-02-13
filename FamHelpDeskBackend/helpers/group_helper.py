@@ -9,7 +9,7 @@ from helpers.notification_helper import NotificationHelper
 from helpers.group_membership_helper import GroupMembershipHelper
 from models.audit import AuditActions, AuditEntityTypes
 from exceptions.group_exceptions import GroupNotFound
-from models.family_notification_settings import FamliyNotificationType
+from models.family_notification_settings import FamilyNotificationType
 
 
 class GroupHelper:
@@ -110,7 +110,7 @@ class GroupHelper:
 
         self.notification_helper.create_notification_async(
             user_id=created_by,
-            notification_type=FamliyNotificationType.NEW_GROUP_CREATION,
+            notification_type=FamilyNotificationType.NEW_GROUP_CREATION,
             family_id=family_id,
             group_id=group_id,
         )

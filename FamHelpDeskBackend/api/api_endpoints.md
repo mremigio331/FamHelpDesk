@@ -43,6 +43,12 @@ This document lists all API endpoints needed to fulfill the Fam Help Desk system
 | ⏳ PENDING | DELETE | `/family/{family_id}/members/{user_id}` | Remove a member from the family |
 | ⏳ PENDING | GET | `/family/{family_id}/members/pending` | Get pending family invitations |
 
+### Family Notification Settings
+| Status | Method | Path | Description |
+|--------|--------|------|-------------|
+| ✅ CREATED | GET | `/family/{family_id}/notification-settings` | Get notification settings for current user in this family |
+| ✅ CREATED | PUT | `/family/{family_id}/notification-settings` | Update notification settings for current user in this family |
+
 ---
 
 ## Group Management
@@ -158,7 +164,7 @@ This document lists all API endpoints needed to fulfill the Fam Help Desk system
 
 ## Summary
 ### Current Status
-- **Created**: 18 endpoints
+- **Created**: 20 endpoints
 - **Pending**: 51 endpoints
 - **Not Implemented**: 1 endpoint (family deletion for safety)
 

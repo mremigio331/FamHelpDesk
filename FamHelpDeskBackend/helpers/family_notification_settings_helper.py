@@ -5,7 +5,7 @@ import time
 
 from models.family_notification_settings import (
     FamilyNotificationSettings,
-    FamliyNotificationType,
+    FamilyNotificationType,
 )
 
 
@@ -242,7 +242,7 @@ class FamilyNotificationSettingsHelper:
         return settings
 
     def is_notification_enabled(
-        self, user_id: str, family_id: str, notification_type: FamliyNotificationType
+        self, user_id: str, family_id: str, notification_type: FamilyNotificationType
     ) -> bool:
         """
         Check if notification type is enabled for user-family pair.
@@ -252,7 +252,7 @@ class FamilyNotificationSettingsHelper:
         Args:
             user_id: The user ID to check settings for
             family_id: The family ID to check settings for
-            notification_type: The FamliyNotificationType enum value to check
+            notification_type: The FamilyNotificationType enum value to check
 
         Returns:
             bool: True if notification should be sent, False otherwise
@@ -270,32 +270,32 @@ class FamilyNotificationSettingsHelper:
         # Map NotificationType enum values to corresponding boolean fields
         notification_mapping = {
             # Family
-            FamliyNotificationType.NEW_FAMILY_CREATION: settings.new_family_creation_enabled,
-            FamliyNotificationType.WELCOME: settings.welcome_enabled,
+            FamilyNotificationType.NEW_FAMILY_CREATION: settings.new_family_creation_enabled,
+            FamilyNotificationType.WELCOME: settings.welcome_enabled,
             # Family Membership
-            FamliyNotificationType.WELCOME_TO_FAMILY: settings.welcome_to_family_enabled,
-            FamliyNotificationType.NEW_FAMILY_MEMEBER: settings.new_family_member_enabled,
-            FamliyNotificationType.FAMILY_MEMBERSHIP_APPROVED: settings.family_membership_approved,
-            FamliyNotificationType.FAMILY_MEMBERSHIP_DENIED: settings.family_membership_denied,
-            FamliyNotificationType.FAMILY_MEMBERSHIP_INVITATION: settings.family_membership_invitation,
-            FamliyNotificationType.FAMILY_MEMBER_JOINED: settings.family_membership_joined,
-            FamliyNotificationType.FAMILY_MEMBERSHIP_LEFT: settings.family_membership_left,
-            FamliyNotificationType.FAMILY_MEMBERSHIP_REQUEST: settings.family_membership_request,
+            FamilyNotificationType.WELCOME_TO_FAMILY: settings.welcome_to_family_enabled,
+            FamilyNotificationType.NEW_FAMILY_MEMEBER: settings.new_family_member_enabled,
+            FamilyNotificationType.FAMILY_MEMBERSHIP_APPROVED: settings.family_membership_approved,
+            FamilyNotificationType.FAMILY_MEMBERSHIP_DENIED: settings.family_membership_denied,
+            FamilyNotificationType.FAMILY_MEMBERSHIP_INVITATION: settings.family_membership_invitation,
+            FamilyNotificationType.FAMILY_MEMBER_JOINED: settings.family_membership_joined,
+            FamilyNotificationType.FAMILY_MEMBERSHIP_LEFT: settings.family_membership_left,
+            FamilyNotificationType.FAMILY_MEMBERSHIP_REQUEST: settings.family_membership_request,
             # Group Membership
-            FamliyNotificationType.GROUP_MEMBERSHIP_APPROVED: settings.group_membership_approved,
-            FamliyNotificationType.GROUP_MEMBERSHIP_DENIED: settings.group_membership_denied,
-            FamliyNotificationType.GROUP_MEMBERSHIP_ADDED: settings.group_membership_added,
-            FamliyNotificationType.GROUP_MEMBER_JOINED: settings.group_membership_joined,
-            FamliyNotificationType.GROUP_MEMBERSHIP_LEFT: settings.group_membership_left,
-            FamliyNotificationType.GROUP_MEMBERSHIP_REQUEST: settings.group_membership_request,
-            FamliyNotificationType.NEW_GROUP_CREATION: settings.new_group_creation,
+            FamilyNotificationType.GROUP_MEMBERSHIP_APPROVED: settings.group_membership_approved,
+            FamilyNotificationType.GROUP_MEMBERSHIP_DENIED: settings.group_membership_denied,
+            FamilyNotificationType.GROUP_MEMBERSHIP_ADDED: settings.group_membership_added,
+            FamilyNotificationType.GROUP_MEMBER_JOINED: settings.group_membership_joined,
+            FamilyNotificationType.GROUP_MEMBERSHIP_LEFT: settings.group_membership_left,
+            FamilyNotificationType.GROUP_MEMBERSHIP_REQUEST: settings.group_membership_request,
+            FamilyNotificationType.NEW_GROUP_CREATION: settings.new_group_creation,
             # Tickets
-            FamliyNotificationType.TICKET_CREATION_FAMILY: settings.ticket_creation_family,
-            FamliyNotificationType.TICKET_CREATION_GROUP: settings.ticket_creation_group,
-            FamliyNotificationType.TICKET_ASSIGNED: settings.ticket_assigned,
-            FamliyNotificationType.TICKET_COMMENT: settings.ticket_comment,
-            FamliyNotificationType.TICKET_STATUS_CHANGED: settings.ticket_status_change,
-            FamliyNotificationType.TICKET_RESOLVED: settings.ticket_resolved,
+            FamilyNotificationType.TICKET_CREATION_FAMILY: settings.ticket_creation_family,
+            FamilyNotificationType.TICKET_CREATION_GROUP: settings.ticket_creation_group,
+            FamilyNotificationType.TICKET_ASSIGNED: settings.ticket_assigned,
+            FamilyNotificationType.TICKET_COMMENT: settings.ticket_comment,
+            FamilyNotificationType.TICKET_STATUS_CHANGED: settings.ticket_status_change,
+            FamilyNotificationType.TICKET_RESOLVED: settings.ticket_resolved,
         }
 
         is_enabled = notification_mapping.get(notification_type, True)
