@@ -141,13 +141,20 @@ class TicketNotificationHelper:
                     if member["user_id"] == ticket_assigned_to
                     else "New Ticket Created"
                 )
-                self.ios_notification_helper.send_to_ios_push_queue(
+                # Extract group_id from ticket if available
+                group_id = (
+                    full_ticket.group_id if hasattr(full_ticket, "group_id") else None
+                )
+                self.ios_notification_helper.send_ios_push_notification(
                     user_id=member["user_id"],
                     title=title,
                     message=message,
                     notification_type=notification_type.value,
-                    family_id=family_id,
-                    ticket_id=ticket_id,
+                    data={
+                        "ticket_id": ticket_id,
+                        "family_id": family_id,
+                        "group_id": group_id,
+                    },
                 )
 
     def _process_ticket_assigned(self, ticket_id, family_id, **kwargs):
@@ -197,13 +204,15 @@ class TicketNotificationHelper:
             )
 
             # Send iOS push notification
-            self.ios_notification_helper.send_to_ios_push_queue(
+            self.ios_notification_helper.send_ios_push_notification(
                 user_id=assigned_to,
                 title="Ticket Assigned to You",
                 message=message,
                 notification_type=FamilyNotificationType.TICKET_ASSIGNED.value,
-                family_id=family_id,
-                ticket_id=ticket_id,
+                data={
+                    "ticket_id": ticket_id,
+                    "family_id": family_id,
+                },
             )
 
     def _process_ticket_comment(self, ticket_id, comment_author, family_id):
@@ -249,13 +258,15 @@ class TicketNotificationHelper:
                 )
 
                 # Send iOS push notification
-                self.ios_notification_helper.send_to_ios_push_queue(
+                self.ios_notification_helper.send_ios_push_notification(
                     user_id=user_id,
                     title="New Ticket Comment",
                     message=message,
                     notification_type=FamilyNotificationType.TICKET_COMMENT.value,
-                    family_id=family_id,
-                    ticket_id=ticket_id,
+                    data={
+                        "ticket_id": ticket_id,
+                        "family_id": family_id,
+                    },
                 )
 
     def _process_ticket_status_changed(
@@ -304,13 +315,15 @@ class TicketNotificationHelper:
                 )
 
                 # Send iOS push notification
-                self.ios_notification_helper.send_to_ios_push_queue(
+                self.ios_notification_helper.send_ios_push_notification(
                     user_id=user_id,
                     title="Ticket Status Changed",
                     message=message,
                     notification_type=FamilyNotificationType.TICKET_STATUS_CHANGED.value,
-                    family_id=family_id,
-                    ticket_id=ticket_id,
+                    data={
+                        "ticket_id": ticket_id,
+                        "family_id": family_id,
+                    },
                 )
 
     def _process_resolved_ticket(self, ticket_id, resolved_by, family_id):
@@ -354,11 +367,13 @@ class TicketNotificationHelper:
                 )
 
                 # Send iOS push notification
-                self.ios_notification_helper.send_to_ios_push_queue(
+                self.ios_notification_helper.send_ios_push_notification(
                     user_id=user_id,
                     title="Ticket Resolved",
                     message=message,
                     notification_type=FamilyNotificationType.TICKET_RESOLVED.value,
-                    family_id=family_id,
-                    ticket_id=ticket_id,
+                    data={
+                        "ticket_id": ticket_id,
+                        "family_id": family_id,
+                    },
                 )

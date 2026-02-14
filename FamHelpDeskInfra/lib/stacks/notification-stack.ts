@@ -17,6 +17,11 @@ interface NotificationStackProps extends StackProps {
   userTable: dynamodb.Table;
   escalationEmail: string;
   escalationNumber: string;
+  appleNotificationKeys: {
+    team_id: string;
+    key_id: string;
+    bundle_id: string;
+  };
 }
 
 export class NotificationStack extends Stack {
@@ -33,7 +38,7 @@ export class NotificationStack extends Stack {
   constructor(scope: Construct, id: string, props: NotificationStackProps) {
     super(scope, id, props);
 
-    const { stage, userTable, escalationEmail, escalationNumber } = props;
+    const { stage, userTable, escalationEmail, escalationNumber, appleNotificationKeys } = props;
 
     // Create Lambda layer with dependencies (same as other stacks)
     const layer = new lambda.LayerVersion(
@@ -106,6 +111,10 @@ export class NotificationStack extends Stack {
       environment: {
         STAGE: stage,
         TABLE_NAME: userTable.tableName,
+        APNS_KEY_ID: appleNotificationKeys.key_id,
+        APNS_TEAM_ID: appleNotificationKeys.team_id,
+        APNS_BUNDLE_ID: appleNotificationKeys.bundle_id,
+        APNS_CREDENTIALS_KEY: `notifications-${stage.toLowerCase()}`,
       },
     });
 
@@ -130,7 +139,7 @@ export class NotificationStack extends Stack {
     this.iosPushQueue.grantSendMessages(this.notificationProcessor);
 
     // Add iOS Push Queue URL to notification processor environment
-    this.notificationProcessor.addEnvironment('IOS_PUSH_QUEUE_URL', this.iosPushQueue.queueUrl);
+    this.notificationProcessor.addEnvironment('IOS_PUSH_NOTIFICATION_QUEUE_URL', this.iosPushQueue.queueUrl);
 
     // NEW: Add SQS event source to Lambda with batch processing
     this.notificationProcessor.addEventSource(
@@ -156,6 +165,10 @@ export class NotificationStack extends Stack {
         STAGE: stage,
         TABLE_NAME: userTable.tableName,
         IOS_PUSH_QUEUE_URL: this.iosPushQueue.queueUrl,
+        APNS_KEY_ID: appleNotificationKeys.key_id,
+        APNS_TEAM_ID: appleNotificationKeys.team_id,
+        APNS_BUNDLE_ID: appleNotificationKeys.bundle_id,
+        APNS_CREDENTIALS_KEY: `notifications-${stage.toLowerCase()}`,
       },
     });
 
@@ -202,6 +215,7 @@ export class NotificationStack extends Stack {
       this,
       stage,
       this.deadLetterQueue,
+      this.iosPushDeadLetterQueue,
       this.notificationProcessor,
       escalationEmail,
       escalationNumber

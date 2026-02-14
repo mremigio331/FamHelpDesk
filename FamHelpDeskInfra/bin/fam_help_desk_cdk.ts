@@ -72,7 +72,8 @@ async function main() {
       escalationEmail,
       escalationNumber,
       googleOathKeys,
-      appleOauthKeys
+      appleOauthKeys,
+      appleNotificationKeys
     } = config;
 
     const databaseStack = new DatabaseStack(
@@ -93,6 +94,7 @@ async function main() {
         userTable: databaseStack.table,
         escalationEmail: escalationEmail,
         escalationNumber: escalationNumber,
+        appleNotificationKeys: appleNotificationKeys,
       },
     );
 

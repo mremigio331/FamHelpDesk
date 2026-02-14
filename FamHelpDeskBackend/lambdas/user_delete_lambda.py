@@ -1,3 +1,23 @@
+"""
+User Deletion Lambda
+
+Deletes one or more users and all their associated data from the system.
+
+Example invocation payloads:
+
+Single user:
+{
+    "user_id": "user-123",
+    "send_confirmation_email": true
+}
+
+Multiple users:
+{
+    "user_ids": ["user-123", "user-456", "user-789"],
+    "send_confirmation_email": false
+}
+"""
+
 import os
 import boto3
 import json
@@ -20,15 +40,23 @@ logger = Logger(service="FamHelpDesk-Cognito-User-Delete")
 def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, Any]:
     logger.info(f"User deletion event: {event}")
 
-    try:
-        user_id = event.get("user_id")
-        if not user_id:
-            logger.error("Missing 'user_id' in event payload")
-            raise ValueError("Missing required field: user_id")
-        logger.info(f"Processing deletion for user_id: {user_id}")
-    except KeyError as e:
-        logger.error(f"Error extracting user_id from event: {e}")
-        raise ValueError(f"Invalid event format: {str(e)}")
+    # Check if we have a list of users or a single user
+    user_ids = event.get("user_ids")
+    user_id = event.get("user_id")
+
+    if user_ids:
+        # Process multiple users
+        if not isinstance(user_ids, list):
+            logger.error("'user_ids' must be a list")
+            raise ValueError("'user_ids' must be a list")
+        logger.info(f"Processing deletion for {len(user_ids)} users")
+    elif user_id:
+        # Convert single user to list for uniform processing
+        user_ids = [user_id]
+        logger.info(f"Processing deletion for single user_id: {user_id}")
+    else:
+        logger.error("Missing 'user_id' or 'user_ids' in event payload")
+        raise ValueError("Missing required field: user_id or user_ids")
 
     send_confirmation_email = event.get("send_confirmation_email", True)
 
@@ -38,9 +66,8 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
     region = os.getenv("COGNITO_REGION")
     user_pool_id = os.getenv("COGNITO_USER_POOL_ID")
     sender_email = os.getenv("SENDER_EMAIL")
-    sns_topic_arn = os.getenv("NOTIFICATION_QUEUE_URL")
 
-    if not all([stage, region, user_pool_id, sender_email, sns_topic_arn]):
+    if not all([stage, region, user_pool_id, sender_email]):
         missing_vars = [
             var_name
             for var_name, value in {
@@ -48,7 +75,6 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
                 "COGNITO_REGION": region,
                 "COGNITO_USER_POOL_ID": user_pool_id,
                 "SENDER_EMAIL": sender_email,
-                "NOTIFICATION_QUEUE_URL": sns_topic_arn,
             }.items()
             if not value
         ]
@@ -58,6 +84,71 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
 
     request_id = event.get("request_id", context.aws_request_id)
     logger.info(f"Lambda request ID: {request_id}")
+
+    # Track results for all users
+    results = {
+        "successful_deletions": [],
+        "failed_deletions": [],
+        "total_users": len(user_ids),
+    }
+
+    # Process each user
+    for user_id in user_ids:
+        logger.info(f"Starting deletion process for user_id: {user_id}")
+        try:
+            delete_single_user(
+                user_id=user_id,
+                request_id=request_id,
+                stage=stage,
+                region=region,
+                user_pool_id=user_pool_id,
+                sender_email=sender_email,
+                send_confirmation_email=send_confirmation_email,
+            )
+            results["successful_deletions"].append(user_id)
+            logger.info(f"Successfully completed deletion for user_id: {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to delete user_id {user_id}: {e}", exc_info=True)
+            results["failed_deletions"].append({"user_id": user_id, "error": str(e)})
+
+    # Log final results
+    logger.info(
+        f"Deletion process completed. "
+        f"Successful: {len(results['successful_deletions'])}, "
+        f"Failed: {len(results['failed_deletions'])}"
+    )
+
+    return {
+        "statusCode": 200,
+        "message": f"Processed {results['total_users']} user(s)",
+        "results": results,
+    }
+
+
+def delete_single_user(
+    user_id: str,
+    request_id: str,
+    stage: str,
+    region: str,
+    user_pool_id: str,
+    sender_email: str,
+    send_confirmation_email: bool,
+) -> None:
+    """
+    Delete a single user and all their associated data.
+
+    Args:
+        user_id: The user ID to delete
+        request_id: Lambda request ID for logging
+        stage: Environment stage
+        region: AWS region
+        user_pool_id: Cognito user pool ID
+        sender_email: SES sender email
+        send_confirmation_email: Whether to send confirmation email
+
+    Raises:
+        Exception: If any step of the deletion process fails
+    """
     all_items = []
 
     try:
@@ -211,26 +302,4 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
             )
             raise
 
-    # Publish a message to the SNS notification topic
-    try:
-        logger.info(f"Publishing deletion notification for user_id: {user_id}")
-        sns_client = boto3.client("sns", region_name=region)
-        sns_client.publish(
-            TopicArn=sns_topic_arn,
-            Message=f"User {user_profile_clean['display_name']} has been successfully deleted. User details: {json.dumps(user_profile_clean)}",
-            Subject="User Deletion Notification",
-        )
-        logger.info(
-            f"Notification successfully sent for user {user_profile_clean['user_id']} deletion"
-        )
-    except Exception as e:
-        logger.error(
-            f"Failed to send notification for user {user_profile_clean['user_id']} deletion. Error: {e}",
-            exc_info=True,
-        )
-        raise
-
-    logger.info(
-        f"User deletion process completed successfully for user_id: {user_profile_clean['user_id']}"
-    )
-    return {"statusCode": 200, "message": "User deleted successfully"}
+    logger.info(f"User deletion process completed successfully for user_id: {user_id}")

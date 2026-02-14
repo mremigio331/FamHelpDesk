@@ -85,12 +85,14 @@ class FamilyMembershipNotificationHelper:
         self.logger.info(f"Created welcome notification for user {user_id}")
 
         # Send iOS push notification
-        self.ios_notification_helper.send_to_ios_push_queue(
+        self.ios_notification_helper.send_ios_push_notification(
             user_id=user_id,
             title="Welcome!",
             message=message,
             notification_type=FamilyNotificationType.WELCOME_TO_FAMILY.value,
-            family_id=family_id,
+            data={
+                "family_id": family_id,
+            },
         )
         self.logger.info(f"Sent iOS push notification to user {user_id}")
 
@@ -120,12 +122,14 @@ class FamilyMembershipNotificationHelper:
                 )
 
                 # Send iOS push notification
-                self.ios_notification_helper.send_to_ios_push_queue(
+                self.ios_notification_helper.send_ios_push_notification(
                     user_id=member["user_id"],
                     title="New Family Member",
                     message=message,
                     notification_type=FamilyNotificationType.NEW_FAMILY_MEMEBER.value,
-                    family_id=family_id,
+                    data={
+                        "family_id": family_id,
+                    },
                 )
 
     def _process_new_member_request(self, user_id, family_id):
@@ -157,12 +161,14 @@ class FamilyMembershipNotificationHelper:
                 )
 
                 # Send iOS push notification
-                self.ios_notification_helper.send_to_ios_push_queue(
+                self.ios_notification_helper.send_ios_push_notification(
                     user_id=admin_id,
                     title="Membership Request",
                     message=message,
                     notification_type=FamilyNotificationType.FAMILY_MEMBERSHIP_REQUEST.value,
-                    family_id=family_id,
+                    data={
+                        "family_id": family_id,
+                    },
                 )
                 self.logger.info(
                     f"Sent iOS push for membership request to admin {admin_id}"
@@ -197,12 +203,14 @@ class FamilyMembershipNotificationHelper:
                     )
 
                     # Send iOS push notification
-                    self.ios_notification_helper.send_to_ios_push_queue(
+                    self.ios_notification_helper.send_ios_push_notification(
                         user_id=member["user_id"],
                         title="Membership Approved",
                         message=message,
                         notification_type=FamilyNotificationType.FAMILY_MEMBERSHIP_APPROVED.value,
-                        family_id=family_id,
+                        data={
+                            "family_id": family_id,
+                        },
                     )
 
             else:
@@ -223,12 +231,14 @@ class FamilyMembershipNotificationHelper:
                     )
 
                     # Send iOS push notification
-                    self.ios_notification_helper.send_to_ios_push_queue(
+                    self.ios_notification_helper.send_ios_push_notification(
                         user_id=member["user_id"],
                         title="New Member Joined",
                         message=message,
                         notification_type=FamilyNotificationType.FAMILY_MEMBERSHIP_APPROVED.value,
-                        family_id=family_id,
+                        data={
+                            "family_id": family_id,
+                        },
                     )
 
     def _process_member_denied_request(self, user_id, admin_user, family_id):
@@ -256,10 +266,12 @@ class FamilyMembershipNotificationHelper:
                 )
 
                 # Send iOS push notification
-                self.ios_notification_helper.send_to_ios_push_queue(
+                self.ios_notification_helper.send_ios_push_notification(
                     user_id=admin_id,
                     title="Membership Denied",
                     message=message,
                     notification_type=FamilyNotificationType.FAMILY_MEMBERSHIP_DENIED.value,
-                    family_id=family_id,
+                    data={
+                        "family_id": family_id,
+                    },
                 )
