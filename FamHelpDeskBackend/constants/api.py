@@ -27,3 +27,6 @@ NOTIFICATIONS_PATH = "/notifications"
 
 DEVICES_TAG = "Devices"
 DEVICES_PATH = "/devices"
+
+GRAB_TAG = "FamGrab"
+GRAB_PATH = "/family"

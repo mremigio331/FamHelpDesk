@@ -1,4 +1,5 @@
 from functools import wraps
+from aws_lambda_powertools import Logger
 from exceptions.user_exceptions import (
     UserNotFound,
     InvalidUserIdException,
@@ -6,6 +7,8 @@ from exceptions.user_exceptions import (
     UserNameTooLong,
     UserDeleteException,
 )
+
+logger = Logger()
 from exceptions.jwt_exeptions import (
     InvalidJWTException,
     ExpiredJWTException,
@@ -51,6 +54,21 @@ from exceptions.ticket_exceptions import (
     CommentNotFoundException,
     CommentEditWindowExpiredException,
     UnauthorizedCommentModificationException,
+)
+from exceptions.grab_exceptions import (
+    GrabRequestNotFoundException,
+    InvalidGrabStatusTransitionException,
+    GrabUnauthorizedException,
+    CannotClaimOwnRequestException,
+    InvalidTipAmountException,
+    NoPhotoAvailableException,
+    InvalidStarRatingException,
+    CommentTooLongException,
+    InvalidItemIdException,
+    ReviewWindowExpiredException,
+    InsufficientBalanceException,
+    ItemAlreadyClaimedException,
+    AllItemsConfirmedException,
 )
 
 from fastapi.responses import JSONResponse
@@ -274,6 +292,138 @@ def exceptions_decorator(func):
                 status_code=403,
             )
 
+        # Grab exceptions
+        except GrabRequestNotFoundException as exc:
+            return JSONResponse(
+                content={
+                    "error": {
+                        "code": "GRAB_REQUEST_NOT_FOUND",
+                        "message": str(exc),
+                    }
+                },
+                status_code=404,
+            )
+        except InvalidGrabStatusTransitionException as exc:
+            return JSONResponse(
+                content={
+                    "error": {
+                        "code": "INVALID_STATUS_TRANSITION",
+                        "message": str(exc),
+                    }
+                },
+                status_code=409,
+            )
+        except GrabUnauthorizedException as exc:
+            return JSONResponse(
+                content={
+                    "error": {
+                        "code": "GRAB_UNAUTHORIZED",
+                        "message": str(exc),
+                    }
+                },
+                status_code=403,
+            )
+        except CannotClaimOwnRequestException as exc:
+            return JSONResponse(
+                content={
+                    "error": {
+                        "code": "CANNOT_CLAIM_OWN_REQUEST",
+                        "message": str(exc),
+                    }
+                },
+                status_code=400,
+            )
+        except InvalidTipAmountException as exc:
+            return JSONResponse(
+                content={
+                    "error": {
+                        "code": "INVALID_TIP_AMOUNT",
+                        "message": str(exc),
+                    }
+                },
+                status_code=400,
+            )
+        except NoPhotoAvailableException as exc:
+            return JSONResponse(
+                content={
+                    "error": {
+                        "code": "NO_PHOTO_AVAILABLE",
+                        "message": str(exc),
+                    }
+                },
+                status_code=404,
+            )
+        except InvalidStarRatingException as exc:
+            return JSONResponse(
+                content={
+                    "error": {
+                        "code": "INVALID_STAR_RATING",
+                        "message": str(exc),
+                    }
+                },
+                status_code=400,
+            )
+        except CommentTooLongException as exc:
+            return JSONResponse(
+                content={
+                    "error": {
+                        "code": "COMMENT_TOO_LONG",
+                        "message": str(exc),
+                    }
+                },
+                status_code=400,
+            )
+        except InvalidItemIdException as exc:
+            return JSONResponse(
+                content={
+                    "error": {
+                        "code": "INVALID_ITEM_ID",
+                        "message": str(exc),
+                    }
+                },
+                status_code=400,
+            )
+        except ReviewWindowExpiredException as exc:
+            return JSONResponse(
+                content={
+                    "error": {
+                        "code": "REVIEW_WINDOW_EXPIRED",
+                        "message": str(exc),
+                    }
+                },
+                status_code=403,
+            )
+        except InsufficientBalanceException as exc:
+            return JSONResponse(
+                content={
+                    "error": {
+                        "code": "INSUFFICIENT_BALANCE",
+                        "message": str(exc),
+                    }
+                },
+                status_code=402,
+            )
+        except ItemAlreadyClaimedException as exc:
+            return JSONResponse(
+                content={
+                    "error": {
+                        "code": "ITEM_ALREADY_CLAIMED",
+                        "message": str(exc),
+                    }
+                },
+                status_code=409,
+            )
+        except AllItemsConfirmedException as exc:
+            return JSONResponse(
+                content={
+                    "error": {
+                        "code": "ALL_ITEMS_CONFIRMED",
+                        "message": str(exc),
+                    }
+                },
+                status_code=409,
+            )
+
         # Membership exceptions
         except MembershipNotFound as exc:
             return JSONResponse(
@@ -405,6 +555,10 @@ def exceptions_decorator(func):
                 status_code=500,
             )
         except Exception as exc:
+            logger.error(
+                f"Unexpected error in {func.__name__}: {type(exc).__name__}: {str(exc)}",
+                exc_info=True,
+            )
             return JSONResponse(
                 content={
                     "error": {

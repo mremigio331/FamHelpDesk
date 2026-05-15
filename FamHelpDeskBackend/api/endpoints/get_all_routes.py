@@ -72,7 +72,29 @@ from api.endpoints.devices.unregister_device import router as unregister_device_
 from api.endpoints.devices.get_device import router as get_device_router
 from api.endpoints.devices.enable_device import router as enable_device_router
 from api.endpoints.devices.disable_device import router as disable_device_router
+from api.endpoints.grab.get_balance import router as grab_get_balance_router
+from api.endpoints.grab.create_request import router as grab_create_request_router
+from api.endpoints.grab.get_request import router as grab_get_request_router
+from api.endpoints.grab.list_requests import router as grab_list_requests_router
+from api.endpoints.grab.claim_request import router as grab_claim_request_router
+from api.endpoints.grab.complete_request import router as grab_complete_request_router
+from api.endpoints.grab.confirm_request import router as grab_confirm_request_router
+from api.endpoints.grab.cancel_request import router as grab_cancel_request_router
+from api.endpoints.grab.claim_items import router as grab_claim_items_router
+from api.endpoints.grab.complete_items import router as grab_complete_items_router
+from api.endpoints.grab.confirm_items import router as grab_confirm_items_router
+from api.endpoints.grab.cancel_items import router as grab_cancel_items_router
+from api.endpoints.grab.upload_photo_url import router as grab_upload_photo_url_router
+from api.endpoints.grab.get_photo_url import router as grab_get_photo_url_router
+from api.endpoints.grab.get_leaderboard import router as grab_get_leaderboard_router
+from api.endpoints.grab.get_transactions import router as grab_get_transactions_router
+from api.endpoints.grab.submit_reviews import router as grab_submit_reviews_router
+from api.endpoints.grab.get_review_profile import (
+    router as grab_get_review_profile_router,
+)
 from constants.api import (
+    GRAB_PATH,
+    GRAB_TAG,
     DEVICES_PATH,
     DEVICES_TAG,
     FAMILY_MEMBERSHIP_TAG,
@@ -266,5 +288,27 @@ def get_all_routes(app: FastAPI) -> FastAPI:
     app.include_router(get_device_router, prefix=DEVICES_PATH, tags=[DEVICES_TAG])
     app.include_router(enable_device_router, prefix=DEVICES_PATH, tags=[DEVICES_TAG])
     app.include_router(disable_device_router, prefix=DEVICES_PATH, tags=[DEVICES_TAG])
+
+    # FamGrab routes
+    app.include_router(grab_get_balance_router, prefix=GRAB_PATH, tags=[GRAB_TAG])
+    app.include_router(grab_create_request_router, prefix=GRAB_PATH, tags=[GRAB_TAG])
+    app.include_router(grab_get_request_router, prefix=GRAB_PATH, tags=[GRAB_TAG])
+    app.include_router(grab_list_requests_router, prefix=GRAB_PATH, tags=[GRAB_TAG])
+    app.include_router(grab_claim_request_router, prefix=GRAB_PATH, tags=[GRAB_TAG])
+    app.include_router(grab_complete_request_router, prefix=GRAB_PATH, tags=[GRAB_TAG])
+    app.include_router(grab_confirm_request_router, prefix=GRAB_PATH, tags=[GRAB_TAG])
+    app.include_router(grab_cancel_request_router, prefix=GRAB_PATH, tags=[GRAB_TAG])
+    app.include_router(grab_claim_items_router, prefix=GRAB_PATH, tags=[GRAB_TAG])
+    app.include_router(grab_complete_items_router, prefix=GRAB_PATH, tags=[GRAB_TAG])
+    app.include_router(grab_confirm_items_router, prefix=GRAB_PATH, tags=[GRAB_TAG])
+    app.include_router(grab_cancel_items_router, prefix=GRAB_PATH, tags=[GRAB_TAG])
+    app.include_router(grab_upload_photo_url_router, prefix=GRAB_PATH, tags=[GRAB_TAG])
+    app.include_router(grab_get_photo_url_router, prefix=GRAB_PATH, tags=[GRAB_TAG])
+    app.include_router(grab_get_leaderboard_router, prefix=GRAB_PATH, tags=[GRAB_TAG])
+    app.include_router(grab_get_transactions_router, prefix=GRAB_PATH, tags=[GRAB_TAG])
+    app.include_router(grab_submit_reviews_router, prefix=GRAB_PATH, tags=[GRAB_TAG])
+    app.include_router(
+        grab_get_review_profile_router, prefix=GRAB_PATH, tags=[GRAB_TAG]
+    )
 
     return app
