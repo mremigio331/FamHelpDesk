@@ -1,6 +1,7 @@
 from typing import Optional, List
 from pynamodb.exceptions import DoesNotExist
 from aws_lambda_powertools import Logger
+from aws_lambda_powertools.metrics import Metrics, MetricUnit
 import uuid
 import time
 
@@ -11,6 +12,11 @@ from helpers.entity_ref import EntityRefHelper
 from helpers.notification_helper import NotificationHelper
 from models.audit import AuditActions, AuditEntityTypes
 from models.family_notification_settings import FamilyNotificationType
+from constants.metrics import (
+    API_METRICS_NAMESPACE,
+    TICKET_COMMENT_METRIC,
+    FAMILY_ID_DIMENSION,
+)
 from exceptions.ticket_exceptions import (
     CommentNotFoundException,
     CommentEditWindowExpiredException,
@@ -60,6 +66,7 @@ class TicketCommentHelper:
             table_name=table_name,
             notification_queue_url=notification_queue_url,
         )
+        self.metrics = Metrics(namespace=API_METRICS_NAMESPACE)
 
     def create_comment(
         self,
@@ -189,6 +196,13 @@ class TicketCommentHelper:
             notification_type=FamilyNotificationType.TICKET_COMMENT,
             **notification_context,
         )
+
+        # Emit TicketComment metric
+        self.metrics.add_dimension(name=FAMILY_ID_DIMENSION, value=family_id)
+        self.metrics.add_metric(
+            name=TICKET_COMMENT_METRIC, unit=MetricUnit.Count, value=1
+        )
+        self.metrics.flush_metrics()
 
         # Return enriched comment data
         comment_dict = TicketCommentModel.clean_returned_comment(comment)

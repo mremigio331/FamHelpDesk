@@ -1,6 +1,7 @@
 from typing import Optional, List, Dict, Any
 from pynamodb.exceptions import DoesNotExist
 from aws_lambda_powertools import Logger
+from aws_lambda_powertools.metrics import Metrics, MetricUnit
 import uuid
 import time
 
@@ -11,6 +12,14 @@ from helpers.family_notification_settings_helper import FamilyNotificationSettin
 from helpers.entity_ref import EntityRefHelper
 from models.audit import AuditActions, AuditEntityTypes
 from models.family_notification_settings import FamilyNotificationType
+from constants.metrics import (
+    API_METRICS_NAMESPACE,
+    TICKET_CREATED_METRIC,
+    TICKET_RESOLVED_METRIC,
+    TICKET_COMMENT_METRIC,
+    TICKET_STATUS_CHANGED_METRIC,
+    FAMILY_ID_DIMENSION,
+)
 from exceptions.ticket_exceptions import (
     TicketNotFoundException,
     InvalidTicketStatusTransitionException,
@@ -51,6 +60,7 @@ class TicketHelper:
             table_name=table_name,
             notification_queue_url=notification_queue_url,
         )
+        self.metrics = Metrics(namespace=API_METRICS_NAMESPACE)
 
     def update_last_update(self, family_id: str, ticket_id: str) -> bool:
         """
@@ -178,6 +188,13 @@ class TicketHelper:
         self.logger.info(
             f"Created ticket {ticket_id} in queue {queue_id} for family {family_id}"
         )
+
+        # Emit TicketCreated metric
+        self.metrics.add_dimension(name=FAMILY_ID_DIMENSION, value=family_id)
+        self.metrics.add_metric(
+            name=TICKET_CREATED_METRIC, unit=MetricUnit.Count, value=1
+        )
+        self.metrics.flush_metrics()
 
         return ticket
 
@@ -415,6 +432,13 @@ class TicketHelper:
                 **notification_context,
             )
 
+            # Emit TicketStatusChanged metric
+            self.metrics.add_dimension(name=FAMILY_ID_DIMENSION, value=family_id)
+            self.metrics.add_metric(
+                name=TICKET_STATUS_CHANGED_METRIC, unit=MetricUnit.Count, value=1
+            )
+            self.metrics.flush_metrics()
+
             # Send specific TICKET_RESOLVED notification when ticket is resolved
             if ticket.status == TicketStatus.RESOLVED.value:
                 resolved_notification_context = {
@@ -426,6 +450,13 @@ class TicketHelper:
                     notification_type=FamilyNotificationType.TICKET_RESOLVED,
                     **resolved_notification_context,
                 )
+
+                # Emit TicketResolved metric
+                self.metrics.add_dimension(name=FAMILY_ID_DIMENSION, value=family_id)
+                self.metrics.add_metric(
+                    name=TICKET_RESOLVED_METRIC, unit=MetricUnit.Count, value=1
+                )
+                self.metrics.flush_metrics()
 
         self.logger.info(f"Updated ticket {ticket_id} for family {family_id}")
 
