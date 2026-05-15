@@ -7,9 +7,13 @@ from helpers.notification_helpers.group_membeship_notification_helper import (
 from helpers.notification_helpers.ticket_notification_helper import (
     TicketNotificationHelper,
 )
+from helpers.notification_helpers.grab_notification_helper import (
+    GrabNotificationHelper,
+)
 
 __all__ = [
     "FamilyMembershipNotificationHelper",
     "GroupMembershipNotificationHelper",
     "TicketNotificationHelper",
+    "GrabNotificationHelper",
 ]

@@ -35,6 +35,18 @@ class FamilyNotificationType(Enum):
     TICKET_STATUS_CHANGED = "Ticket Status Changed"
     TICKET_RESOLVED = "Ticket Resolved"
 
+    # FamGrab
+    GRAB_REQUEST_CREATED = "Grab Request Created"
+    GRAB_REQUEST_CLAIMED = "Grab Request Claimed"
+    GRAB_REQUEST_COMPLETED = "Grab Request Completed"
+    GRAB_REQUEST_CONFIRMED = "Grab Request Confirmed"
+    GRAB_REQUEST_CANCELLED = "Grab Request Cancelled"
+    GRAB_ITEMS_CLAIMED = "Grab Items Claimed"
+    GRAB_ITEMS_COMPLETED = "Grab Items Completed"
+    GRAB_ITEMS_CONFIRMED = "Grab Items Confirmed"
+    GRAB_ITEMS_CANCELLED = "Grab Items Cancelled"
+    GRAB_REVIEW_RECEIVED = "Grab Review Received"
+
     # Welcom
     WELCOME = "Welcome"
 
@@ -94,6 +106,10 @@ class FamilyNotificationSettings(FamHelpDeskBaseModel):
     ticket_status_change = BooleanAttribute(default=True)
     ticket_resolved = BooleanAttribute(default=True)
 
+    # FamGrab
+    grab_request_created = BooleanAttribute(default=True)
+    grab_request_updates = BooleanAttribute(default=True)
+
     # Standard timestamp fields
     created_date = NumberAttribute()
     last_updated = NumberAttribute(null=True)
@@ -146,6 +162,9 @@ class FamilyNotificationSettings(FamHelpDeskBaseModel):
             "ticket_comment": settings.ticket_comment,
             "ticket_status_change": settings.ticket_status_change,
             "ticket_resolved": settings.ticket_resolved,
+            # FamGrab
+            "grab_request_created": settings.grab_request_created,
+            "grab_request_updates": settings.grab_request_updates,
         }
 
     def save(self, **kwargs):

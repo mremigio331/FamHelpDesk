@@ -10,6 +10,7 @@ from helpers.notification_helpers import (
     FamilyMembershipNotificationHelper,
     GroupMembershipNotificationHelper,
     TicketNotificationHelper,
+    GrabNotificationHelper,
 )
 from models.family_notification_settings import FamilyNotificationType
 from constants.services import NOTIFICATION_SERVICE
@@ -153,6 +154,27 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
                 FamilyNotificationType.TICKET_RESOLVED,
             ]:
                 helper = TicketNotificationHelper(
+                    request_id=request_id,
+                    stage=STAGE,
+                    table_name=TABLE_NAME,
+                    notification_queue_url=NOTIFICATION_QUEUE_URL,
+                )
+                helper.process_notification(notification_type, **message_kwargs)
+
+            # Grab request notifications
+            elif notification_type in [
+                FamilyNotificationType.GRAB_REQUEST_CREATED,
+                FamilyNotificationType.GRAB_REQUEST_CLAIMED,
+                FamilyNotificationType.GRAB_REQUEST_COMPLETED,
+                FamilyNotificationType.GRAB_REQUEST_CONFIRMED,
+                FamilyNotificationType.GRAB_REQUEST_CANCELLED,
+                FamilyNotificationType.GRAB_ITEMS_CLAIMED,
+                FamilyNotificationType.GRAB_ITEMS_COMPLETED,
+                FamilyNotificationType.GRAB_ITEMS_CONFIRMED,
+                FamilyNotificationType.GRAB_ITEMS_CANCELLED,
+                FamilyNotificationType.GRAB_REVIEW_RECEIVED,
+            ]:
+                helper = GrabNotificationHelper(
                     request_id=request_id,
                     stage=STAGE,
                     table_name=TABLE_NAME,

@@ -296,6 +296,17 @@ class FamilyNotificationSettingsHelper:
             FamilyNotificationType.TICKET_COMMENT: settings.ticket_comment,
             FamilyNotificationType.TICKET_STATUS_CHANGED: settings.ticket_status_change,
             FamilyNotificationType.TICKET_RESOLVED: settings.ticket_resolved,
+            # FamGrab
+            FamilyNotificationType.GRAB_REQUEST_CREATED: settings.grab_request_created,
+            FamilyNotificationType.GRAB_REQUEST_CLAIMED: settings.grab_request_updates,
+            FamilyNotificationType.GRAB_REQUEST_COMPLETED: settings.grab_request_updates,
+            FamilyNotificationType.GRAB_REQUEST_CONFIRMED: settings.grab_request_updates,
+            FamilyNotificationType.GRAB_REQUEST_CANCELLED: settings.grab_request_updates,
+            FamilyNotificationType.GRAB_ITEMS_CLAIMED: settings.grab_request_updates,
+            FamilyNotificationType.GRAB_ITEMS_COMPLETED: settings.grab_request_updates,
+            FamilyNotificationType.GRAB_ITEMS_CONFIRMED: settings.grab_request_updates,
+            FamilyNotificationType.GRAB_ITEMS_CANCELLED: settings.grab_request_updates,
+            FamilyNotificationType.GRAB_REVIEW_RECEIVED: settings.grab_request_updates,
         }
 
         is_enabled = notification_mapping.get(notification_type, True)
