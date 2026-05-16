@@ -110,6 +110,18 @@ enum NotificationType: String, Codable, CaseIterable {
     case ticketStatusChanged = "Ticket Status Changed"
     case ticketResolved = "Ticket Resolved"
 
+    // FamGrab
+    case grabRequestCreated = "Grab Request Created"
+    case grabRequestClaimed = "Grab Request Claimed"
+    case grabRequestCompleted = "Grab Request Completed"
+    case grabRequestConfirmed = "Grab Request Confirmed"
+    case grabRequestCancelled = "Grab Request Cancelled"
+    case grabItemsClaimed = "Grab Items Claimed"
+    case grabItemsCompleted = "Grab Items Completed"
+    case grabItemsConfirmed = "Grab Items Confirmed"
+    case grabItemsCancelled = "Grab Items Cancelled"
+    case grabReviewReceived = "Grab Review Received"
+
     case unknown = "Unknown"
 }
 

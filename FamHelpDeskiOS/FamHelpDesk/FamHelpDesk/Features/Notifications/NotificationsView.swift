@@ -275,6 +275,27 @@ extension NotificationType {
             "Ticket Updated"
         case .ticketResolved:
             "Ticket Resolved"
+        // FamGrab
+        case .grabRequestCreated:
+            "New Grab Request"
+        case .grabRequestClaimed:
+            "Request Claimed"
+        case .grabRequestCompleted:
+            "Request Completed"
+        case .grabRequestConfirmed:
+            "Request Confirmed"
+        case .grabRequestCancelled:
+            "Request Cancelled"
+        case .grabItemsClaimed:
+            "Items Claimed"
+        case .grabItemsCompleted:
+            "Items Completed"
+        case .grabItemsConfirmed:
+            "Items Confirmed"
+        case .grabItemsCancelled:
+            "Items Cancelled"
+        case .grabReviewReceived:
+            "Review Received"
         case .unknown:
             "Unknown"
         }
@@ -329,6 +350,26 @@ extension NotificationType {
 
         case .ticketResolved:
             .green
+
+        // FamGrab - Positive
+        case .grabRequestCreated:
+            .orange
+
+        case .grabRequestClaimed, .grabItemsClaimed:
+            .orange
+
+        case .grabRequestCompleted, .grabItemsCompleted:
+            .purple
+
+        case .grabRequestConfirmed, .grabItemsConfirmed:
+            .green
+
+        case .grabReviewReceived:
+            .yellow
+
+        // FamGrab - Negative
+        case .grabRequestCancelled, .grabItemsCancelled:
+            .red
 
         case .unknown:
             .gray
