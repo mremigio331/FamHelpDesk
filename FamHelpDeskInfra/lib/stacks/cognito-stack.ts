@@ -16,7 +16,10 @@ import * as sns from "aws-cdk-lib/aws-sns";
 import * as sqs from "aws-cdk-lib/aws-sqs";
 import * as subs from "aws-cdk-lib/aws-sns-subscriptions";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
-import { addCognitoMonitoring, CognitoMetrics } from "../monitoring/cognito-monitoring";
+import {
+  addCognitoMonitoring,
+  CognitoMetrics,
+} from "../monitoring/cognito-monitoring";
 import { famHelpDesk } from "../constants";
 
 interface CognitoStackProps extends StackProps {
@@ -34,7 +37,7 @@ interface CognitoStackProps extends StackProps {
     team_id: string;
     key_id: string;
     private_key_secret_name: string;
-  }
+  };
   notificationQueueUrl: string;
 }
 
@@ -103,7 +106,7 @@ export class CognitoStack extends Stack {
           POWERTOOLS_LOG_LEVEL: "INFO",
           USER_ADDED_TOPIC_ARN: userAddedTopic.topicArn,
           NOTIFICATION_QUEUE_URL: notificationQueueUrl,
-          STAGE: stage
+          STAGE: stage,
         },
       },
     );
@@ -128,16 +131,23 @@ export class CognitoStack extends Stack {
 
     // Grant permission to send messages to the notification queue
     // Import the queue ARN directly from the NotificationStack export
-    const queueArn = Fn.importValue(`${famHelpDesk}-NotificationQueueArn-${stage}`);
-    
+    const queueArn = Fn.importValue(
+      `${famHelpDesk}-NotificationQueueArn-${stage}`,
+    );
+
     const notificationQueue = sqs.Queue.fromQueueArn(
       this,
       `${famHelpDesk}-ImportedNotificationQueue-${stage}`,
-      queueArn
+      queueArn,
     );
     notificationQueue.grantSendMessages(userEventLogger);
 
-    this.cognitoMetrics = addCognitoMonitoring(this, logGroup, userEventLogger, stage);
+    this.cognitoMetrics = addCognitoMonitoring(
+      this,
+      logGroup,
+      userEventLogger,
+      stage,
+    );
 
     this.userPool = new cognito.UserPool(
       this,
@@ -147,7 +157,7 @@ export class CognitoStack extends Stack {
         selfSignUpEnabled: true,
         signInAliases: { email: true },
         standardAttributes: {
-          email: { required: true, mutable: true }, 
+          email: { required: true, mutable: true },
           fullname: { required: true, mutable: true },
           nickname: { required: false, mutable: true },
         },
@@ -262,7 +272,6 @@ export class CognitoStack extends Stack {
 
     this.userPoolClient.node.addDependency(googleProvider);
     this.userPoolClient.node.addDependency(appleProvider);
-
 
     const iosCallback = "famHelpDesk://auth/callback";
     const iosLogout = "famHelpDesk://signout";

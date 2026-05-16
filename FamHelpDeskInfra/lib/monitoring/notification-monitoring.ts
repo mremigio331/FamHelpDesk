@@ -43,10 +43,14 @@ export function addNotificationMonitoring(
   escalationNumber: string,
 ): NotificationMetrics {
   // Create SNS Topic for alarm notifications
-  const alarmTopic = new sns.Topic(scope, `${famHelpDesk}-NotificationAlarmTopic-${stage}`, {
-    topicName: `${famHelpDesk}-NotificationAlarmTopic-${stage}`,
-    displayName: `${famHelpDesk} Notification Alarm Topic (${stage})`,
-  });
+  const alarmTopic = new sns.Topic(
+    scope,
+    `${famHelpDesk}-NotificationAlarmTopic-${stage}`,
+    {
+      topicName: `${famHelpDesk}-NotificationAlarmTopic-${stage}`,
+      displayName: `${famHelpDesk} Notification Alarm Topic (${stage})`,
+    },
+  );
 
   // Add email and SMS subscriptions for alerts
   alarmTopic.addSubscription(new subs.EmailSubscription(escalationEmail));
@@ -64,17 +68,21 @@ export function addNotificationMonitoring(
   });
 
   // Create alarm for DLQ messages > 1
-  const dlqAlarm = new cloudwatch.Alarm(scope, `${famHelpDesk}-NotificationDLQAlarm-${stage}`, {
-    alarmName: `${famHelpDesk}-NotificationDLQAlarm-${stage}`,
-    metric: dlqMessageCountMetric,
-    threshold: 0,
-    evaluationPeriods: 1,
-    datapointsToAlarm: 1,
-    treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
-    alarmDescription: `${famHelpDesk} Notification DLQ Alarm (${stage}): Alert when DLQ has any visible messages`,
-    comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-    actionsEnabled: true,
-  });
+  const dlqAlarm = new cloudwatch.Alarm(
+    scope,
+    `${famHelpDesk}-NotificationDLQAlarm-${stage}`,
+    {
+      alarmName: `${famHelpDesk}-NotificationDLQAlarm-${stage}`,
+      metric: dlqMessageCountMetric,
+      threshold: 0,
+      evaluationPeriods: 1,
+      datapointsToAlarm: 1,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+      alarmDescription: `${famHelpDesk} Notification DLQ Alarm (${stage}): Alert when DLQ has any visible messages`,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      actionsEnabled: true,
+    },
+  );
 
   // Add alarm actions
   dlqAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alarmTopic));
@@ -92,17 +100,21 @@ export function addNotificationMonitoring(
   });
 
   // Create alarm for iOS Push DLQ messages > 0
-  const iosPushDlqAlarm = new cloudwatch.Alarm(scope, `${famHelpDesk}-IosPushDLQAlarm-${stage}`, {
-    alarmName: `${famHelpDesk}-IosPushDLQAlarm-${stage}`,
-    metric: iosPushDlqMessageCountMetric,
-    threshold: 0,
-    evaluationPeriods: 1,
-    datapointsToAlarm: 1,
-    treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
-    alarmDescription: `${famHelpDesk} iOS Push DLQ Alarm (${stage}): Alert when iOS Push DLQ has any visible messages`,
-    comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-    actionsEnabled: true,
-  });
+  const iosPushDlqAlarm = new cloudwatch.Alarm(
+    scope,
+    `${famHelpDesk}-IosPushDLQAlarm-${stage}`,
+    {
+      alarmName: `${famHelpDesk}-IosPushDLQAlarm-${stage}`,
+      metric: iosPushDlqMessageCountMetric,
+      threshold: 0,
+      evaluationPeriods: 1,
+      datapointsToAlarm: 1,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+      alarmDescription: `${famHelpDesk} iOS Push DLQ Alarm (${stage}): Alert when iOS Push DLQ has any visible messages`,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      actionsEnabled: true,
+    },
+  );
 
   // Add alarm actions for iOS Push DLQ
   iosPushDlqAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alarmTopic));
@@ -130,33 +142,42 @@ export function addNotificationMonitoring(
     period: Duration.minutes(5),
   });
 
-  const lambdaErrorAlarm = new cloudwatch.Alarm(scope, `${famHelpDesk}-NotificationLambdaErrorAlarm-${stage}`, {
-    alarmName: `${famHelpDesk}-NotificationLambdaErrorAlarm-${stage}`,
-    metric: lambdaErrorMetric,
-    threshold: 1,
-    evaluationPeriods: 1,
-    datapointsToAlarm: 1,
-    treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
-    alarmDescription: `${famHelpDesk} Notification Lambda Error Alarm (${stage}): Alert when notification processor Lambda has errors`,
-    comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-    actionsEnabled: true,
-  });
+  const lambdaErrorAlarm = new cloudwatch.Alarm(
+    scope,
+    `${famHelpDesk}-NotificationLambdaErrorAlarm-${stage}`,
+    {
+      alarmName: `${famHelpDesk}-NotificationLambdaErrorAlarm-${stage}`,
+      metric: lambdaErrorMetric,
+      threshold: 1,
+      evaluationPeriods: 1,
+      datapointsToAlarm: 1,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+      alarmDescription: `${famHelpDesk} Notification Lambda Error Alarm (${stage}): Alert when notification processor Lambda has errors`,
+      comparisonOperator:
+        cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      actionsEnabled: true,
+    },
+  );
 
   lambdaErrorAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alarmTopic));
   lambdaErrorAlarm.addOkAction(new cloudwatchActions.SnsAction(alarmTopic));
 
   // Create alarm for invocations (monitor for unusual activity)
-  const lambdaInvocationsAlarm = new cloudwatch.Alarm(scope, `${famHelpDesk}-NotificationLambdaInvocationsAlarm-${stage}`, {
-    alarmName: `${famHelpDesk}-NotificationLambdaInvocationsAlarm-${stage}`,
-    metric: lambdaInvocationsMetric,
-    threshold: 100, // Alert if more than 100 invocations in 5 minutes (adjust as needed)
-    evaluationPeriods: 1,
-    datapointsToAlarm: 1,
-    treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
-    alarmDescription: `${famHelpDesk} Notification Lambda Invocations Alarm (${stage}): Monitor for high notification processor activity`,
-    comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-    actionsEnabled: false, // No actions, just for monitoring
-  });
+  const lambdaInvocationsAlarm = new cloudwatch.Alarm(
+    scope,
+    `${famHelpDesk}-NotificationLambdaInvocationsAlarm-${stage}`,
+    {
+      alarmName: `${famHelpDesk}-NotificationLambdaInvocationsAlarm-${stage}`,
+      metric: lambdaInvocationsMetric,
+      threshold: 100, // Alert if more than 100 invocations in 5 minutes (adjust as needed)
+      evaluationPeriods: 1,
+      datapointsToAlarm: 1,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+      alarmDescription: `${famHelpDesk} Notification Lambda Invocations Alarm (${stage}): Monitor for high notification processor activity`,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      actionsEnabled: false, // No actions, just for monitoring
+    },
+  );
 
   // Create custom metrics for push notifications
   const pushNotificationsSentMetric = new cloudwatch.Metric({
@@ -211,11 +232,15 @@ export function addNotificationMonitoring(
       alarmDescription: `${famHelpDesk} Push Notification Failure Rate Alarm (${stage}): Alert when push notification failure rate exceeds 50%`,
       comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
       actionsEnabled: true,
-    }
+    },
   );
 
-  pushNotificationFailureRateAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alarmTopic));
-  pushNotificationFailureRateAlarm.addOkAction(new cloudwatchActions.SnsAction(alarmTopic));
+  pushNotificationFailureRateAlarm.addAlarmAction(
+    new cloudwatchActions.SnsAction(alarmTopic),
+  );
+  pushNotificationFailureRateAlarm.addOkAction(
+    new cloudwatchActions.SnsAction(alarmTopic),
+  );
 
   // Create alarm for high device disablement rate
   const devicesDisabledAlarm = new cloudwatch.Alarm(
@@ -231,10 +256,12 @@ export function addNotificationMonitoring(
       alarmDescription: `${famHelpDesk} Devices Disabled Alarm (${stage}): Alert when more than 10 devices are disabled in 5 minutes`,
       comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
       actionsEnabled: true,
-    }
+    },
   );
 
-  devicesDisabledAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alarmTopic));
+  devicesDisabledAlarm.addAlarmAction(
+    new cloudwatchActions.SnsAction(alarmTopic),
+  );
   devicesDisabledAlarm.addOkAction(new cloudwatchActions.SnsAction(alarmTopic));
 
   // Create custom metrics for APNs-specific errors
@@ -272,10 +299,12 @@ export function addNotificationMonitoring(
       alarmDescription: `${famHelpDesk} APNs Rate Limit Alarm (${stage}): Alert when APNs rate limit errors exceed 5 in 5 minutes`,
       comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
       actionsEnabled: true,
-    }
+    },
   );
 
-  apnsRateLimitAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alarmTopic));
+  apnsRateLimitAlarm.addAlarmAction(
+    new cloudwatchActions.SnsAction(alarmTopic),
+  );
   apnsRateLimitAlarm.addOkAction(new cloudwatchActions.SnsAction(alarmTopic));
 
   // Create alarm for APNs server errors
@@ -292,16 +321,22 @@ export function addNotificationMonitoring(
       alarmDescription: `${famHelpDesk} APNs Server Error Alarm (${stage}): Alert when APNs server errors exceed 10 in 5 minutes`,
       comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
       actionsEnabled: true,
-    }
+    },
   );
 
-  apnsServerErrorAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alarmTopic));
+  apnsServerErrorAlarm.addAlarmAction(
+    new cloudwatchActions.SnsAction(alarmTopic),
+  );
   apnsServerErrorAlarm.addOkAction(new cloudwatchActions.SnsAction(alarmTopic));
 
   // Create CloudWatch Dashboard
-  const dashboard = new cloudwatch.Dashboard(scope, `${famHelpDesk}-NotificationDashboard-${stage}`, {
-    dashboardName: `${famHelpDesk}-NotificationDashboard-${stage}`,
-  });
+  const dashboard = new cloudwatch.Dashboard(
+    scope,
+    `${famHelpDesk}-NotificationDashboard-${stage}`,
+    {
+      dashboardName: `${famHelpDesk}-NotificationDashboard-${stage}`,
+    },
+  );
 
   // Add widgets to dashboard
   dashboard.addWidgets(
@@ -317,7 +352,8 @@ export function addNotificationMonitoring(
       title: "Push Notification Failure Rate (%)",
       left: [
         new cloudwatch.MathExpression({
-          expression: "IF(sent + failed > 0, failed / (sent + failed) * 100, 0)",
+          expression:
+            "IF(sent + failed > 0, failed / (sent + failed) * 100, 0)",
           usingMetrics: {
             sent: pushNotificationsSentMetric,
             failed: pushNotificationsFailedMetric,
@@ -333,7 +369,7 @@ export function addNotificationMonitoring(
         min: 0,
         max: 100,
       },
-    })
+    }),
   );
 
   dashboard.addWidgets(
@@ -351,7 +387,7 @@ export function addNotificationMonitoring(
       width: 12,
       height: 6,
       legendPosition: cloudwatch.LegendPosition.BOTTOM,
-    })
+    }),
   );
 
   dashboard.addWidgets(
@@ -369,7 +405,7 @@ export function addNotificationMonitoring(
       width: 12,
       height: 6,
       legendPosition: cloudwatch.LegendPosition.BOTTOM,
-    })
+    }),
   );
 
   dashboard.addWidgets(
@@ -401,7 +437,7 @@ export function addNotificationMonitoring(
       ],
       width: 8,
       height: 6,
-    })
+    }),
   );
 
   return {

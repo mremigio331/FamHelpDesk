@@ -59,9 +59,12 @@ export class WebsiteStack extends Stack {
     );
 
     // Build S3 origin with OAC
-    const s3Origin = origins.S3BucketOrigin.withOriginAccessControl(this.bucket, {
-      originAccessControl,
-    });
+    const s3Origin = origins.S3BucketOrigin.withOriginAccessControl(
+      this.bucket,
+      {
+        originAccessControl,
+      },
+    );
 
     // Import the certificate (must be in us-east-1 for CloudFront)
     const certificate = acm.Certificate.fromCertificateArn(
@@ -78,7 +81,8 @@ export class WebsiteStack extends Stack {
         comment: `${famHelpDesk} Website Distribution ${stage}`,
         defaultBehavior: {
           origin: s3Origin,
-          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          viewerProtocolPolicy:
+            cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
           allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
           cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD,
           cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
@@ -135,7 +139,10 @@ export class WebsiteStack extends Stack {
 
     // Create A record pointing to CloudFront distribution
     new route53.ARecord(this, `${famHelpDesk}-WebsiteARecord-${stage}`, {
-      recordName: websiteDomainName === rootDomainName ? undefined : websiteDomainName.replace(`.${rootDomainName}`, ""),
+      recordName:
+        websiteDomainName === rootDomainName
+          ? undefined
+          : websiteDomainName.replace(`.${rootDomainName}`, ""),
       zone: hostedZone,
       target: route53.RecordTarget.fromAlias(
         new targets.CloudFrontTarget(this.distribution),
@@ -143,17 +150,26 @@ export class WebsiteStack extends Stack {
     });
 
     // Website content deployment
-    const siteOutputPath = path.join(__dirname, "../../../FamHelpDeskWebsite/dist");
+    const siteOutputPath = path.join(
+      __dirname,
+      "../../../FamHelpDeskWebsite/dist",
+    );
 
     // Deploy website files to S3 bucket
-    new s3deploy.BucketDeployment(this, `${famHelpDesk}-WebsiteDeployment-${stage}`, {
-      destinationBucket: this.bucket,
-      sources: [s3deploy.Source.asset(siteOutputPath)],
-      distribution: this.distribution,
-      distributionPaths: ["/", "/index.html", "/*"], // Invalidate cache for all files
-      cacheControl: [
-        s3deploy.CacheControl.fromString("public, max-age=0, must-revalidate")
-      ],
-    });
+    new s3deploy.BucketDeployment(
+      this,
+      `${famHelpDesk}-WebsiteDeployment-${stage}`,
+      {
+        destinationBucket: this.bucket,
+        sources: [s3deploy.Source.asset(siteOutputPath)],
+        distribution: this.distribution,
+        distributionPaths: ["/", "/index.html", "/*"], // Invalidate cache for all files
+        cacheControl: [
+          s3deploy.CacheControl.fromString(
+            "public, max-age=0, must-revalidate",
+          ),
+        ],
+      },
+    );
   }
 }

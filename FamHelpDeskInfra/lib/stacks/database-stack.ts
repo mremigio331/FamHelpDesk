@@ -55,7 +55,7 @@ export class DatabaseStack extends Stack {
 
     // GSI for entity name lookup by UUID
     this.table.addGlobalSecondaryIndex({
-      indexName: "entity-name-lookup-index",  // Different name
+      indexName: "entity-name-lookup-index", // Different name
       partitionKey: {
         name: "entity_uuid",
         type: dynamodb.AttributeType.STRING,

@@ -9,7 +9,10 @@ import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as cloudwatchActions from "aws-cdk-lib/aws-cloudwatch-actions";
 import * as path from "path";
-import { addNotificationMonitoring, NotificationMetrics } from "../monitoring/notification-monitoring";
+import {
+  addNotificationMonitoring,
+  NotificationMetrics,
+} from "../monitoring/notification-monitoring";
 import { famHelpDesk } from "../constants";
 
 interface NotificationStackProps extends StackProps {
@@ -38,7 +41,13 @@ export class NotificationStack extends Stack {
   constructor(scope: Construct, id: string, props: NotificationStackProps) {
     super(scope, id, props);
 
-    const { stage, userTable, escalationEmail, escalationNumber, appleNotificationKeys } = props;
+    const {
+      stage,
+      userTable,
+      escalationEmail,
+      escalationNumber,
+      appleNotificationKeys,
+    } = props;
 
     // Create Lambda layer with dependencies (same as other stacks)
     const layer = new lambda.LayerVersion(
@@ -54,69 +63,93 @@ export class NotificationStack extends Stack {
     );
 
     // Create SQS Dead Letter Queue for failed notifications
-    this.deadLetterQueue = new sqs.Queue(this, `${famHelpDesk}-NotificationDLQ-${stage}`, {
-      queueName: `${famHelpDesk}-NotificationDLQ-${stage}`,
-      retentionPeriod: Duration.days(14), // Keep failed messages for 14 days
-      visibilityTimeout: Duration.minutes(6), // Lambda timeout + buffer
-    });
+    this.deadLetterQueue = new sqs.Queue(
+      this,
+      `${famHelpDesk}-NotificationDLQ-${stage}`,
+      {
+        queueName: `${famHelpDesk}-NotificationDLQ-${stage}`,
+        retentionPeriod: Duration.days(14), // Keep failed messages for 14 days
+        visibilityTimeout: Duration.minutes(6), // Lambda timeout + buffer
+      },
+    );
 
     // NEW: Create main SQS queue for notification events
-    this.notificationQueue = new sqs.Queue(this, `${famHelpDesk}-NotificationQueue-${stage}`, {
-      queueName: `${famHelpDesk}-NotificationQueue-${stage}`,
-      visibilityTimeout: Duration.minutes(6), // Lambda timeout + buffer
-      retentionPeriod: Duration.days(4),
-      receiveMessageWaitTime: Duration.seconds(20), // Long polling
-      deadLetterQueue: {
-        queue: this.deadLetterQueue,
-        maxReceiveCount: 3, // Retry up to 3 times before sending to DLQ
+    this.notificationQueue = new sqs.Queue(
+      this,
+      `${famHelpDesk}-NotificationQueue-${stage}`,
+      {
+        queueName: `${famHelpDesk}-NotificationQueue-${stage}`,
+        visibilityTimeout: Duration.minutes(6), // Lambda timeout + buffer
+        retentionPeriod: Duration.days(4),
+        receiveMessageWaitTime: Duration.seconds(20), // Long polling
+        deadLetterQueue: {
+          queue: this.deadLetterQueue,
+          maxReceiveCount: 3, // Retry up to 3 times before sending to DLQ
+        },
       },
-    });
+    );
 
     // Create iOS Push Dead Letter Queue for failed push notifications
-    this.iosPushDeadLetterQueue = new sqs.Queue(this, `${famHelpDesk}-IosPushDLQ-${stage}`, {
-      queueName: `${famHelpDesk}-IosPushDLQ-${stage}`,
-      retentionPeriod: Duration.days(14), // Keep failed messages for 14 days
-      visibilityTimeout: Duration.minutes(6), // Lambda timeout + buffer
-    });
+    this.iosPushDeadLetterQueue = new sqs.Queue(
+      this,
+      `${famHelpDesk}-IosPushDLQ-${stage}`,
+      {
+        queueName: `${famHelpDesk}-IosPushDLQ-${stage}`,
+        retentionPeriod: Duration.days(14), // Keep failed messages for 14 days
+        visibilityTimeout: Duration.minutes(6), // Lambda timeout + buffer
+      },
+    );
 
     // Create iOS Push SQS Queue for iOS push notification delivery
-    this.iosPushQueue = new sqs.Queue(this, `${famHelpDesk}-IosPushQueue-${stage}`, {
-      queueName: `${famHelpDesk}-IosPushQueue-${stage}`,
-      visibilityTimeout: Duration.minutes(5), // Allow time for APNs calls with retries
-      retentionPeriod: Duration.days(4), // Keep messages for 4 days
-      receiveMessageWaitTime: Duration.seconds(20), // Long polling
-      deadLetterQueue: {
-        queue: this.iosPushDeadLetterQueue,
-        maxReceiveCount: 3, // Retry up to 3 times before sending to DLQ
+    this.iosPushQueue = new sqs.Queue(
+      this,
+      `${famHelpDesk}-IosPushQueue-${stage}`,
+      {
+        queueName: `${famHelpDesk}-IosPushQueue-${stage}`,
+        visibilityTimeout: Duration.minutes(5), // Allow time for APNs calls with retries
+        retentionPeriod: Duration.days(4), // Keep messages for 4 days
+        receiveMessageWaitTime: Duration.seconds(20), // Long polling
+        deadLetterQueue: {
+          queue: this.iosPushDeadLetterQueue,
+          maxReceiveCount: 3, // Retry up to 3 times before sending to DLQ
+        },
       },
-    });
+    );
 
     // Create SNS topic for notification events
-    this.notificationTopic = new sns.Topic(this, `${famHelpDesk}-NotificationTopic-${stage}`, {
-      topicName: `${famHelpDesk}-NotificationTopic-${stage}`,
-      displayName: `${famHelpDesk} Notification Events - ${stage}`,
-    });
+    this.notificationTopic = new sns.Topic(
+      this,
+      `${famHelpDesk}-NotificationTopic-${stage}`,
+      {
+        topicName: `${famHelpDesk}-NotificationTopic-${stage}`,
+        displayName: `${famHelpDesk} Notification Events - ${stage}`,
+      },
+    );
 
     // Create Lambda function to process notifications
-    this.notificationProcessor = new lambda.Function(this, `${famHelpDesk}-NotificationProcessor-${stage}`, {
-      functionName: `${famHelpDesk}-NotificationProcessor-${stage}`,
-      runtime: lambda.Runtime.PYTHON_3_11,
-      handler: "notification_processor.lambda_handler",
-      code: lambda.Code.fromAsset("../FamHelpDeskBackend"),
-      timeout: Duration.minutes(5),
-      memorySize: 256,
-      layers: [layer],
-      reservedConcurrentExecutions: 10,
-      tracing: lambda.Tracing.ACTIVE,
-      environment: {
-        STAGE: stage,
-        TABLE_NAME: userTable.tableName,
-        APNS_KEY_ID: appleNotificationKeys.key_id,
-        APNS_TEAM_ID: appleNotificationKeys.team_id,
-        APNS_BUNDLE_ID: appleNotificationKeys.bundle_id,
-        APNS_CREDENTIALS_KEY: `notifications-${stage.toLowerCase()}`,
+    this.notificationProcessor = new lambda.Function(
+      this,
+      `${famHelpDesk}-NotificationProcessor-${stage}`,
+      {
+        functionName: `${famHelpDesk}-NotificationProcessor-${stage}`,
+        runtime: lambda.Runtime.PYTHON_3_11,
+        handler: "notification_processor.lambda_handler",
+        code: lambda.Code.fromAsset("../FamHelpDeskBackend"),
+        timeout: Duration.minutes(5),
+        memorySize: 256,
+        layers: [layer],
+        reservedConcurrentExecutions: 10,
+        tracing: lambda.Tracing.ACTIVE,
+        environment: {
+          STAGE: stage,
+          TABLE_NAME: userTable.tableName,
+          APNS_KEY_ID: appleNotificationKeys.key_id,
+          APNS_TEAM_ID: appleNotificationKeys.team_id,
+          APNS_BUNDLE_ID: appleNotificationKeys.bundle_id,
+          APNS_CREDENTIALS_KEY: `notifications-${stage.toLowerCase()}`,
+        },
       },
-    });
+    );
 
     this.notificationProcessor.role?.addManagedPolicy(
       iam.ManagedPolicy.fromAwsManagedPolicyName("AWSXRayDaemonWriteAccess"),
@@ -132,14 +165,17 @@ export class NotificationStack extends Stack {
         effect: iam.Effect.ALLOW,
         actions: ["secretsmanager:GetSecretValue"],
         resources: [apnsSecretArn],
-      })
+      }),
     );
 
     // Grant iOS Push Queue send message permissions to notification processor
     this.iosPushQueue.grantSendMessages(this.notificationProcessor);
 
     // Add iOS Push Queue URL to notification processor environment
-    this.notificationProcessor.addEnvironment('IOS_PUSH_NOTIFICATION_QUEUE_URL', this.iosPushQueue.queueUrl);
+    this.notificationProcessor.addEnvironment(
+      "IOS_PUSH_NOTIFICATION_QUEUE_URL",
+      this.iosPushQueue.queueUrl,
+    );
 
     // NEW: Add SQS event source to Lambda with batch processing
     this.notificationProcessor.addEventSource(
@@ -147,30 +183,34 @@ export class NotificationStack extends Stack {
         batchSize: 10, // Process up to 10 messages per invocation
         maxBatchingWindow: Duration.seconds(5), // Wait up to 5 seconds to fill batch
         reportBatchItemFailures: true, // Enable partial batch failure reporting
-      })
+      }),
     );
 
     // Create iOS Push Processor Lambda
-    this.iosPushProcessor = new lambda.Function(this, `${famHelpDesk}-IosPushProcessor-${stage}`, {
-      functionName: `${famHelpDesk}-IosPushProcessor-${stage}`,
-      runtime: lambda.Runtime.PYTHON_3_11,
-      handler: "ios_push_processor.lambda_handler",
-      code: lambda.Code.fromAsset("../FamHelpDeskBackend"),
-      timeout: Duration.minutes(5), // Allow time for APNs retries
-      memorySize: 512, // Increased memory for APNs processing
-      layers: [layer],
-      reservedConcurrentExecutions: 10,
-      tracing: lambda.Tracing.ACTIVE,
-      environment: {
-        STAGE: stage,
-        TABLE_NAME: userTable.tableName,
-        IOS_PUSH_QUEUE_URL: this.iosPushQueue.queueUrl,
-        APNS_KEY_ID: appleNotificationKeys.key_id,
-        APNS_TEAM_ID: appleNotificationKeys.team_id,
-        APNS_BUNDLE_ID: appleNotificationKeys.bundle_id,
-        APNS_CREDENTIALS_KEY: `notifications-${stage.toLowerCase()}`,
+    this.iosPushProcessor = new lambda.Function(
+      this,
+      `${famHelpDesk}-IosPushProcessor-${stage}`,
+      {
+        functionName: `${famHelpDesk}-IosPushProcessor-${stage}`,
+        runtime: lambda.Runtime.PYTHON_3_11,
+        handler: "ios_push_processor.lambda_handler",
+        code: lambda.Code.fromAsset("../FamHelpDeskBackend"),
+        timeout: Duration.minutes(5), // Allow time for APNs retries
+        memorySize: 512, // Increased memory for APNs processing
+        layers: [layer],
+        reservedConcurrentExecutions: 10,
+        tracing: lambda.Tracing.ACTIVE,
+        environment: {
+          STAGE: stage,
+          TABLE_NAME: userTable.tableName,
+          IOS_PUSH_QUEUE_URL: this.iosPushQueue.queueUrl,
+          APNS_KEY_ID: appleNotificationKeys.key_id,
+          APNS_TEAM_ID: appleNotificationKeys.team_id,
+          APNS_BUNDLE_ID: appleNotificationKeys.bundle_id,
+          APNS_CREDENTIALS_KEY: `notifications-${stage.toLowerCase()}`,
+        },
       },
-    });
+    );
 
     // Grant X-Ray permissions to iOS Push Processor
     this.iosPushProcessor.role?.addManagedPolicy(
@@ -186,7 +226,7 @@ export class NotificationStack extends Stack {
         effect: iam.Effect.ALLOW,
         actions: ["secretsmanager:GetSecretValue"],
         resources: [apnsSecretArn],
-      })
+      }),
     );
 
     // Grant CloudWatch Logs permissions (automatically granted by CDK)
@@ -194,11 +234,9 @@ export class NotificationStack extends Stack {
     this.iosPushProcessor.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: [
-          "cloudwatch:PutMetricData",
-        ],
+        actions: ["cloudwatch:PutMetricData"],
         resources: ["*"],
-      })
+      }),
     );
 
     // Wire iOS Push Processor Lambda to ios-push-queue as event source
@@ -207,7 +245,7 @@ export class NotificationStack extends Stack {
         batchSize: 10, // Process up to 10 messages per invocation
         maxBatchingWindow: Duration.seconds(5), // Wait up to 5 seconds to fill batch
         reportBatchItemFailures: true, // Enable partial batch failure reporting
-      })
+      }),
     );
 
     // Add monitoring and alarms
@@ -218,7 +256,7 @@ export class NotificationStack extends Stack {
       this.iosPushDeadLetterQueue,
       this.notificationProcessor,
       escalationEmail,
-      escalationNumber
+      escalationNumber,
     );
 
     // Store reference to alarm topic for external access
@@ -228,7 +266,7 @@ export class NotificationStack extends Stack {
     this.notificationTopic.addSubscription(
       new snsSubscriptions.LambdaSubscription(this.notificationProcessor, {
         deadLetterQueue: this.deadLetterQueue,
-      })
+      }),
     );
 
     // Export the topic ARN for use by other stacks

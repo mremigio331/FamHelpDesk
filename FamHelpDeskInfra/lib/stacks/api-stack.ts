@@ -31,6 +31,7 @@ interface ApiStackProps extends StackProps {
   escalationNumber: string;
   notificationQueueUrl: string;
   userDeleteLambdaArn: string;
+  famgrabPhotosBucketName?: string;
 }
 
 export class ApiStack extends Stack {
@@ -55,12 +56,14 @@ export class ApiStack extends Stack {
       escalationEmail,
       escalationNumber,
       notificationQueueUrl,
-      userDeleteLambdaArn
+      userDeleteLambdaArn,
     } = props;
 
     // Validate that notification queue URL is provided
     if (!notificationQueueUrl) {
-      throw new Error(`NotificationQueueUrl is required for ApiStack in stage ${stage}`);
+      throw new Error(
+        `NotificationQueueUrl is required for ApiStack in stage ${stage}`,
+      );
     }
 
     const apiGwLogsRole = new iam.Role(
@@ -142,7 +145,10 @@ export class ApiStack extends Stack {
           STAGE: stage.toLowerCase(),
           API_DOMAIN_NAME: apiDomainName,
           NOTIFICATION_QUEUE_URL: notificationQueueUrl,
-          USER_DELETE_LAMBDA: userDeleteLambdaArn
+          USER_DELETE_LAMBDA: userDeleteLambdaArn,
+          FAMGRAB_PHOTOS_BUCKET: props.famgrabPhotosBucketName || "",
+          ESCALATION_EMAIL: escalationEmail,
+          SENDER_EMAIL: "noreply@famhelpdesk.com",
         },
       },
     );
@@ -172,6 +178,41 @@ export class ApiStack extends Stack {
         effect: iam.Effect.ALLOW,
         actions: ["lambda:InvokeFunction"],
         resources: [userDeleteLambdaArn],
+      }),
+    );
+
+    // FamGrab photos bucket permissions
+    // FamGrab photos bucket permissions
+    if (props.famgrabPhotosBucketName) {
+      famHelpDeskApi.addToRolePolicy(
+        new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions: [
+            "s3:PutObject",
+            "s3:GetObject",
+            "s3:DeleteObject",
+            "s3:CopyObject",
+          ],
+          resources: [`arn:aws:s3:::${props.famgrabPhotosBucketName}/*`],
+        }),
+      );
+    }
+
+    // Rekognition permissions for content moderation
+    famHelpDeskApi.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["rekognition:DetectModerationLabels"],
+        resources: ["*"],
+      }),
+    );
+
+    // SES permissions for escalation emails
+    famHelpDeskApi.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["ses:SendEmail"],
+        resources: ["*"],
       }),
     );
 
@@ -300,7 +341,13 @@ export class ApiStack extends Stack {
     );
 
     // Add API monitoring
-    this.apiMetrics = addApiMonitoring(this, this.api, stage, escalationEmail, escalationNumber);
+    this.apiMetrics = addApiMonitoring(
+      this,
+      this.api,
+      stage,
+      escalationEmail,
+      escalationNumber,
+    );
 
     // DNS Configuration - Combined from ApiDnsStack
     const hostedZone = route53.HostedZone.fromHostedZoneAttributes(

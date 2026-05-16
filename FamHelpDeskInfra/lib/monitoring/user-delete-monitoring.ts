@@ -15,13 +15,17 @@ export function addUserDeleteMonitoring(
   stage: string,
   deadLetterQueue: sqs.Queue,
   userDeleteLambda: lambda.Function,
-  escalationEmail: string
+  escalationEmail: string,
 ) {
   // Create SNS Topic for alarm notifications
-  const alarmTopic = new sns.Topic(scope, `${famHelpDesk}-UserDeleteAlarmTopic-${stage}`, {
-    topicName: `${famHelpDesk}-UserDeleteAlarmTopic-${stage}`,
-    displayName: `${famHelpDesk} User Delete Alarm Topic (${stage})`,
-  });
+  const alarmTopic = new sns.Topic(
+    scope,
+    `${famHelpDesk}-UserDeleteAlarmTopic-${stage}`,
+    {
+      topicName: `${famHelpDesk}-UserDeleteAlarmTopic-${stage}`,
+      displayName: `${famHelpDesk} User Delete Alarm Topic (${stage})`,
+    },
+  );
 
   // Add email subscription for alerts
   alarmTopic.addSubscription(new subs.EmailSubscription(escalationEmail));
@@ -38,13 +42,17 @@ export function addUserDeleteMonitoring(
   });
 
   // Create alarm for DLQ messages > 1
-  const dlqAlarm = new cloudwatch.Alarm(scope, `${famHelpDesk}-UserDeleteDLQAlarm-${stage}-${scope.node.addr}`, {
-    alarmName: `${famHelpDesk}-UserDeleteDLQAlarm-${stage}-${scope.node.addr}`,
-    metric: dlqMessageCountMetric,
-    threshold: 1,
-    evaluationPeriods: 1,
-    alarmDescription: `${famHelpDesk} User Delete DLQ Alarm (${stage}): Alert when messages are in the dead letter queue`,
-  });
+  const dlqAlarm = new cloudwatch.Alarm(
+    scope,
+    `${famHelpDesk}-UserDeleteDLQAlarm-${stage}-${scope.node.addr}`,
+    {
+      alarmName: `${famHelpDesk}-UserDeleteDLQAlarm-${stage}-${scope.node.addr}`,
+      metric: dlqMessageCountMetric,
+      threshold: 1,
+      evaluationPeriods: 1,
+      alarmDescription: `${famHelpDesk} User Delete DLQ Alarm (${stage}): Alert when messages are in the dead letter queue`,
+    },
+  );
 
   // Add alarm actions
   dlqAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alarmTopic));

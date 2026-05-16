@@ -9,6 +9,7 @@ import { WebsiteStack } from "../lib/stacks/website-stack";
 import { DashboardStack } from "../lib/stacks/dashboard-stack";
 import { RumStack } from "../lib/stacks/rum-stack";
 import { ResourceDeleteStack } from "../lib/stacks/resource-delete-stack";
+import { FamGrabStack } from "../lib/stacks/famgrab-stack";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -20,7 +21,7 @@ async function getEnvConfig() {
     !!process.env.CODEPIPELINE_EXECUTION_ID ||
     !!process.env.CODEDEPLOY_DEPLOYMENT_ID ||
     !!process.env.USE_SECRETS_MANAGER;
-  
+
   try {
     if (isCICD) {
       // Expect a single environment variable CDK_ENV_CONFIG containing the JSON config
@@ -34,20 +35,20 @@ async function getEnvConfig() {
       // Local fallback
       const envFilePath = path.resolve(__dirname, "../cdk.env.json");
       console.log(`[CDK ENV DETECT] Using local env file: ${envFilePath}`);
-      
+
       if (!fs.existsSync(envFilePath)) {
         throw new Error(
-          `Environment configuration file not found: ${envFilePath}. Please ensure cdk.env.json exists.`
+          `Environment configuration file not found: ${envFilePath}. Please ensure cdk.env.json exists.`,
         );
       }
-      
+
       const envFileContent = fs.readFileSync(envFilePath, "utf-8");
       return JSON.parse(envFileContent);
     }
   } catch (error) {
     if (error instanceof SyntaxError) {
       throw new Error(
-        `Invalid JSON in environment configuration: ${error.message}`
+        `Invalid JSON in environment configuration: ${error.message}`,
       );
     }
     throw error;
@@ -73,12 +74,21 @@ async function main() {
       escalationNumber,
       googleOathKeys,
       appleOauthKeys,
-      appleNotificationKeys
+      appleNotificationKeys,
     } = config;
 
     const databaseStack = new DatabaseStack(
       app,
       `${famHelpDesk}-DatabaseStack-${stage}`,
+      {
+        env: awsEnv,
+        stage,
+      },
+    );
+
+    const famgrabStack = new FamGrabStack(
+      app,
+      `${famHelpDesk}-FamGrabStack-${stage}`,
       {
         env: awsEnv,
         stage,
@@ -110,7 +120,9 @@ async function main() {
         escalationNumber,
         googleOathKeys,
         appleOauthKeys,
-        notificationQueueUrl: cdk.Fn.importValue(`${famHelpDesk}-NotificationQueueUrl-${stage}`),
+        notificationQueueUrl: cdk.Fn.importValue(
+          `${famHelpDesk}-NotificationQueueUrl-${stage}`,
+        ),
       },
     );
 
@@ -122,11 +134,11 @@ async function main() {
         stage,
         escalationEmail,
         escalationNumber,
-        senderEmail: "noreply@famhelpdesk.com", 
+        senderEmail: "noreply@famhelpdesk.com",
         cognitoUserPoolId: cognitoStack.userPool.userPoolId,
         userTable: databaseStack.table,
         notificationQueue: notificationStack.notificationQueue,
-      }
+      },
     );
 
     const apiStack = new ApiStack(app, `${famHelpDesk}-ApiStack-${stage}`, {
@@ -142,19 +154,22 @@ async function main() {
       userTable: databaseStack.table,
       escalationEmail: escalationEmail,
       escalationNumber: escalationNumber,
-      notificationQueueUrl: cdk.Fn.importValue(`${famHelpDesk}-NotificationQueueUrl-${stage}`),
+      notificationQueueUrl: cdk.Fn.importValue(
+        `${famHelpDesk}-NotificationQueueUrl-${stage}`,
+      ),
       userDeleteLambdaArn: resourceDeleteStack.userDeleteLambdaArn,
+      famgrabPhotosBucketName: famgrabStack.photosBucket.bucketName,
     });
 
     // Grant the API Lambda permission to send messages to the notification queue (NEW - SQS)
     notificationStack.grantSendMessages(apiStack.lambdaFunction);
-    
+
     // Grant the API Lambda permission to publish to the notification topic (OLD - SNS, keep during migration)
     notificationStack.grantPublishToTopic(apiStack.lambdaFunction);
-    
+
     // Grant the Cognito Lambda permission to send messages to the notification queue (NEW - SQS)
     notificationStack.grantSendMessages(cognitoStack.userEventLoggerFunction);
-    
+
     // Grant the Cognito Lambda permission to publish to the notification topic (OLD - SNS, keep during migration)
     notificationStack.grantPublishToTopic(cognitoStack.userEventLoggerFunction);
 
@@ -174,6 +189,12 @@ async function main() {
       apiMetrics: apiStack.apiMetrics,
       cognitoMetrics: cognitoStack.cognitoMetrics,
       notificationMetrics: notificationStack.notificationMetrics,
+      apiLambda: apiStack.lambdaFunction,
+      notificationProcessor: notificationStack.notificationProcessor,
+      iosPushProcessor: notificationStack.iosPushProcessor,
+      cognitoLambda: cognitoStack.userEventLoggerFunction,
+      userDeleteLambda: resourceDeleteStack.userDeleteLambda,
+      familyDeleteLambda: resourceDeleteStack.familyDeleteLambda,
     });
   }
 }

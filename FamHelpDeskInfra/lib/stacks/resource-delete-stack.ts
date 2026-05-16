@@ -31,36 +31,58 @@ export class ResourceDeleteStack extends Stack {
   constructor(scope: Construct, id: string, props: ResourceDeleteStackProps) {
     super(scope, id, props);
 
-    const { stage, escalationEmail, escalationNumber, senderEmail, cognitoUserPoolId, userTable, notificationQueue } = props;
+    const {
+      stage,
+      escalationEmail,
+      escalationNumber,
+      senderEmail,
+      cognitoUserPoolId,
+      userTable,
+      notificationQueue,
+    } = props;
 
     // Create SNS topic for admin notifications (separate from user notifications)
-    const adminNotificationTopic = new sns.Topic(this, `FamHelpDesk-UserDeleteNotificationTopic-${stage}`, {
-      topicName: `FamHelpDesk-UserDeleteNotificationTopic-${stage}`,
-      displayName: `FamHelpDesk User Deletion Admin Notifications - ${stage}`,
-    });
+    const adminNotificationTopic = new sns.Topic(
+      this,
+      `FamHelpDesk-UserDeleteNotificationTopic-${stage}`,
+      {
+        topicName: `FamHelpDesk-UserDeleteNotificationTopic-${stage}`,
+        displayName: `FamHelpDesk User Deletion Admin Notifications - ${stage}`,
+      },
+    );
 
     // Subscribe email and phone number to the admin notification topic
-    adminNotificationTopic.addSubscription(new snsSubscriptions.EmailSubscription(escalationEmail));
-    adminNotificationTopic.addSubscription(new snsSubscriptions.SmsSubscription(escalationNumber));
+    adminNotificationTopic.addSubscription(
+      new snsSubscriptions.EmailSubscription(escalationEmail),
+    );
+    adminNotificationTopic.addSubscription(
+      new snsSubscriptions.SmsSubscription(escalationNumber),
+    );
 
     // Update Lambda function name
-    this.userDeleteLambda = new lambda.Function(this, `FamHelpDesk-UserDeleteLambda-${stage}`, {
-      functionName: `FamHelpDesk-UserDeleteLambda-${stage}`,
-      runtime: lambda.Runtime.PYTHON_3_11,
-      handler: "lambdas.user_delete_lambda.lambda_handler",
-      code: lambda.Code.fromAsset(path.join(__dirname, "../../../FamHelpDeskBackend")),
-      timeout: Duration.minutes(15),
-      memorySize: 256,
-      environment: {
-        STAGE: stage,
-        NOTIFICATION_TOPIC_ARN: adminNotificationTopic.topicArn, // Admin notifications via SNS
-        NOTIFICATION_QUEUE_URL: notificationQueue.queueUrl, // User notifications via SQS
-        SENDER_EMAIL: senderEmail,
-        COGNITO_REGION: this.region,
-        COGNITO_USER_POOL_ID: cognitoUserPoolId,
-        TABLE_NAME: userTable.tableName,
+    this.userDeleteLambda = new lambda.Function(
+      this,
+      `FamHelpDesk-UserDeleteLambda-${stage}`,
+      {
+        functionName: `FamHelpDesk-UserDeleteLambda-${stage}`,
+        runtime: lambda.Runtime.PYTHON_3_11,
+        handler: "lambdas.user_delete_lambda.lambda_handler",
+        code: lambda.Code.fromAsset(
+          path.join(__dirname, "../../../FamHelpDeskBackend"),
+        ),
+        timeout: Duration.minutes(15),
+        memorySize: 256,
+        environment: {
+          STAGE: stage,
+          NOTIFICATION_TOPIC_ARN: adminNotificationTopic.topicArn, // Admin notifications via SNS
+          NOTIFICATION_QUEUE_URL: notificationQueue.queueUrl, // User notifications via SQS
+          SENDER_EMAIL: senderEmail,
+          COGNITO_REGION: this.region,
+          COGNITO_USER_POOL_ID: cognitoUserPoolId,
+          TABLE_NAME: userTable.tableName,
+        },
       },
-    });
+    );
 
     // Export the Lambda ARN for other stacks to reference
     this.userDeleteLambdaArn = this.userDeleteLambda.functionArn;
@@ -70,7 +92,7 @@ export class ResourceDeleteStack extends Stack {
       new iam.PolicyStatement({
         actions: ["ses:SendEmail", "ses:SendRawEmail"],
         resources: ["*"], // Adjust to specific SES resources if needed
-      })
+      }),
     );
 
     // Grant permissions to the Cognito User Pool
@@ -78,9 +100,9 @@ export class ResourceDeleteStack extends Stack {
       new iam.PolicyStatement({
         actions: ["cognito-idp:AdminDeleteUser"],
         resources: [
-          `arn:aws:cognito-idp:${this.region}:${this.account}:userpool/${cognitoUserPoolId}` // Grant access to the specific Cognito User Pool
+          `arn:aws:cognito-idp:${this.region}:${this.account}:userpool/${cognitoUserPoolId}`, // Grant access to the specific Cognito User Pool
         ],
-      })
+      }),
     );
 
     // Grant permissions to publish to the admin SNS topic
@@ -97,38 +119,48 @@ export class ResourceDeleteStack extends Stack {
     this.userDeleteLambda.addLayers(pythonLayer);
 
     // Add monitoring for the user delete Lambda (error alarm only, no DLQ)
-    this.addUserDeleteMonitoring(
-      stage,
-      this.userDeleteLambda,
-      escalationEmail
-    );
+    this.addUserDeleteMonitoring(stage, this.userDeleteLambda, escalationEmail);
 
     // ===== Family Delete Lambda =====
-    
+
     // Create SNS topic for Family Delete notifications
-    const familyDeleteNotificationTopic = new sns.Topic(this, `FamHelpDesk-FamilyDeleteNotificationTopic-${stage}`, {
-      topicName: `FamHelpDesk-FamilyDeleteNotificationTopic-${stage}`,
-      displayName: `FamHelpDesk Family Deletion Admin Notifications - ${stage}`,
-    });
+    const familyDeleteNotificationTopic = new sns.Topic(
+      this,
+      `FamHelpDesk-FamilyDeleteNotificationTopic-${stage}`,
+      {
+        topicName: `FamHelpDesk-FamilyDeleteNotificationTopic-${stage}`,
+        displayName: `FamHelpDesk Family Deletion Admin Notifications - ${stage}`,
+      },
+    );
 
     // Subscribe email and phone number to the family delete notification topic
-    familyDeleteNotificationTopic.addSubscription(new snsSubscriptions.EmailSubscription(escalationEmail));
-    familyDeleteNotificationTopic.addSubscription(new snsSubscriptions.SmsSubscription(escalationNumber));
+    familyDeleteNotificationTopic.addSubscription(
+      new snsSubscriptions.EmailSubscription(escalationEmail),
+    );
+    familyDeleteNotificationTopic.addSubscription(
+      new snsSubscriptions.SmsSubscription(escalationNumber),
+    );
 
     // Create Family Delete Lambda
-    this.familyDeleteLambda = new lambda.Function(this, `FamHelpDesk-FamilyDeleteLambda-${stage}`, {
-      functionName: `FamHelpDesk-FamilyDeleteLambda-${stage}`,
-      runtime: lambda.Runtime.PYTHON_3_11,
-      handler: "lambdas.family_delete_lambda.lambda_handler",
-      code: lambda.Code.fromAsset(path.join(__dirname, "../../../FamHelpDeskBackend")),
-      timeout: Duration.minutes(10),
-      memorySize: 512,
-      environment: {
-        STAGE: stage,
-        TABLE_NAME: userTable.tableName,
-        NOTIFICATION_TOPIC_ARN: familyDeleteNotificationTopic.topicArn,
+    this.familyDeleteLambda = new lambda.Function(
+      this,
+      `FamHelpDesk-FamilyDeleteLambda-${stage}`,
+      {
+        functionName: `FamHelpDesk-FamilyDeleteLambda-${stage}`,
+        runtime: lambda.Runtime.PYTHON_3_11,
+        handler: "lambdas.family_delete_lambda.lambda_handler",
+        code: lambda.Code.fromAsset(
+          path.join(__dirname, "../../../FamHelpDeskBackend"),
+        ),
+        timeout: Duration.minutes(10),
+        memorySize: 512,
+        environment: {
+          STAGE: stage,
+          TABLE_NAME: userTable.tableName,
+          NOTIFICATION_TOPIC_ARN: familyDeleteNotificationTopic.topicArn,
+        },
       },
-    });
+    );
 
     // Export the Family Delete Lambda ARN for other stacks to reference
     this.familyDeleteLambdaArn = this.familyDeleteLambda.functionArn;
@@ -142,9 +174,12 @@ export class ResourceDeleteStack extends Stack {
     // Grant CloudFormation read permissions (for getting exports)
     this.familyDeleteLambda.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ["cloudformation:ListExports", "cloudformation:DescribeStacks"],
+        actions: [
+          "cloudformation:ListExports",
+          "cloudformation:DescribeStacks",
+        ],
         resources: ["*"],
-      })
+      }),
     );
 
     // Use the shared Python Lambda Layer
@@ -154,23 +189,29 @@ export class ResourceDeleteStack extends Stack {
     this.addFamilyDeleteMonitoring(
       stage,
       this.familyDeleteLambda,
-      escalationEmail
+      escalationEmail,
     );
   }
 
   private addUserDeleteMonitoring(
     stage: string,
     userDeleteLambda: lambda.Function,
-    escalationEmail: string
+    escalationEmail: string,
   ) {
     // Create SNS Topic for alarm notifications
-    const alarmTopic = new sns.Topic(this, `FamHelpDesk-UserDeleteAlarmTopic-${stage}`, {
-      topicName: `FamHelpDesk-UserDeleteAlarmTopic-${stage}`,
-      displayName: `FamHelpDesk User Delete Alarm Topic (${stage})`,
-    });
+    const alarmTopic = new sns.Topic(
+      this,
+      `FamHelpDesk-UserDeleteAlarmTopic-${stage}`,
+      {
+        topicName: `FamHelpDesk-UserDeleteAlarmTopic-${stage}`,
+        displayName: `FamHelpDesk User Delete Alarm Topic (${stage})`,
+      },
+    );
 
     // Add email subscription for alerts
-    alarmTopic.addSubscription(new snsSubscriptions.EmailSubscription(escalationEmail));
+    alarmTopic.addSubscription(
+      new snsSubscriptions.EmailSubscription(escalationEmail),
+    );
 
     // Create alarm for Lambda errors > 0 in 5 minutes
     const errorMetric = userDeleteLambda.metricErrors({
@@ -178,14 +219,19 @@ export class ResourceDeleteStack extends Stack {
       statistic: "Sum",
     });
 
-    const errorAlarm = new cloudwatch.Alarm(this, `FamHelpDesk-UserDeleteLambdaErrorAlarm-${stage}`, {
-      alarmName: `FamHelpDesk-UserDeleteLambdaErrorAlarm-${stage}`,
-      metric: errorMetric,
-      threshold: 0,
-      evaluationPeriods: 1,
-      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-      alarmDescription: `FamHelpDesk User Delete Lambda Error Alarm (${stage}): Alert when Lambda errors occur`,
-    });
+    const errorAlarm = new cloudwatch.Alarm(
+      this,
+      `FamHelpDesk-UserDeleteLambdaErrorAlarm-${stage}`,
+      {
+        alarmName: `FamHelpDesk-UserDeleteLambdaErrorAlarm-${stage}`,
+        metric: errorMetric,
+        threshold: 0,
+        evaluationPeriods: 1,
+        comparisonOperator:
+          cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+        alarmDescription: `FamHelpDesk User Delete Lambda Error Alarm (${stage}): Alert when Lambda errors occur`,
+      },
+    );
 
     errorAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alarmTopic));
     errorAlarm.addOkAction(new cloudwatchActions.SnsAction(alarmTopic));
@@ -194,16 +240,22 @@ export class ResourceDeleteStack extends Stack {
   private addFamilyDeleteMonitoring(
     stage: string,
     familyDeleteLambda: lambda.Function,
-    escalationEmail: string
+    escalationEmail: string,
   ) {
     // Create SNS Topic for alarm notifications
-    const alarmTopic = new sns.Topic(this, `FamHelpDesk-FamilyDeleteAlarmTopic-${stage}`, {
-      topicName: `FamHelpDesk-FamilyDeleteAlarmTopic-${stage}`,
-      displayName: `FamHelpDesk Family Delete Alarm Topic (${stage})`,
-    });
+    const alarmTopic = new sns.Topic(
+      this,
+      `FamHelpDesk-FamilyDeleteAlarmTopic-${stage}`,
+      {
+        topicName: `FamHelpDesk-FamilyDeleteAlarmTopic-${stage}`,
+        displayName: `FamHelpDesk Family Delete Alarm Topic (${stage})`,
+      },
+    );
 
     // Add email subscription for alerts
-    alarmTopic.addSubscription(new snsSubscriptions.EmailSubscription(escalationEmail));
+    alarmTopic.addSubscription(
+      new snsSubscriptions.EmailSubscription(escalationEmail),
+    );
 
     // Create alarm for Lambda errors > 0 in 5 minutes
     const errorMetric = familyDeleteLambda.metricErrors({
@@ -211,14 +263,19 @@ export class ResourceDeleteStack extends Stack {
       statistic: "Sum",
     });
 
-    const errorAlarm = new cloudwatch.Alarm(this, `FamHelpDesk-FamilyDeleteLambdaErrorAlarm-${stage}`, {
-      alarmName: `FamHelpDesk-FamilyDeleteLambdaErrorAlarm-${stage}`,
-      metric: errorMetric,
-      threshold: 0,
-      evaluationPeriods: 1,
-      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-      alarmDescription: `FamHelpDesk Family Delete Lambda Error Alarm (${stage}): Alert when Lambda errors occur`,
-    });
+    const errorAlarm = new cloudwatch.Alarm(
+      this,
+      `FamHelpDesk-FamilyDeleteLambdaErrorAlarm-${stage}`,
+      {
+        alarmName: `FamHelpDesk-FamilyDeleteLambdaErrorAlarm-${stage}`,
+        metric: errorMetric,
+        threshold: 0,
+        evaluationPeriods: 1,
+        comparisonOperator:
+          cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+        alarmDescription: `FamHelpDesk Family Delete Lambda Error Alarm (${stage}): Alert when Lambda errors occur`,
+      },
+    );
 
     errorAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alarmTopic));
     errorAlarm.addOkAction(new cloudwatchActions.SnsAction(alarmTopic));
