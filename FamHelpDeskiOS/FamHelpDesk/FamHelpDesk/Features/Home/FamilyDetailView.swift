@@ -15,6 +15,12 @@ struct FamilyDetailView: View {
     @State private var showEditFamily = false
     @State private var navigationBarVisible = true
     @State private var currentFamilyId: String?
+    @State private var appMode: AppMode = .helpDesk
+
+    enum AppMode: String, CaseIterable {
+        case helpDesk = "Help Desk"
+        case famGrab = "FamGrab"
+    }
 
     enum Tab: String, CaseIterable {
         case overview = "Overview"
@@ -73,44 +79,59 @@ struct FamilyDetailView: View {
 
             // Family Content
             VStack(spacing: 0) {
-                // Tab Picker
-                Picker("Tab", selection: Binding(
-                    get: { selectedTab },
-                    set: { navigationContext.selectedFamilyTab = $0 }
-                )) {
-                    ForEach(availableTabs, id: \.self) { tab in
-                        Label(tab.rawValue, systemImage: tab.systemImage)
-                            .tag(tab)
+                // Top-level mode picker: Help Desk vs FamGrab
+                Picker("Mode", selection: $appMode) {
+                    ForEach(AppMode.allCases, id: \.self) { mode in
+                        Text(mode.rawValue).tag(mode)
                     }
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal)
                 .padding(.top, 8)
 
-                // Tab Content with Collapsible Scroll
-                CollapsibleScrollView(navigationBarVisible: $navigationBarVisible) {
-                    TabView(selection: Binding(
+                if appMode == .famGrab {
+                    // FamGrab mode
+                    FamGrabView(familyId: family.familyId)
+                } else {
+                    // Help Desk mode — show sub-tabs
+                    Picker("Tab", selection: Binding(
                         get: { selectedTab },
                         set: { navigationContext.selectedFamilyTab = $0 }
                     )) {
                         ForEach(availableTabs, id: \.self) { tab in
-                            Group {
-                                switch tab {
-                                case .overview:
-                                    overviewContent
-                                case .members:
-                                    FamilyMembersView(family: family)
-                                case .groups:
-                                    FamilyGroupsView(family: family)
-                                case .tickets:
-                                    TicketListView(familyId: family.familyId)
-                                }
-                            }
-                            .tag(tab)
+                            Label(tab.rawValue, systemImage: tab.systemImage)
+                                .tag(tab)
                         }
                     }
-                    .tabViewStyle(.page(indexDisplayMode: .never))
-                    .frame(minHeight: UIScreen.main.bounds.height - 200) // Ensure scrollable content
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+
+                    // Tab Content with Collapsible Scroll
+                    CollapsibleScrollView(navigationBarVisible: $navigationBarVisible) {
+                        TabView(selection: Binding(
+                            get: { selectedTab },
+                            set: { navigationContext.selectedFamilyTab = $0 }
+                        )) {
+                            ForEach(availableTabs, id: \.self) { tab in
+                                Group {
+                                    switch tab {
+                                    case .overview:
+                                        overviewContent
+                                    case .members:
+                                        FamilyMembersView(family: family)
+                                    case .groups:
+                                        FamilyGroupsView(family: family)
+                                    case .tickets:
+                                        TicketListView(familyId: family.familyId)
+                                    }
+                                }
+                                .tag(tab)
+                            }
+                        }
+                        .tabViewStyle(.page(indexDisplayMode: .never))
+                        .frame(minHeight: UIScreen.main.bounds.height - 200)
+                    }
                 }
             }
         }
@@ -162,7 +183,7 @@ struct FamilyDetailView: View {
     private var availableTabs: [Tab] {
         var tabs: [Tab] = [.overview]
 
-        // Only show members, groups, and tickets tabs if user is a member
+        // Only show members, groups, tickets tabs if user is a member
         if let familyItem, familyItem.membership.status == "MEMBER" {
             tabs.append(.members)
             tabs.append(.groups)

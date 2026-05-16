@@ -15,5 +15,9 @@
 	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>FamHelpDesk needs access to your photo library to attach delivery proof photos.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>FamHelpDesk needs access to your camera to take delivery proof photos.</string>
 </dict>
 </plist>
