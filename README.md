@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="Images/FamHelpDeskLightTransparent.png" alt="FamHelpDesk Logo" width="300">
+</p>
+
 # Fam Help Desk
 
 Fam Help Desk is a family-first help desk / ticketing system built as a learning project using a single-table DynamoDB design. This monorepo contains all components for the project:
