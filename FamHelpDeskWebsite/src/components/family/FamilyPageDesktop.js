@@ -17,6 +17,7 @@ import {
   UserOutlined,
   PlusCircleOutlined,
   ArrowLeftOutlined,
+  DashboardOutlined,
 } from "@ant-design/icons";
 import { useMyFamilies } from "../../provider/MyFamiliesProvider";
 import useFamilyPage from "./useFamilyPage";
@@ -142,6 +143,11 @@ const FamilyPageDesktop = () => {
       key: "groups",
       icon: <TeamOutlined />,
       label: "Groups",
+    },
+    {
+      key: "famgrab",
+      icon: <DashboardOutlined />,
+      label: "FamGrab",
     },
     {
       key: "members",
@@ -305,7 +311,13 @@ const FamilyPageDesktop = () => {
               mode="inline"
               selectedKeys={[activeSection]}
               items={menuItems}
-              onClick={({ key }) => handleSectionChange(key)}
+              onClick={({ key }) => {
+                if (key === "famgrab") {
+                  navigate(`/family/${familyId}/grab`);
+                } else {
+                  handleSectionChange(key);
+                }
+              }}
               style={{ border: "none" }}
             />
           </Sider>

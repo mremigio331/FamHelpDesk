@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { List, Typography, Space, Empty, Spin, Alert, Segmented } from "antd";
-import { UserOutlined, ClockCircleOutlined } from "@ant-design/icons";
+import { List, Typography, Space, Empty, Spin, Alert, Segmented, Button } from "antd";
+import { UserOutlined, ClockCircleOutlined, SettingOutlined } from "@ant-design/icons";
+import { useNavigate, useParams } from "react-router-dom";
 import useGetFamilyMembershipRequests from "../../../hooks/membership/useGetFamilyMembershipRequests";
 import useGetFamilyMembers from "../../../hooks/membership/useGetFamilyMembers";
 import useReviewMembershipRequest from "../../../hooks/membership/useReviewMembershipRequest";
@@ -15,6 +16,8 @@ const { Title } = Typography;
 
 const MembersMobile = ({ familyId, isAdmin }) => {
   const [activeTab, setActiveTab] = useState("members");
+  const navigate = useNavigate();
+  const { familyId: paramFamilyId } = useParams();
 
   const {
     requests,
@@ -133,6 +136,17 @@ const MembersMobile = ({ familyId, isAdmin }) => {
 
   return (
     <Space direction="vertical" size="medium" style={{ width: "100%" }}>
+      {isAdmin && (
+        <Button
+          type="primary"
+          icon={<SettingOutlined />}
+          onClick={() => navigate(`/family/${familyId || paramFamilyId}/manage-members`)}
+          block
+          size="small"
+        >
+          Manage Members
+        </Button>
+      )}
       <Segmented
         value={activeTab}
         onChange={setActiveTab}

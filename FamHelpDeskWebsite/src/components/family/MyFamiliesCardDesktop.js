@@ -15,7 +15,7 @@ const MyFamiliesCardDesktop = () => {
     return acc;
   }, {});
 
-  return (
+  const sortedFamilies = families.sort((a, b) =>
     <Card
       title={
         <Space>

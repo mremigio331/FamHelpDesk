@@ -8,6 +8,7 @@ import {
   UserOutlined,
   PlusCircleOutlined,
   ArrowLeftOutlined,
+  DashboardOutlined,
 } from "@ant-design/icons";
 import { useMyFamilies } from "../../provider/MyFamiliesProvider";
 import useFamilyPage from "./useFamilyPage";
@@ -214,6 +215,11 @@ const FamilyPageMobile = () => {
       label: "Groups",
     },
     {
+      key: "famgrab",
+      icon: <DashboardOutlined style={{ fontSize: "20px" }} />,
+      label: "FamGrab",
+    },
+    {
       key: "members",
       icon: <UserOutlined style={{ fontSize: "20px" }} />,
       label: "Members",
@@ -277,7 +283,13 @@ const FamilyPageMobile = () => {
         {navigationItems.map((item) => (
           <button
             key={item.key}
-            onClick={() => handleSectionChange(item.key)}
+            onClick={() => {
+              if (item.key === "famgrab") {
+                navigate(`/family/${familyId}/grab`);
+              } else {
+                handleSectionChange(item.key);
+              }
+            }}
             style={{
               flex: 1,
               display: "flex",

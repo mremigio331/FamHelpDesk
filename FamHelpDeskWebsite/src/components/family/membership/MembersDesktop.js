@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { Card, List, Typography, Space, Empty, Spin, Alert, Tabs } from "antd";
-import { UserOutlined, ClockCircleOutlined } from "@ant-design/icons";
+import { Card, List, Typography, Space, Empty, Spin, Alert, Tabs, Button } from "antd";
+import { UserOutlined, ClockCircleOutlined, SettingOutlined } from "@ant-design/icons";
+import { useNavigate, useParams } from "react-router-dom";
 import useGetFamilyMembershipRequests from "../../../hooks/membership/useGetFamilyMembershipRequests";
 import useGetFamilyMembers from "../../../hooks/membership/useGetFamilyMembers";
 import useReviewMembershipRequest from "../../../hooks/membership/useReviewMembershipRequest";
@@ -15,6 +16,8 @@ const { Title } = Typography;
 
 const MembersDesktop = ({ familyId, isAdmin }) => {
   const [activeTab, setActiveTab] = useState("members");
+  const navigate = useNavigate();
+  const { familyId: paramFamilyId } = useParams();
 
   const {
     requests,
@@ -44,7 +47,19 @@ const MembersDesktop = ({ familyId, isAdmin }) => {
   };
 
   return (
-    <Card>
+    <Card
+      extra={
+        isAdmin && (
+          <Button
+            type="primary"
+            icon={<SettingOutlined />}
+            onClick={() => navigate(`/family/${familyId || paramFamilyId}/manage-members`)}
+          >
+            Manage Members
+          </Button>
+        )
+      }
+    >
       <Tabs
         activeKey={activeTab}
         onChange={setActiveTab}
