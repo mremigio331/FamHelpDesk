@@ -96,30 +96,27 @@ const UserProfileMobile = ({
                 <Descriptions.Item label="Display Name">
                   {userProfile.display_name}
                 </Descriptions.Item>
-                <Descriptions.Item label="Nickname">
-                  {userProfile.nick_name}
-                </Descriptions.Item>
                 <Descriptions.Item label="Email">
                   {userProfile.email}
                 </Descriptions.Item>
                 <Descriptions.Item label="Profile Color">
-                  <span style={{ color: userProfile.profile_color }}>
-                    {userProfile.profile_color}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div
+                      style={{
+                        width: '12px',
+                        height: '12px',
+                        backgroundColor: userProfile.profile_color?.toLowerCase() || 'black',
+                        border: userProfile.profile_color === 'White' ? '1px solid #d9d9d9' : 'none',
+                        borderRadius: '2px',
+                      }}
+                    />
+                    <span style={{ fontSize: "12px" }}>
+                      {userProfile.profile_color || 'Black'}
+                    </span>
+                  </div>
                 </Descriptions.Item>
                 <Descriptions.Item label="Dark Mode">
-                  {userProfile.dark_mode &&
-                  typeof userProfile.dark_mode === "object" ? (
-                    <>
-                      <div>Web: {userProfile.dark_mode.web ? "On" : "Off"}</div>
-                      <div>
-                        Mobile: {userProfile.dark_mode.mobile ? "On" : "Off"}
-                      </div>
-                      <div>iOS: {userProfile.dark_mode.ios ? "On" : "Off"}</div>
-                    </>
-                  ) : (
-                    "Off"
-                  )}
+                  {userProfile.dark_mode ? "Enabled" : "Disabled"}
                 </Descriptions.Item>
               </Descriptions>
 

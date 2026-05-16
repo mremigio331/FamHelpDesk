@@ -4,8 +4,8 @@ import {
 } from "../constants/endpoints";
 
 // Based on iOS AuthConfig.swift
-const TESTING_USER_POOL_ID = "us-west-2_W25i7VzE6";
-const TESTING_CLIENT_ID = "5uiums06rgt6qkt8q7n48lj7js";
+const TESTING_USER_POOL_ID = "us-west-2_gGJC3MdJM";
+const TESTING_CLIENT_ID = "a6mdrnft8uqqcuddv95bma3hb";
 const TESTING_REGION = "us-west-2";
 const TESTING_COGNITO_DOMAIN = "famhelpdesk-testing";
 

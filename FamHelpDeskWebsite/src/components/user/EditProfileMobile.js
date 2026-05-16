@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Card, Form, Input, Button, Space, Typography, Alert } from "antd";
+import { Card, Form, Input, Button, Space, Typography, Alert, Select, Switch } from "antd";
 import {
   EditOutlined,
   ArrowLeftOutlined,
@@ -7,6 +7,22 @@ import {
 } from "@ant-design/icons";
 
 const { Title } = Typography;
+const { Option } = Select;
+
+const profileColorOptions = [
+  { value: "Black", label: "Black" },
+  { value: "White", label: "White" },
+  { value: "Red", label: "Red" },
+  { value: "Blue", label: "Blue" },
+  { value: "Green", label: "Green" },
+  { value: "Yellow", label: "Yellow" },
+  { value: "Orange", label: "Orange" },
+  { value: "Purple", label: "Purple" },
+  { value: "Pink", label: "Pink" },
+  { value: "Brown", label: "Brown" },
+  { value: "Gray", label: "Gray" },
+  { value: "Cyan", label: "Cyan" },
+];
 
 const EditProfileMobile = ({
   navigate,
@@ -22,11 +38,13 @@ const EditProfileMobile = ({
   const [successMessage, setSuccessMessage] = useState("");
 
   const handleSubmit = async (values) => {
+    console.log("Form submitted with values:", values);
     try {
       setSuccessMessage("");
       await updateProfileAsync({
         display_name: values.display_name,
-        nick_name: values.nick_name,
+        profile_color: values.profile_color,
+        dark_mode: values.dark_mode,
       });
       setSuccessMessage("Profile updated successfully!");
       setTimeout(() => {
@@ -92,7 +110,8 @@ const EditProfileMobile = ({
             onFinish={handleSubmit}
             initialValues={{
               display_name: userProfile?.display_name || "",
-              nick_name: userProfile?.nick_name || "",
+              profile_color: userProfile?.profile_color || "Black",
+              dark_mode: userProfile?.dark_mode || false,
             }}
             disabled={isUpdating}
           >
@@ -123,36 +142,52 @@ const EditProfileMobile = ({
             </Form.Item>
 
             <Form.Item
-              label={<span style={{ fontSize: "13px" }}>Nickname</span>}
-              name="nick_name"
+              label={<span style={{ fontSize: "13px" }}>Profile Color</span>}
+              name="profile_color"
               rules={[
                 {
                   required: true,
-                  message: "Please enter a nickname",
-                },
-                {
-                  min: 1,
-                  message: "Nickname must be at least 1 character",
-                },
-                {
-                  max: 50,
-                  message: "Nickname must be less than 50 characters",
+                  message: "Please select a profile color",
                 },
               ]}
             >
-              <Input
-                placeholder="Enter your nickname"
+              <Select
+                placeholder="Select your profile color"
                 size="middle"
-                maxLength={50}
                 style={{ fontSize: "13px" }}
-              />
+              >
+                {profileColorOptions.map((color) => (
+                  <Option key={color.value} value={color.value}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div
+                        style={{
+                          width: '12px',
+                          height: '12px',
+                          backgroundColor: color.value.toLowerCase(),
+                          border: color.value === 'White' ? '1px solid #d9d9d9' : 'none',
+                          borderRadius: '2px',
+                        }}
+                      />
+                      <span style={{ fontSize: "13px" }}>{color.label}</span>
+                    </div>
+                  </Option>
+                ))}
+              </Select>
             </Form.Item>
 
-            <Form.Item>
+            <Form.Item
+              label={<span style={{ fontSize: "13px" }}>Dark Mode</span>}
+              name="dark_mode"
+              valuePropName="checked"
+            >
+              <Switch size="small" />
+            </Form.Item>
+
+            <Form.Item style={{ marginTop: "24px" }}>
               <Space
                 direction="vertical"
                 style={{ width: "100%" }}
-                size="small"
+                size="middle"
               >
                 <Button
                   type="primary"
@@ -161,7 +196,11 @@ const EditProfileMobile = ({
                   loading={isUpdating}
                   size="middle"
                   block
-                  style={{ fontSize: "13px" }}
+                  style={{ 
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    height: "40px"
+                  }}
                 >
                   Save Changes
                 </Button>
@@ -170,7 +209,10 @@ const EditProfileMobile = ({
                   disabled={isUpdating}
                   size="middle"
                   block
-                  style={{ fontSize: "13px" }}
+                  style={{ 
+                    fontSize: "13px",
+                    height: "36px"
+                  }}
                 >
                   Cancel
                 </Button>

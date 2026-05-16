@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Card, Form, Input, Button, Space, Typography, Alert } from "antd";
+import { Card, Form, Input, Button, Space, Typography, Alert, Select, Switch } from "antd";
 import {
   EditOutlined,
   ArrowLeftOutlined,
@@ -7,6 +7,22 @@ import {
 } from "@ant-design/icons";
 
 const { Title } = Typography;
+const { Option } = Select;
+
+const profileColorOptions = [
+  { value: "Black", label: "Black" },
+  { value: "White", label: "White" },
+  { value: "Red", label: "Red" },
+  { value: "Blue", label: "Blue" },
+  { value: "Green", label: "Green" },
+  { value: "Yellow", label: "Yellow" },
+  { value: "Orange", label: "Orange" },
+  { value: "Purple", label: "Purple" },
+  { value: "Pink", label: "Pink" },
+  { value: "Brown", label: "Brown" },
+  { value: "Gray", label: "Gray" },
+  { value: "Cyan", label: "Cyan" },
+];
 
 const EditProfileDesktop = ({
   navigate,
@@ -22,11 +38,13 @@ const EditProfileDesktop = ({
   const [successMessage, setSuccessMessage] = useState("");
 
   const handleSubmit = async (values) => {
+    console.log("Form submitted with values:", values);
     try {
       setSuccessMessage("");
       await updateProfileAsync({
         display_name: values.display_name,
-        nick_name: values.nick_name,
+        profile_color: values.profile_color,
+        dark_mode: values.dark_mode,
       });
       setSuccessMessage("Profile updated successfully!");
       setTimeout(() => {
@@ -92,7 +110,8 @@ const EditProfileDesktop = ({
             onFinish={handleSubmit}
             initialValues={{
               display_name: userProfile?.display_name || "",
-              nick_name: userProfile?.nick_name || "",
+              profile_color: userProfile?.profile_color || "Black",
+              dark_mode: userProfile?.dark_mode || false,
             }}
             disabled={isUpdating}
           >
@@ -122,38 +141,58 @@ const EditProfileDesktop = ({
             </Form.Item>
 
             <Form.Item
-              label="Nickname"
-              name="nick_name"
+              label="Profile Color"
+              name="profile_color"
               rules={[
                 {
                   required: true,
-                  message: "Please enter a nickname",
-                },
-                {
-                  min: 1,
-                  message: "Nickname must be at least 1 character",
-                },
-                {
-                  max: 50,
-                  message: "Nickname must be less than 50 characters",
+                  message: "Please select a profile color",
                 },
               ]}
             >
-              <Input
-                placeholder="Enter your nickname"
+              <Select
+                placeholder="Select your profile color"
                 size="large"
-                maxLength={50}
-              />
+              >
+                {profileColorOptions.map((color) => (
+                  <Option key={color.value} value={color.value}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div
+                        style={{
+                          width: '16px',
+                          height: '16px',
+                          backgroundColor: color.value.toLowerCase(),
+                          border: color.value === 'White' ? '1px solid #d9d9d9' : 'none',
+                          borderRadius: '2px',
+                        }}
+                      />
+                      {color.label}
+                    </div>
+                  </Option>
+                ))}
+              </Select>
             </Form.Item>
 
-            <Form.Item>
-              <Space>
+            <Form.Item
+              label="Dark Mode"
+              name="dark_mode"
+              valuePropName="checked"
+            >
+              <Switch />
+            </Form.Item>
+
+            <Form.Item style={{ marginTop: "32px" }}>
+              <Space size="large">
                 <Button
                   type="primary"
                   htmlType="submit"
                   icon={<SaveOutlined />}
                   loading={isUpdating}
                   size="large"
+                  style={{ 
+                    minWidth: "140px",
+                    fontWeight: "600"
+                  }}
                 >
                   Save Changes
                 </Button>
@@ -161,6 +200,7 @@ const EditProfileDesktop = ({
                   onClick={() => navigate("/user/profile")}
                   disabled={isUpdating}
                   size="large"
+                  style={{ minWidth: "100px" }}
                 >
                   Cancel
                 </Button>
