@@ -10,8 +10,10 @@ struct GrabRequestDetailView: View {
     @State private var showCancelAlert = false
     @State private var showCompleteItemSheet = false
     @State private var showConfirmItemSheet = false
+    @State private var showItemDetail = false
     @State private var completingItem: GrabRequestItem?
     @State private var confirmingItem: GrabRequestItem?
+    @State private var selectedDetailItem: GrabRequestItem?
     @State private var isPerformingAction = false
     @State private var userSession = UserSession.shared
     @Environment(\.dismiss) private var dismiss
@@ -89,6 +91,16 @@ struct GrabRequestDetailView: View {
                     familyId: familyId,
                     request: request,
                     selectedItems: [item]
+                )
+            }
+        }
+        .sheet(isPresented: $showItemDetail) {
+            if let item = selectedDetailItem, let request {
+                ItemDetailSheet(
+                    viewModel: viewModel,
+                    familyId: familyId,
+                    requestId: request.requestId,
+                    item: item
                 )
             }
         }
@@ -172,6 +184,8 @@ struct GrabRequestDetailView: View {
 
     @ViewBuilder
     private func itemRow(_ item: GrabRequestItem) -> some View {
+        let isTappable = item.status == .completed || item.status == .confirmed
+
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
@@ -191,6 +205,12 @@ struct GrabRequestDetailView: View {
                     Text("×\(item.quantity)")
                         .font(.subheadline)
                         .fontWeight(.medium)
+                        .foregroundColor(.secondary)
+                }
+
+                if isTappable {
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
@@ -219,6 +239,13 @@ struct GrabRequestDetailView: View {
             itemActionButtons(item)
         }
         .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if isTappable {
+                selectedDetailItem = item
+                showItemDetail = true
+            }
+        }
     }
 
     @ViewBuilder

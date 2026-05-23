@@ -347,9 +347,9 @@ final class FamGrabViewModel {
         }
     }
 
-    func getPhotoUrl(familyId: String, requestId: String) async -> URL? {
+    func getPhotoUrl(familyId: String, requestId: String, itemId: String? = nil) async -> URL? {
         do {
-            let response = try await service.getPhotoUrl(familyId: familyId, requestId: requestId)
+            let response = try await service.getPhotoUrl(familyId: familyId, requestId: requestId, itemId: itemId)
             return URL(string: response.photoUrl)
         } catch {
             self.error = "Failed to get photo URL: \(error.localizedDescription)"

@@ -18,7 +18,7 @@ final class NavigationContext {
     var selectedGroup: FamilyGroup?
 
     /// Current tab selection in family detail view
-    var selectedFamilyTab: FamilyDetailView.Tab = .overview
+    var selectedFamilyTab: FamilyDetailView.Tab = .helpDesk
 
     /// Navigation history for back navigation
     private var navigationHistory: [NavigationItem] = []
@@ -64,7 +64,7 @@ final class NavigationContext {
     // MARK: - Navigation Methods
 
     /// Navigate to a specific family
-    func navigateToFamily(_ family: Family, tab: FamilyDetailView.Tab = .overview) {
+    func navigateToFamily(_ family: Family, tab: FamilyDetailView.Tab = .helpDesk) {
         selectedFamily = family
         selectedFamilyTab = tab
         navigationPath.append(family)
@@ -76,7 +76,7 @@ final class NavigationContext {
     /// Navigate to tickets for a specific family
     func navigateToTickets(_ family: Family) {
         selectedFamily = family
-        selectedFamilyTab = .tickets
+        selectedFamilyTab = .helpDesk
         navigationPath.append(family)
         addToHistory(.family(family))
         updateBreadcrumbs(with: "Family: \(family.familyName) - Tickets")
@@ -118,7 +118,7 @@ final class NavigationContext {
         navigationPath.removeLast(navigationPath.count)
         selectedFamily = nil
         selectedGroup = nil
-        selectedFamilyTab = .overview
+        selectedFamilyTab = .helpDesk
         navigationHistory.removeAll()
         navigationBreadcrumbs.removeAll()
         saveNavigationState()
@@ -268,14 +268,14 @@ final class NavigationContext {
     /// Navigate to tickets by family ID (for deep linking)
     @MainActor
     private func navigateToTicketsByFamilyId(_ familyId: String) async {
-        await navigateToFamilyById(familyId, tab: .tickets)
+        await navigateToFamilyById(familyId, tab: .helpDesk)
     }
 
     /// Navigate to group by ID (for deep linking)
     @MainActor
     private func navigateToGroupById(familyId: String, groupId: String) async {
         // First navigate to family
-        await navigateToFamilyById(familyId, tab: .groups)
+        await navigateToFamilyById(familyId, tab: .helpDesk)
 
         // Try to find group in cache first
         let groupSession = GroupSession.shared
@@ -495,7 +495,7 @@ final class NavigationContext {
         // If no family found in history, clear family context
         if !navigationHistory.contains(where: { if case .family = $0 { return true }; return false }) {
             selectedFamily = nil
-            selectedFamilyTab = .overview
+            selectedFamilyTab = .helpDesk
         }
 
         // If no group found in history, clear group context
@@ -603,8 +603,8 @@ enum DeepLink {
                 return nil
             }
 
-            let tabString = queryItems.first(where: { $0.name == "tab" })?.value ?? "overview"
-            let tab = FamilyDetailView.Tab(rawValue: tabString) ?? .overview
+            let tabString = queryItems.first(where: { $0.name == "tab" })?.value ?? "Help Desk"
+            let tab = FamilyDetailView.Tab(rawValue: tabString) ?? .helpDesk
 
             return .family(familyId, tab)
 

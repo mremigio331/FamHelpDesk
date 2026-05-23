@@ -79,7 +79,7 @@ final class NavigationCoordinator: ObservableObject {
         }
 
         // Navigate to family tickets tab first
-        await navigateToFamilyById(familyId, tab: .tickets)
+        await navigateToFamilyById(familyId, tab: .helpDesk)
 
         // TODO: Once ticket detail view is accessible, navigate to specific ticket
         // For now, just navigate to tickets list
@@ -94,7 +94,7 @@ final class NavigationCoordinator: ObservableObject {
             return
         }
 
-        await navigateToFamilyById(familyId, tab: .tickets)
+        await navigateToFamilyById(familyId, tab: .helpDesk)
         print("🎫 [NavigationCoordinator] Navigated to tickets for family: \(familyId)")
     }
 
@@ -108,8 +108,8 @@ final class NavigationCoordinator: ObservableObject {
             return
         }
 
-        // First navigate to family groups tab
-        await navigateToFamilyById(familyId, tab: .groups)
+        // First navigate to family help desk tab
+        await navigateToFamilyById(familyId, tab: .helpDesk)
 
         // Then navigate to specific group
         let groupSession = GroupSession.shared
@@ -142,7 +142,7 @@ final class NavigationCoordinator: ObservableObject {
             return
         }
 
-        await navigateToFamilyById(familyId, tab: .overview)
+        await navigateToFamilyById(familyId, tab: .settings)
         print("👨‍👩‍👧‍👦 [NavigationCoordinator] Navigated to family: \(familyId)")
     }
 

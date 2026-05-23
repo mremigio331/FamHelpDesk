@@ -15,29 +15,43 @@ struct FamilyDetailView: View {
     @State private var showEditFamily = false
     @State private var navigationBarVisible = true
     @State private var currentFamilyId: String?
-    @State private var appMode: AppMode = .helpDesk
-
-    enum AppMode: String, CaseIterable {
-        case helpDesk = "Help Desk"
-        case famGrab = "FamGrab"
-    }
 
     enum Tab: String, CaseIterable {
-        case overview = "Overview"
-        case members = "Members"
+        case helpDesk = "Help Desk"
+        case grab = "Grab"
+        case settings = "Settings"
+
+        var systemImage: String {
+            switch self {
+            case .helpDesk: "ticket"
+            case .grab: "bag.fill"
+            case .settings: "gearshape"
+            }
+        }
+    }
+
+    /// Sub-tabs within the Help Desk tab
+    enum HelpDeskTab: String, CaseIterable {
         case groups = "Groups"
         case tickets = "Tickets"
 
         var systemImage: String {
             switch self {
-            case .overview:
-                "info.circle"
-            case .members:
-                "person.2"
-            case .groups:
-                "rectangle.3.group"
-            case .tickets:
-                "ticket"
+            case .groups: "rectangle.3.group"
+            case .tickets: "ticket"
+            }
+        }
+    }
+
+    /// Sub-tabs within the Family Settings tab
+    enum SettingsTab: String, CaseIterable {
+        case overview = "Overview"
+        case members = "Members"
+
+        var systemImage: String {
+            switch self {
+            case .overview: "info.circle"
+            case .members: "person.2"
             }
         }
     }
@@ -59,6 +73,9 @@ struct FamilyDetailView: View {
         set { navigationContext.selectedFamilyTab = newValue }
     }
 
+    @State private var selectedHelpDeskTab: HelpDeskTab = .tickets
+    @State private var selectedSettingsTab: SettingsTab = .overview
+
     var body: some View {
         VStack(spacing: 0) {
             // Collapsible Navigation Bar
@@ -79,59 +96,28 @@ struct FamilyDetailView: View {
 
             // Family Content
             VStack(spacing: 0) {
-                // Top-level mode picker: Help Desk vs FamGrab
-                Picker("Mode", selection: $appMode) {
-                    ForEach(AppMode.allCases, id: \.self) { mode in
-                        Text(mode.rawValue).tag(mode)
+                // Top-level 3-tab picker
+                Picker("Tab", selection: Binding(
+                    get: { selectedTab },
+                    set: { navigationContext.selectedFamilyTab = $0 }
+                )) {
+                    ForEach(availableTabs, id: \.self) { tab in
+                        Label(tab.rawValue, systemImage: tab.systemImage)
+                            .tag(tab)
                     }
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal)
                 .padding(.top, 8)
 
-                if appMode == .famGrab {
-                    // FamGrab mode
+                // Tab content
+                switch selectedTab {
+                case .helpDesk:
+                    helpDeskContent
+                case .grab:
                     FamGrabView(familyId: family.familyId)
-                } else {
-                    // Help Desk mode — show sub-tabs
-                    Picker("Tab", selection: Binding(
-                        get: { selectedTab },
-                        set: { navigationContext.selectedFamilyTab = $0 }
-                    )) {
-                        ForEach(availableTabs, id: \.self) { tab in
-                            Label(tab.rawValue, systemImage: tab.systemImage)
-                                .tag(tab)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-
-                    // Tab Content with Collapsible Scroll
-                    CollapsibleScrollView(navigationBarVisible: $navigationBarVisible) {
-                        TabView(selection: Binding(
-                            get: { selectedTab },
-                            set: { navigationContext.selectedFamilyTab = $0 }
-                        )) {
-                            ForEach(availableTabs, id: \.self) { tab in
-                                Group {
-                                    switch tab {
-                                    case .overview:
-                                        overviewContent
-                                    case .members:
-                                        FamilyMembersView(family: family)
-                                    case .groups:
-                                        FamilyGroupsView(family: family)
-                                    case .tickets:
-                                        TicketListView(familyId: family.familyId)
-                                    }
-                                }
-                                .tag(tab)
-                            }
-                        }
-                        .tabViewStyle(.page(indexDisplayMode: .never))
-                        .frame(minHeight: UIScreen.main.bounds.height - 200)
-                    }
+                case .settings:
+                    settingsContent
                 }
             }
         }
@@ -158,7 +144,6 @@ struct FamilyDetailView: View {
             TicketFormView(
                 mode: .create(familyId: family.familyId),
                 onSuccess: { newTicket in
-                    // Ticket created successfully - could refresh ticket list if needed
                     print("✅ Created ticket: \(newTicket.ticketId)")
                 }
             )
@@ -167,31 +152,92 @@ struct FamilyDetailView: View {
             EditFamilyView(family: family)
         }
         .onAppear {
-            // Preload all family data when view appears
             Task {
                 await preloadFamilyData()
             }
         }
         .onChange(of: family.familyId) { oldValue, newValue in
-            // Clear and reload data when family changes
             Task {
                 await handleFamilyChange(from: oldValue, to: newValue)
             }
         }
     }
 
+    // MARK: - Available Tabs
+
     private var availableTabs: [Tab] {
-        var tabs: [Tab] = [.overview]
-
-        // Only show members, groups, tickets tabs if user is a member
         if let familyItem, familyItem.membership.status == "MEMBER" {
-            tabs.append(.members)
-            tabs.append(.groups)
-            tabs.append(.tickets)
+            return Tab.allCases
         }
-
-        return tabs
+        // Non-members only see Settings (overview)
+        return [.settings]
     }
+
+    // MARK: - Help Desk Content
+
+    @ViewBuilder
+    private var helpDeskContent: some View {
+        VStack(spacing: 0) {
+            // Sub-tab picker for Help Desk
+            Picker("Help Desk Tab", selection: $selectedHelpDeskTab) {
+                ForEach(HelpDeskTab.allCases, id: \.self) { tab in
+                    Label(tab.rawValue, systemImage: tab.systemImage)
+                        .tag(tab)
+                }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+            .padding(.top, 8)
+
+            // Help Desk tab content
+            CollapsibleScrollView(navigationBarVisible: $navigationBarVisible) {
+                TabView(selection: $selectedHelpDeskTab) {
+                    FamilyGroupsView(family: family)
+                        .tag(HelpDeskTab.groups)
+
+                    TicketListView(familyId: family.familyId)
+                        .tag(HelpDeskTab.tickets)
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .frame(minHeight: UIScreen.main.bounds.height - 200)
+            }
+        }
+    }
+
+    // MARK: - Settings Content
+
+    @ViewBuilder
+    private var settingsContent: some View {
+        VStack(spacing: 0) {
+            // Sub-tab picker for Settings (only show if member)
+            if let familyItem, familyItem.membership.status == "MEMBER" {
+                Picker("Settings Tab", selection: $selectedSettingsTab) {
+                    ForEach(SettingsTab.allCases, id: \.self) { tab in
+                        Label(tab.rawValue, systemImage: tab.systemImage)
+                            .tag(tab)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+                .padding(.top, 8)
+            }
+
+            // Settings tab content
+            CollapsibleScrollView(navigationBarVisible: $navigationBarVisible) {
+                TabView(selection: $selectedSettingsTab) {
+                    overviewContent
+                        .tag(SettingsTab.overview)
+
+                    FamilyMembersView(family: family)
+                        .tag(SettingsTab.members)
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .frame(minHeight: UIScreen.main.bounds.height - 200)
+            }
+        }
+    }
+
+    // MARK: - Overview Content
 
     private var overviewContent: some View {
         VStack(spacing: 0) {
@@ -235,7 +281,6 @@ struct FamilyDetailView: View {
             List {
                 Section {
                     if let item = familyItem {
-                        // User has some relationship with this family
                         HStack {
                             Text("Your Status")
                                 .foregroundColor(.secondary)
@@ -275,7 +320,6 @@ struct FamilyDetailView: View {
                         }
 
                         if item.membership.status != "MEMBER" {
-                            // Show message about limited access
                             VStack(alignment: .leading, spacing: 8) {
                                 Divider()
                                 HStack(spacing: 8) {
@@ -292,7 +336,6 @@ struct FamilyDetailView: View {
                             }
                         }
                     } else {
-                        // User is not a member and hasn't requested membership
                         HStack {
                             Text("Your Status")
                                 .foregroundColor(.secondary)
@@ -349,6 +392,19 @@ struct FamilyDetailView: View {
                 }
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
 
+                // Notification Settings (only for members)
+                if let item = familyItem, item.membership.status == "MEMBER" {
+                    Section("Notifications") {
+                        NavigationLink(destination: FamilyNotificationSettingsView(
+                            familyId: family.familyId,
+                            familyName: family.familyName
+                        )) {
+                            Label("Notification Settings", systemImage: "bell.badge")
+                        }
+                    }
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                }
+
                 // Severity Levels Guide Section
                 Section("Severity Levels Guide") {
                     VStack(alignment: .leading, spacing: 12) {
@@ -379,25 +435,9 @@ struct FamilyDetailView: View {
                 }
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
 
-                // Family Settings Section (only for members)
-                if let item = familyItem, item.membership.status == "MEMBER" {
-                    Section("Family Settings") {
-                        NavigationLink(destination: FamilyNotificationSettingsView(
-                            familyId: family.familyId,
-                            familyName: family.familyName
-                        )) {
-                            Label("Notification Settings", systemImage: "bell.badge")
-                        }
-                    }
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                }
-
-                // Add some extra content to make scrolling more apparent
-                Section("Additional Information") {
+                // Additional Information
+                Section("About This Family") {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Family Management")
-                            .font(.headline)
-
                         Text("This family provides a centralized way to organize and manage help desk tickets. Members can create groups, manage queues, and collaborate on resolving issues.")
                             .font(.body)
                             .foregroundColor(.secondary)
@@ -428,8 +468,9 @@ struct FamilyDetailView: View {
         }
     }
 
+    // MARK: - Helpers
+
     private func refreshFamilyData() async {
-        // Refresh family session to update membership status
         await familySession.refresh()
     }
 
@@ -447,48 +488,37 @@ struct FamilyDetailView: View {
 
     // MARK: - Data Preloading
 
-    /// Handles family context change by clearing old data and loading new data
     @MainActor
     private func handleFamilyChange(from oldFamilyId: String?, to newFamilyId: String) async {
         guard oldFamilyId != newFamilyId else { return }
 
         print("🔄 Family changed from \(oldFamilyId ?? "nil") to \(newFamilyId)")
 
-        // Clear old family data
         if let oldId = oldFamilyId {
             membershipSession.clearFamilyData(familyId: oldId)
             print("🧹 Cleared data for old family: \(oldId)")
         }
 
-        // Clear ticket session completely since it tracks current family
         ticketSession.clearData()
-
-        // Load new family data
         await preloadFamilyData()
     }
 
-    /// Preloads all family data (members, groups, tickets) when family is selected
-    /// This ensures data is ready when users navigate to different tabs
     @MainActor
     private func preloadFamilyData() async {
         print("🚀 Preloading data for family: \(family.familyId)")
 
-        // Track current family
         currentFamilyId = family.familyId
 
-        // Only preload if user is a member
         guard let familyItem, familyItem.membership.status == "MEMBER" else {
             print("⏭️ Skipping preload - user is not a member")
             return
         }
 
-        // Preload all data concurrently
         async let membersTask: () = preloadMembers()
         async let groupsTask: () = preloadGroups()
         async let ticketsTask: () = preloadTickets()
         async let notificationsTask: () = preloadNotifications()
 
-        // Wait for all tasks to complete
         _ = await (membersTask, groupsTask, ticketsTask, notificationsTask)
 
         print("✅ Preload complete for family: \(family.familyId)")
@@ -512,7 +542,6 @@ struct FamilyDetailView: View {
 
     @MainActor
     private func preloadTickets() async {
-        // Load tickets with default filters (open tickets)
         await ticketSession.loadTickets(
             familyId: family.familyId,
             filters: TicketFilters(statuses: [.open]),

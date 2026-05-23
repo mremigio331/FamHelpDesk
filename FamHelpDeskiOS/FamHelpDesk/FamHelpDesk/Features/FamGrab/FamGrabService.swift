@@ -169,9 +169,13 @@ final class FamGrabService {
     }
 
     /// Get a presigned URL to view the delivery photo
-    func getPhotoUrl(familyId: String, requestId: String) async throws -> PhotoUrlResponse {
+    func getPhotoUrl(familyId: String, requestId: String, itemId: String? = nil) async throws -> PhotoUrlResponse {
+        var endpoint = "/family/\(familyId)/grab/requests/\(requestId)/photo"
+        if let itemId {
+            endpoint += "?item_id=\(itemId)"
+        }
         let response: PhotoUrlResponse = try await networkManager.get(
-            endpoint: "/family/\(familyId)/grab/requests/\(requestId)/photo"
+            endpoint: endpoint
         )
         return response
     }

@@ -11,8 +11,8 @@ struct ConfirmDeliveryView: View {
     @State private var itemRatings: [String: Int] = [:]
     @State private var itemComments: [String: String] = [:]
     @State private var isConfirming = false
-    @State private var photoUrl: URL?
-    @State private var isLoadingPhoto = false
+    @State private var itemPhotoUrls: [String: URL] = [:]
+    @State private var isLoadingPhotos = false
     @Environment(\.dismiss) private var dismiss
 
     private var totalCost: Double {
@@ -86,7 +86,7 @@ struct ConfirmDeliveryView: View {
                 }
             }
             .task {
-                await loadDeliveryPhoto()
+                await loadDeliveryPhotos()
             }
         }
     }
@@ -95,45 +95,55 @@ struct ConfirmDeliveryView: View {
 
     @ViewBuilder
     private var deliveryPhotoSection: some View {
-        let hasPhoto = selectedItems.contains(where: { $0.proofPhotoKey != nil })
-        if hasPhoto {
+        let itemsWithPhotos = selectedItems.filter { $0.proofPhotoKey != nil }
+        if !itemsWithPhotos.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Delivery Photo")
+                Text("Delivery Photos")
                     .font(.subheadline)
                     .fontWeight(.medium)
 
-                if isLoadingPhoto {
+                if isLoadingPhotos {
                     HStack {
                         Spacer()
                         ProgressView()
                         Spacer()
                     }
                     .frame(height: 180)
-                } else if let photoUrl {
-                    AsyncImage(url: photoUrl) { phase in
-                        switch phase {
-                        case let .success(image):
-                            image
-                                .resizable()
-                                .scaledToFit()
-                                .frame(maxHeight: 220)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                        case .failure:
-                            Label("Failed to load photo", systemImage: "exclamationmark.triangle")
+                } else {
+                    ForEach(itemsWithPhotos) { item in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(item.name)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                        case .empty:
-                            ProgressView()
-                                .frame(height: 180)
-                        @unknown default:
-                            EmptyView()
+
+                            if let photoUrl = itemPhotoUrls[item.itemId] {
+                                AsyncImage(url: photoUrl) { phase in
+                                    switch phase {
+                                    case let .success(image):
+                                        image
+                                            .resizable()
+                                            .scaledToFit()
+                                            .frame(maxHeight: 220)
+                                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    case .failure:
+                                        Label("Failed to load photo", systemImage: "exclamationmark.triangle")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    case .empty:
+                                        ProgressView()
+                                            .frame(height: 180)
+                                    @unknown default:
+                                        EmptyView()
+                                    }
+                                }
+                                .frame(maxWidth: .infinity)
+                            } else {
+                                Label("Photo unavailable", systemImage: "photo")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                     }
-                    .frame(maxWidth: .infinity)
-                } else {
-                    Label("Photo unavailable", systemImage: "photo")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
                 }
             }
             .padding()
@@ -380,14 +390,16 @@ struct ConfirmDeliveryView: View {
 
     // MARK: - Load Photo
 
-    private func loadDeliveryPhoto() async {
-        // Load the delivery photo if any item has a proof_photo_key
-        guard selectedItems.contains(where: { $0.proofPhotoKey != nil }) else { return }
-        isLoadingPhoto = true
-        if let url = await viewModel.getPhotoUrl(familyId: familyId, requestId: request.requestId) {
-            photoUrl = url
+    private func loadDeliveryPhotos() async {
+        let itemsWithPhotos = selectedItems.filter { $0.proofPhotoKey != nil }
+        guard !itemsWithPhotos.isEmpty else { return }
+        isLoadingPhotos = true
+        for item in itemsWithPhotos {
+            if let url = await viewModel.getPhotoUrl(familyId: familyId, requestId: request.requestId, itemId: item.itemId) {
+                itemPhotoUrls[item.itemId] = url
+            }
         }
-        isLoadingPhoto = false
+        isLoadingPhotos = false
     }
 
     // MARK: - Confirm Action
