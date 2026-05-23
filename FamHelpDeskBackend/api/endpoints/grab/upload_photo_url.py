@@ -63,6 +63,7 @@ def upload_photo_url(
         request_id=request_id,
         claimer_id=token_user_id,
         user_id=token_user_id,
+        item_id=body.item_id,
     )
 
     return JSONResponse(

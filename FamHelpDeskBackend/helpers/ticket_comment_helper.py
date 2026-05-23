@@ -66,7 +66,6 @@ class TicketCommentHelper:
             table_name=table_name,
             notification_queue_url=notification_queue_url,
         )
-        self.metrics = Metrics(namespace=API_METRICS_NAMESPACE)
 
     def create_comment(
         self,
@@ -198,11 +197,10 @@ class TicketCommentHelper:
         )
 
         # Emit TicketComment metric
-        self.metrics.add_dimension(name=FAMILY_ID_DIMENSION, value=family_id)
-        self.metrics.add_metric(
-            name=TICKET_COMMENT_METRIC, unit=MetricUnit.Count, value=1
-        )
-        self.metrics.flush_metrics()
+        metrics = Metrics(namespace=API_METRICS_NAMESPACE)
+        metrics.add_dimension(name=FAMILY_ID_DIMENSION, value=family_id)
+        metrics.add_metric(name=TICKET_COMMENT_METRIC, unit=MetricUnit.Count, value=1)
+        metrics.flush_metrics()
 
         # Return enriched comment data
         comment_dict = TicketCommentModel.clean_returned_comment(comment)

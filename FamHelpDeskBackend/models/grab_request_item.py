@@ -20,6 +20,7 @@ class GrabRequestItemModel(FamHelpDeskBaseModel):
     cancelled_by = UnicodeAttribute(null=True)
     proof_photo_key = UnicodeAttribute(null=True)
     photo_visibility = UnicodeAttribute(null=True)
+    photo_expires_at = NumberAttribute(null=True)
 
     @staticmethod
     def create_pk(family_id: str) -> str:
@@ -58,4 +59,6 @@ class GrabRequestItemModel(FamHelpDeskBaseModel):
             data["proof_photo_key"] = item.proof_photo_key
         if getattr(item, "photo_visibility", None) is not None:
             data["photo_visibility"] = item.photo_visibility
+        if getattr(item, "photo_expires_at", None) is not None:
+            data["photo_expires_at"] = int(item.photo_expires_at)
         return data

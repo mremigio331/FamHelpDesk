@@ -92,7 +92,6 @@ class GrabRequestHelper:
             table_name=table_name,
             notification_queue_url=notification_queue_url,
         )
-        self.metrics = Metrics(namespace=API_METRICS_NAMESPACE)
 
     def create_request(
         self,
@@ -172,11 +171,10 @@ class GrabRequestHelper:
         )
 
         # Emit OrderCreated metric
-        self.metrics.add_dimension(name=FAMILY_ID_DIMENSION, value=family_id)
-        self.metrics.add_metric(
-            name=ORDER_CREATED_METRIC, unit=MetricUnit.Count, value=1
-        )
-        self.metrics.flush_metrics()
+        metrics = Metrics(namespace=API_METRICS_NAMESPACE)
+        metrics.add_dimension(name=FAMILY_ID_DIMENSION, value=family_id)
+        metrics.add_metric(name=ORDER_CREATED_METRIC, unit=MetricUnit.Count, value=1)
+        metrics.flush_metrics()
 
         return {
             "request": GrabRequestModel.clean_returned_request(request),
@@ -343,16 +341,19 @@ class GrabRequestHelper:
 
         # Now modify items
         now = FamHelpDeskBaseModel.now_epoch()
+        one_week_seconds = 7 * 24 * 60 * 60
         completed_items = []
-        for item_id in item_ids:
+        for idx, item_id in enumerate(item_ids):
             item = item_map[item_id]
             item.status = "COMPLETED"
             item.completed_at = now
-            if proof_photo_key:
+            # Only apply the photo to the first item in the batch
+            if proof_photo_key and idx == 0:
                 item.proof_photo_key = proof_photo_key
                 item.photo_visibility = (
                     photo_visibility if photo_visibility else "private"
                 )
+                item.photo_expires_at = now + one_week_seconds
             else:
                 item.photo_visibility = None
             item.save()
@@ -580,11 +581,12 @@ class GrabRequestHelper:
             )
 
         # Emit ItemConfirmed metric
-        self.metrics.add_dimension(name=FAMILY_ID_DIMENSION, value=family_id)
-        self.metrics.add_metric(
+        metrics = Metrics(namespace=API_METRICS_NAMESPACE)
+        metrics.add_dimension(name=FAMILY_ID_DIMENSION, value=family_id)
+        metrics.add_metric(
             name=ITEM_CONFIRMED_METRIC, unit=MetricUnit.Count, value=len(item_ids)
         )
-        self.metrics.flush_metrics()
+        metrics.flush_metrics()
 
         # Check if all items are now confirmed — if so, mark the request as CONFIRMED
         all_items_after = [item_map[m.item_id] for m in item_models]
@@ -945,11 +947,10 @@ class GrabRequestHelper:
         )
 
         # Emit OrderConfirmed metric
-        self.metrics.add_dimension(name=FAMILY_ID_DIMENSION, value=family_id)
-        self.metrics.add_metric(
-            name=ORDER_CONFIRMED_METRIC, unit=MetricUnit.Count, value=1
-        )
-        self.metrics.flush_metrics()
+        metrics = Metrics(namespace=API_METRICS_NAMESPACE)
+        metrics.add_dimension(name=FAMILY_ID_DIMENSION, value=family_id)
+        metrics.add_metric(name=ORDER_CONFIRMED_METRIC, unit=MetricUnit.Count, value=1)
+        metrics.flush_metrics()
 
         result = {"request": GrabRequestModel.clean_returned_request(request)}
 

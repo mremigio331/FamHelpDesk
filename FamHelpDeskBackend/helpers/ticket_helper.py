@@ -60,7 +60,6 @@ class TicketHelper:
             table_name=table_name,
             notification_queue_url=notification_queue_url,
         )
-        self.metrics = Metrics(namespace=API_METRICS_NAMESPACE)
 
     def update_last_update(self, family_id: str, ticket_id: str) -> bool:
         """
@@ -190,11 +189,10 @@ class TicketHelper:
         )
 
         # Emit TicketCreated metric
-        self.metrics.add_dimension(name=FAMILY_ID_DIMENSION, value=family_id)
-        self.metrics.add_metric(
-            name=TICKET_CREATED_METRIC, unit=MetricUnit.Count, value=1
-        )
-        self.metrics.flush_metrics()
+        metrics = Metrics(namespace=API_METRICS_NAMESPACE)
+        metrics.add_dimension(name=FAMILY_ID_DIMENSION, value=family_id)
+        metrics.add_metric(name=TICKET_CREATED_METRIC, unit=MetricUnit.Count, value=1)
+        metrics.flush_metrics()
 
         return ticket
 
@@ -433,11 +431,12 @@ class TicketHelper:
             )
 
             # Emit TicketStatusChanged metric
-            self.metrics.add_dimension(name=FAMILY_ID_DIMENSION, value=family_id)
-            self.metrics.add_metric(
+            metrics = Metrics(namespace=API_METRICS_NAMESPACE)
+            metrics.add_dimension(name=FAMILY_ID_DIMENSION, value=family_id)
+            metrics.add_metric(
                 name=TICKET_STATUS_CHANGED_METRIC, unit=MetricUnit.Count, value=1
             )
-            self.metrics.flush_metrics()
+            metrics.flush_metrics()
 
             # Send specific TICKET_RESOLVED notification when ticket is resolved
             if ticket.status == TicketStatus.RESOLVED.value:
@@ -452,11 +451,12 @@ class TicketHelper:
                 )
 
                 # Emit TicketResolved metric
-                self.metrics.add_dimension(name=FAMILY_ID_DIMENSION, value=family_id)
-                self.metrics.add_metric(
+                metrics = Metrics(namespace=API_METRICS_NAMESPACE)
+                metrics.add_dimension(name=FAMILY_ID_DIMENSION, value=family_id)
+                metrics.add_metric(
                     name=TICKET_RESOLVED_METRIC, unit=MetricUnit.Count, value=1
                 )
-                self.metrics.flush_metrics()
+                metrics.flush_metrics()
 
         self.logger.info(f"Updated ticket {ticket_id} for family {family_id}")
 

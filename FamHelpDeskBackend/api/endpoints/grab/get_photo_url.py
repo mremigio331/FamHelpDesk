@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Request
+import time
+from typing import Optional
+
+from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse
 from aws_lambda_powertools import Logger
 
@@ -23,10 +26,18 @@ router = APIRouter()
     response_description="Presigned GET URL for the delivery photo",
 )
 @exceptions_decorator
-def get_photo_url(request: Request, family_id: str, request_id: str):
+def get_photo_url(
+    request: Request,
+    family_id: str,
+    request_id: str,
+    item_id: Optional[str] = Query(
+        None, description="Specific item ID to get photo for"
+    ),
+):
     logger.append_keys(request_id=request.state.request_id)
     logger.info(
-        f"Generating view URL for Grab Request {request_id} in family {family_id}."
+        f"Generating view URL for Grab Request {request_id} in family {family_id}"
+        f"{f' item {item_id}' if item_id else ''}."
     )
 
     token_user_id = getattr(request.state, "user_token", None)
@@ -79,13 +90,35 @@ def get_photo_url(request: Request, family_id: str, request_id: str):
             "Only the requestor, claimer, or a family admin can view the delivery photo"
         )
 
-    # Find the photo key from items (first item with a proof_photo_key)
+    # Find the photo key — either for a specific item or the first available
     photo_key = None
-    for item in items:
-        key = item.get("proof_photo_key")
-        if key:
-            photo_key = key
-            break
+    now = int(time.time())
+
+    if item_id:
+        # Look for the specific item's photo
+        for item in items:
+            if item.get("item_id") == item_id:
+                key = item.get("proof_photo_key")
+                if key:
+                    # Check if photo has expired
+                    expires_at = item.get("photo_expires_at")
+                    if expires_at and now > expires_at:
+                        raise NoPhotoAvailableException(
+                            f"Delivery photo for item {item_id} has expired"
+                        )
+                    photo_key = key
+                break
+    else:
+        # Fall back to first item with a proof_photo_key
+        for item in items:
+            key = item.get("proof_photo_key")
+            if key:
+                # Check if photo has expired
+                expires_at = item.get("photo_expires_at")
+                if expires_at and now > expires_at:
+                    continue
+                photo_key = key
+                break
 
     # Fall back to request-level photo key
     if not photo_key:
@@ -94,6 +127,7 @@ def get_photo_url(request: Request, family_id: str, request_id: str):
     if not photo_key:
         raise NoPhotoAvailableException(
             f"No delivery photo available for request {request_id}"
+            + (f" item {item_id}" if item_id else "")
         )
 
     # Generate presigned view URL directly (we've already done auth)

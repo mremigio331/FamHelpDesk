@@ -41,6 +41,7 @@ class GrabPhotoHelper:
         request_id: str,
         claimer_id: str,
         user_id: str,
+        item_id: Optional[str] = None,
     ) -> dict:
         """
         Generate a presigned PUT URL for uploading a delivery proof photo.
@@ -52,6 +53,7 @@ class GrabPhotoHelper:
             request_id: The grab request ID
             claimer_id: The claimer of the request
             user_id: The user requesting the upload URL
+            item_id: Optional item ID to include in the S3 key for per-item photos
 
         Returns:
             dict with "upload_url" and "s3_key"
@@ -65,7 +67,10 @@ class GrabPhotoHelper:
             )
 
         photo_id = FamHelpDeskBaseModel.generate_random_id()
-        s3_key = f"{family_id}/{request_id}/{photo_id}.jpg"
+        if item_id:
+            s3_key = f"{family_id}/{request_id}/{item_id}/{photo_id}.jpg"
+        else:
+            s3_key = f"{family_id}/{request_id}/{photo_id}.jpg"
 
         url = self.s3_client.generate_presigned_url(
             "put_object",
