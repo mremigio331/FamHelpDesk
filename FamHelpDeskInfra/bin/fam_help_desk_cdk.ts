@@ -7,7 +7,6 @@ import { NotificationStack } from "../lib/stacks/notification-stack";
 import { ApiStack } from "../lib/stacks/api-stack";
 import { WebsiteStack } from "../lib/stacks/website-stack";
 import { DashboardStack } from "../lib/stacks/dashboard-stack";
-import { RumStack } from "../lib/stacks/rum-stack";
 import { ResourceDeleteStack } from "../lib/stacks/resource-delete-stack";
 import { FamGrabStack } from "../lib/stacks/famgrab-stack";
 import * as fs from "fs";

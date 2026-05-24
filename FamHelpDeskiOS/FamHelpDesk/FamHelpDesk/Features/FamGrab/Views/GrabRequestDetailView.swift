@@ -33,6 +33,11 @@ struct GrabRequestDetailView: View {
         return request.requestorId.id == currentUserId
     }
 
+    private var isClaimer: Bool {
+        guard let request else { return false }
+        return request.claimerId?.id == currentUserId
+    }
+
     var body: some View {
         Group {
             if let request {
@@ -380,52 +385,60 @@ struct GrabRequestDetailView: View {
                 }
 
             case .claimed:
-                Button {
-                    showDeliveryPhoto = true
-                } label: {
-                    Label("Complete with Photo", systemImage: "camera.fill")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(isPerformingAction)
+                if isClaimer {
+                    Button {
+                        showDeliveryPhoto = true
+                    } label: {
+                        Label("Complete with Photo", systemImage: "camera.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(isPerformingAction)
 
-                Button {
-                    Task { await performComplete(photoKey: nil) }
-                } label: {
-                    Label("Complete without Photo", systemImage: "checkmark.circle")
-                        .frame(maxWidth: .infinity)
+                    Button {
+                        Task { await performComplete(photoKey: nil) }
+                    } label: {
+                        Label("Complete without Photo", systemImage: "checkmark.circle")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(isPerformingAction)
                 }
-                .buttonStyle(.bordered)
-                .disabled(isPerformingAction)
 
-                Button(role: .destructive) {
-                    showCancelAlert = true
-                } label: {
-                    Label("Cancel Request", systemImage: "xmark.circle")
-                        .frame(maxWidth: .infinity)
+                if isRequestor {
+                    Button(role: .destructive) {
+                        showCancelAlert = true
+                    } label: {
+                        Label("Cancel Request", systemImage: "xmark.circle")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
                 }
-                .buttonStyle(.bordered)
 
             case .completed:
-                Button(role: .destructive) {
-                    showCancelAlert = true
-                } label: {
-                    Label("Cancel Request", systemImage: "xmark.circle")
-                        .frame(maxWidth: .infinity)
+                if isRequestor {
+                    Button(role: .destructive) {
+                        showCancelAlert = true
+                    } label: {
+                        Label("Cancel Request", systemImage: "xmark.circle")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
                 }
-                .buttonStyle(.bordered)
 
             case .confirmed, .cancelled:
                 EmptyView()
 
             case .partiallyClaimed, .partiallyCompleted:
-                Button(role: .destructive) {
-                    showCancelAlert = true
-                } label: {
-                    Label("Cancel Request", systemImage: "xmark.circle")
-                        .frame(maxWidth: .infinity)
+                if isRequestor {
+                    Button(role: .destructive) {
+                        showCancelAlert = true
+                    } label: {
+                        Label("Cancel Request", systemImage: "xmark.circle")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
                 }
-                .buttonStyle(.bordered)
             }
         }
         .padding(.top, 8)
