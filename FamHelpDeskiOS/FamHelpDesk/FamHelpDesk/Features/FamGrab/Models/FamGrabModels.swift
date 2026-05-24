@@ -130,6 +130,7 @@ struct GrabRequestItem: Codable, Identifiable {
     let cancelledAt: TimeInterval?
     let cancelledBy: EntityRefResponse?
     let proofPhotoKey: String?
+    let pickupPhotoKey: String?
 
     var id: String { itemId }
 
@@ -149,6 +150,7 @@ struct GrabRequestItem: Codable, Identifiable {
         case cancelledAt = "cancelled_at"
         case cancelledBy = "cancelled_by"
         case proofPhotoKey = "proof_photo_key"
+        case pickupPhotoKey = "pickup_photo_key"
     }
 }
 
@@ -371,4 +373,20 @@ struct PhotoUrlResponse: Codable {
     }
 
     var photoUrl: String { viewUrl }
+}
+
+struct SavePickupPhotoBody: Codable {
+    let itemId: String
+    let s3Key: String
+    let photoVisibility: String?
+
+    enum CodingKeys: String, CodingKey {
+        case itemId = "item_id"
+        case s3Key = "s3_key"
+        case photoVisibility = "photo_visibility"
+    }
+}
+
+struct SavePickupPhotoResponse: Codable {
+    let item: GrabRequestItem
 }

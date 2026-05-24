@@ -11,9 +11,11 @@ struct GrabRequestDetailView: View {
     @State private var showCompleteItemSheet = false
     @State private var showConfirmItemSheet = false
     @State private var showItemDetail = false
+    @State private var showPickupPhotoSheet = false
     @State private var completingItem: GrabRequestItem?
     @State private var confirmingItem: GrabRequestItem?
     @State private var selectedDetailItem: GrabRequestItem?
+    @State private var pickupPhotoItem: GrabRequestItem?
     @State private var isPerformingAction = false
     @State private var userSession = UserSession.shared
     @Environment(\.dismiss) private var dismiss
@@ -104,6 +106,16 @@ struct GrabRequestDetailView: View {
                 )
             }
         }
+        .sheet(isPresented: $showPickupPhotoSheet) {
+            if let item = pickupPhotoItem, let request {
+                PickupPhotoSheet(
+                    viewModel: viewModel,
+                    familyId: familyId,
+                    requestId: request.requestId,
+                    item: item
+                )
+            }
+        }
         .alert("Cancel Request", isPresented: $showCancelAlert) {
             Button("Cancel Request", role: .destructive) {
                 Task {
@@ -184,7 +196,7 @@ struct GrabRequestDetailView: View {
 
     @ViewBuilder
     private func itemRow(_ item: GrabRequestItem) -> some View {
-        let isTappable = item.status == .completed || item.status == .confirmed
+        let isTappable = item.status == .completed || item.status == .confirmed || item.pickupPhotoKey != nil
 
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -219,6 +231,16 @@ struct GrabRequestDetailView: View {
             HStack(spacing: 8) {
                 if let itemStatus = item.status {
                     ItemStatusBadge(status: itemStatus)
+                }
+
+                if item.pickupPhotoKey != nil {
+                    Image(systemName: "camera.fill")
+                        .font(.caption2)
+                        .foregroundColor(.indigo)
+                        .padding(4)
+                        .background(Color.indigo.opacity(0.15))
+                        .clipShape(Circle())
+                        .accessibilityLabel("Pickup photo added")
                 }
 
                 if let claimerId = item.claimerId {
@@ -279,6 +301,22 @@ struct GrabRequestDetailView: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(.purple)
+            .controlSize(.small)
+            .disabled(isPerformingAction)
+        }
+
+        // "Add Pickup Photo" button: shown for items claimed by current user without a pickup photo
+        if itemStatus == .claimed, item.claimerId?.id == currentUserId, item.pickupPhotoKey == nil {
+            Button {
+                pickupPhotoItem = item
+                showPickupPhotoSheet = true
+            } label: {
+                Label("Add Pickup Photo", systemImage: "camera.fill")
+                    .font(.caption)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.indigo)
             .controlSize(.small)
             .disabled(isPerformingAction)
         }

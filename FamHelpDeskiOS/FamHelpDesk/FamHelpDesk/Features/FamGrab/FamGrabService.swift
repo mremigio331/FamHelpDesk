@@ -180,6 +180,36 @@ final class FamGrabService {
         return response
     }
 
+    // MARK: - Pickup Photos
+
+    /// Get a presigned upload URL for a pickup photo
+    func getPickupPhotoUploadUrl(familyId: String, requestId: String, itemId: String) async throws -> UploadUrlResponse {
+        let body = UploadPhotoBody(itemId: itemId)
+        let response: UploadUrlResponse = try await networkManager.post(
+            endpoint: "/family/\(familyId)/grab/requests/\(requestId)/pickup-photo/upload-url",
+            body: body
+        )
+        return response
+    }
+
+    /// Save the pickup photo key on the item after upload. Triggers content moderation.
+    func savePickupPhoto(familyId: String, requestId: String, itemId: String, s3Key: String, photoVisibility: String? = nil) async throws -> GrabRequestItem {
+        let body = SavePickupPhotoBody(itemId: itemId, s3Key: s3Key, photoVisibility: photoVisibility)
+        let response: SavePickupPhotoResponse = try await networkManager.post(
+            endpoint: "/family/\(familyId)/grab/requests/\(requestId)/pickup-photo/save",
+            body: body
+        )
+        return response.item
+    }
+
+    /// Get a presigned URL to view the pickup photo
+    func getPickupPhotoUrl(familyId: String, requestId: String, itemId: String) async throws -> PhotoUrlResponse {
+        let response: PhotoUrlResponse = try await networkManager.get(
+            endpoint: "/family/\(familyId)/grab/requests/\(requestId)/pickup-photo?item_id=\(itemId)"
+        )
+        return response
+    }
+
     /// Upload photo data directly to S3 using a presigned URL
     func uploadPhoto(data: Data, to uploadUrl: String, contentType: String = "image/jpeg") async throws {
         guard let url = URL(string: uploadUrl) else {

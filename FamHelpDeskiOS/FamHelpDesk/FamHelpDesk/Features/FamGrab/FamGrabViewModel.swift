@@ -358,6 +358,35 @@ final class FamGrabViewModel {
         }
     }
 
+    // MARK: - Pickup Photo
+
+    func uploadPickupPhoto(familyId: String, requestId: String, itemId: String, imageData: Data, isPublic: Bool) async -> Bool {
+        do {
+            let uploadResponse = try await service.getPickupPhotoUploadUrl(familyId: familyId, requestId: requestId, itemId: itemId)
+            try await service.uploadPhoto(data: imageData, to: uploadResponse.uploadUrl)
+            let visibility = isPublic ? "public" : "private"
+            _ = try await service.savePickupPhoto(familyId: familyId, requestId: requestId, itemId: itemId, s3Key: uploadResponse.s3Key, photoVisibility: visibility)
+            await loadRequest(familyId: familyId, requestId: requestId)
+            error = nil
+            return true
+        } catch {
+            self.error = "Failed to upload pickup photo: \(error.localizedDescription)"
+            print("❌ FamGrabViewModel.uploadPickupPhoto error: \(error)")
+            return false
+        }
+    }
+
+    func getPickupPhotoUrl(familyId: String, requestId: String, itemId: String) async -> URL? {
+        do {
+            let response = try await service.getPickupPhotoUrl(familyId: familyId, requestId: requestId, itemId: itemId)
+            return URL(string: response.viewUrl)
+        } catch {
+            self.error = "Failed to get pickup photo URL: \(error.localizedDescription)"
+            print("❌ FamGrabViewModel.getPickupPhotoUrl error: \(error)")
+            return nil
+        }
+    }
+
     // MARK: - Helpers
 
     func clearError() {

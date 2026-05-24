@@ -8,10 +8,16 @@ struct ItemDetailSheet: View {
 
     @State private var photoUrl: URL?
     @State private var isLoadingPhoto = false
+    @State private var pickupPhotoUrl: URL?
+    @State private var isLoadingPickupPhoto = false
     @Environment(\.dismiss) private var dismiss
 
     private var hasPhoto: Bool {
         item.proofPhotoKey != nil
+    }
+
+    private var hasPickupPhoto: Bool {
+        item.pickupPhotoKey != nil
     }
 
     var body: some View {
@@ -24,6 +30,11 @@ struct ItemDetailSheet: View {
                     // Completion info
                     if item.status == .completed || item.status == .confirmed {
                         completionInfoSection
+                    }
+
+                    // Pickup photo
+                    if hasPickupPhoto {
+                        pickupPhotoSection
                     }
 
                     // Delivery photo
@@ -41,6 +52,9 @@ struct ItemDetailSheet: View {
                 }
             }
             .task {
+                if hasPickupPhoto {
+                    await loadPickupPhoto()
+                }
                 if hasPhoto {
                     await loadPhoto()
                 }
@@ -143,6 +157,65 @@ struct ItemDetailSheet: View {
         .background(RoundedRectangle(cornerRadius: 12).fill(Color(uiColor: .secondarySystemBackground)))
     }
 
+    // MARK: - Pickup Photo Section
+
+    @ViewBuilder
+    private var pickupPhotoSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Pickup Photo")
+                .font(.headline)
+
+            if isLoadingPickupPhoto {
+                HStack {
+                    Spacer()
+                    ProgressView("Loading photo...")
+                    Spacer()
+                }
+                .frame(height: 200)
+            } else if let pickupPhotoUrl {
+                AsyncImage(url: pickupPhotoUrl) { phase in
+                    switch phase {
+                    case let .success(image):
+                        image
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxHeight: 300)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    case .failure:
+                        VStack(spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle")
+                                .font(.title2)
+                                .foregroundColor(.orange)
+                            Text("Photo unavailable or expired")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(height: 150)
+                    case .empty:
+                        ProgressView()
+                            .frame(height: 200)
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            } else {
+                VStack(spacing: 8) {
+                    Image(systemName: "photo.fill")
+                        .font(.title2)
+                        .foregroundColor(.secondary)
+                    Text("Photo unavailable or expired")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 100)
+            }
+        }
+        .padding()
+        .background(RoundedRectangle(cornerRadius: 12).fill(Color(uiColor: .secondarySystemBackground)))
+    }
+
     // MARK: - Photo Section
 
     @ViewBuilder
@@ -203,6 +276,16 @@ struct ItemDetailSheet: View {
     }
 
     // MARK: - Helpers
+
+    private func loadPickupPhoto() async {
+        isLoadingPickupPhoto = true
+        pickupPhotoUrl = await viewModel.getPickupPhotoUrl(
+            familyId: familyId,
+            requestId: requestId,
+            itemId: item.itemId
+        )
+        isLoadingPickupPhoto = false
+    }
 
     private func loadPhoto() async {
         isLoadingPhoto = true
