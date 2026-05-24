@@ -680,6 +680,12 @@ class GrabRequestHelper:
                 item.cancelled_by = None
                 if hasattr(item, "proof_photo_key"):
                     item.proof_photo_key = None
+                if hasattr(item, "pickup_photo_key"):
+                    item.pickup_photo_key = None
+                if hasattr(item, "pickup_photo_visibility"):
+                    item.pickup_photo_visibility = None
+                if hasattr(item, "pickup_photo_expires_at"):
+                    item.pickup_photo_expires_at = None
             elif item.status == "OPEN":
                 # Cancel the OPEN item
                 item.status = "CANCELLED"

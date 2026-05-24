@@ -85,7 +85,16 @@ from api.endpoints.grab.complete_items import router as grab_complete_items_rout
 from api.endpoints.grab.confirm_items import router as grab_confirm_items_router
 from api.endpoints.grab.cancel_items import router as grab_cancel_items_router
 from api.endpoints.grab.upload_photo_url import router as grab_upload_photo_url_router
+from api.endpoints.grab.upload_pickup_photo_url import (
+    router as grab_upload_pickup_photo_url_router,
+)
+from api.endpoints.grab.save_pickup_photo import (
+    router as grab_save_pickup_photo_router,
+)
 from api.endpoints.grab.get_photo_url import router as grab_get_photo_url_router
+from api.endpoints.grab.get_pickup_photo_url import (
+    router as grab_get_pickup_photo_url_router,
+)
 from api.endpoints.grab.get_leaderboard import router as grab_get_leaderboard_router
 from api.endpoints.grab.get_transactions import router as grab_get_transactions_router
 from api.endpoints.grab.submit_reviews import router as grab_submit_reviews_router
@@ -303,7 +312,14 @@ def get_all_routes(app: FastAPI) -> FastAPI:
     app.include_router(grab_confirm_items_router, prefix=GRAB_PATH, tags=[GRAB_TAG])
     app.include_router(grab_cancel_items_router, prefix=GRAB_PATH, tags=[GRAB_TAG])
     app.include_router(grab_upload_photo_url_router, prefix=GRAB_PATH, tags=[GRAB_TAG])
+    app.include_router(
+        grab_upload_pickup_photo_url_router, prefix=GRAB_PATH, tags=[GRAB_TAG]
+    )
+    app.include_router(grab_save_pickup_photo_router, prefix=GRAB_PATH, tags=[GRAB_TAG])
     app.include_router(grab_get_photo_url_router, prefix=GRAB_PATH, tags=[GRAB_TAG])
+    app.include_router(
+        grab_get_pickup_photo_url_router, prefix=GRAB_PATH, tags=[GRAB_TAG]
+    )
     app.include_router(grab_get_leaderboard_router, prefix=GRAB_PATH, tags=[GRAB_TAG])
     app.include_router(grab_get_transactions_router, prefix=GRAB_PATH, tags=[GRAB_TAG])
     app.include_router(grab_submit_reviews_router, prefix=GRAB_PATH, tags=[GRAB_TAG])

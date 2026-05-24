@@ -46,6 +46,7 @@ class FamilyNotificationType(Enum):
     GRAB_ITEMS_CONFIRMED = "Grab Items Confirmed"
     GRAB_ITEMS_CANCELLED = "Grab Items Cancelled"
     GRAB_REVIEW_RECEIVED = "Grab Review Received"
+    GRAB_PICKUP_PHOTO = "Grab Pickup Photo"
 
     # Welcom
     WELCOME = "Welcome"

@@ -69,6 +69,7 @@ from exceptions.grab_exceptions import (
     InsufficientBalanceException,
     ItemAlreadyClaimedException,
     AllItemsConfirmedException,
+    PickupPhotoExpiredException,
 )
 
 from fastapi.responses import JSONResponse
@@ -422,6 +423,16 @@ def exceptions_decorator(func):
                     }
                 },
                 status_code=409,
+            )
+        except PickupPhotoExpiredException as exc:
+            return JSONResponse(
+                content={
+                    "error": {
+                        "code": "PICKUP_PHOTO_EXPIRED",
+                        "message": str(exc),
+                    }
+                },
+                status_code=410,
             )
 
         # Membership exceptions

@@ -1,4 +1,4 @@
-"""Helper for generating presigned S3 URLs for grab request delivery photos."""
+"""Helper for generating presigned S3 URLs for grab request photos (delivery and pickup)."""
 
 import os
 from typing import Optional
@@ -42,9 +42,10 @@ class GrabPhotoHelper:
         claimer_id: str,
         user_id: str,
         item_id: Optional[str] = None,
+        photo_type: str = "delivery",
     ) -> dict:
         """
-        Generate a presigned PUT URL for uploading a delivery proof photo.
+        Generate a presigned PUT URL for uploading a photo.
 
         Only the claimer of a request is authorized to upload a photo.
 
@@ -54,6 +55,8 @@ class GrabPhotoHelper:
             claimer_id: The claimer of the request
             user_id: The user requesting the upload URL
             item_id: Optional item ID to include in the S3 key for per-item photos
+            photo_type: Type of photo - "delivery" (default) or "pickup".
+                        When "pickup", includes a /pickup/ segment in the S3 key.
 
         Returns:
             dict with "upload_url" and "s3_key"
@@ -68,7 +71,10 @@ class GrabPhotoHelper:
 
         photo_id = FamHelpDeskBaseModel.generate_random_id()
         if item_id:
-            s3_key = f"{family_id}/{request_id}/{item_id}/{photo_id}.jpg"
+            if photo_type == "pickup":
+                s3_key = f"{family_id}/{request_id}/{item_id}/pickup/{photo_id}.jpg"
+            else:
+                s3_key = f"{family_id}/{request_id}/{item_id}/{photo_id}.jpg"
         else:
             s3_key = f"{family_id}/{request_id}/{photo_id}.jpg"
 

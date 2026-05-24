@@ -65,6 +65,8 @@ class GrabNotificationHelper:
                 self._process_grab_items_cancelled(**kwargs)
             elif notification_type == FamilyNotificationType.GRAB_REVIEW_RECEIVED:
                 self._process_grab_review_received(**kwargs)
+            elif notification_type == FamilyNotificationType.GRAB_PICKUP_PHOTO:
+                self._process_grab_pickup_photo(**kwargs)
             self.logger.info(f"Successfully processed {notification_type}")
         except Exception as e:
             self.logger.error(f"Error processing {notification_type}: {e}")
@@ -483,5 +485,43 @@ class GrabNotificationHelper:
                 title="Grab Review Received",
                 message=message,
                 notification_type=FamilyNotificationType.GRAB_REVIEW_RECEIVED.value,
+                data={"request_id": request_id, "family_id": family_id},
+            )
+
+    def _process_grab_pickup_photo(
+        self, family_id, request_id, requestor_id, claimer_id, item_name
+    ):
+        """
+        Process GRAB_PICKUP_PHOTO notification.
+        Recipients: Only the requestor.
+        Setting check: grab_request_updates enabled.
+        Message format: "{claimer_id} picked up {item_name} from your order"
+        """
+        self.logger.info(
+            f"Processing grab pickup photo notification for request {request_id}"
+        )
+
+        notification_type = FamilyNotificationType.GRAB_PICKUP_PHOTO
+
+        is_notification_enabled = self.family_settings_helper.is_notification_enabled(
+            user_id=requestor_id,
+            family_id=family_id,
+            notification_type=notification_type,
+        )
+
+        if is_notification_enabled:
+            message = f"{claimer_id} picked up {item_name} from your order"
+            self.notification_helper.create_notification(
+                user_id=requestor_id,
+                message=message,
+                notification_type=notification_type,
+                family_id=family_id,
+            )
+
+            self.ios_notification_helper.send_ios_push_notification(
+                user_id=requestor_id,
+                title="Pickup Photo",
+                message=message,
+                notification_type=notification_type.value,
                 data={"request_id": request_id, "family_id": family_id},
             )

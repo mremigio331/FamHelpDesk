@@ -173,6 +173,7 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
                 FamilyNotificationType.GRAB_ITEMS_CONFIRMED,
                 FamilyNotificationType.GRAB_ITEMS_CANCELLED,
                 FamilyNotificationType.GRAB_REVIEW_RECEIVED,
+                FamilyNotificationType.GRAB_PICKUP_PHOTO,
             ]:
                 helper = GrabNotificationHelper(
                     request_id=request_id,

@@ -98,3 +98,10 @@ class AllItemsConfirmedException(GrabException):
 
     def __init__(self, message: str = "All items are already confirmed"):
         super().__init__(message)
+
+
+class PickupPhotoExpiredException(GrabException):
+    """Exception raised when a pickup photo has expired."""
+
+    def __init__(self, message: str = "Pickup photo has expired"):
+        super().__init__(message)
